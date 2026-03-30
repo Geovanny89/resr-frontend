@@ -29,6 +29,11 @@ export default function Dashboard() {
   const [finance, setFinance]   = useState({ totalRevenue: 0, ownerRevenue: 0, employeeRevenue: 0 });
   const [loading, setLoading]   = useState(true);
 
+  // Calcular días restantes de suscripción
+  const daysLeft = business?.subscriptionDaysLeft;
+  const isExpiringSoon = daysLeft !== null && daysLeft <= 5 && daysLeft > 0;
+  const isExpired = daysLeft !== null && daysLeft <= 0;
+
   useEffect(() => {
     if (!business?.id) return;
     const load = async () => {
@@ -79,6 +84,33 @@ export default function Dashboard() {
 
   return (
     <AdminLayout title="Dashboard" subtitle={`Bienvenido · ${business?.name || ''}`}>
+      {/* ALERTAS DE SUSCRIPCIÓN */}
+      {isExpiringSoon && (
+        <div className="alert alert-warning" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fbd38d', borderRadius: 12, padding: '16px 20px', background: '#fffaf0' }}>
+          <div style={{ fontSize: 24 }}>⏳</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: '#9c4221', fontSize: 15 }}>Tu suscripción está por vencer</div>
+            <div style={{ fontSize: 13, color: '#c05621' }}>Faltan <strong>{daysLeft} días</strong> para que tu cuenta sea bloqueada. Por favor realiza el pago pronto.</div>
+          </div>
+          <Link to="/admin/my-business" className="btn-primary" style={{ padding: '8px 16px', fontSize: 12 }}>
+            Ir a pagar
+          </Link>
+        </div>
+      )}
+
+      {isExpired && (
+        <div className="alert alert-danger" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #feb2b2', borderRadius: 12, padding: '16px 20px', background: '#fff5f5' }}>
+          <div style={{ fontSize: 24 }}>🚫</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: '#9b2c2c', fontSize: 15 }}>Suscripción vencida</div>
+            <div style={{ fontSize: 13, color: '#c53030' }}>Tu suscripción venció hace <strong>{Math.abs(daysLeft)} días</strong>. Tu cuenta está en riesgo de bloqueo total.</div>
+          </div>
+          <Link to="/admin/my-business" className="btn-danger" style={{ padding: '8px 16px', fontSize: 12 }}>
+            Pagar ahora
+          </Link>
+        </div>
+      )}
+
       {/* STATS CITAS */}
       <ResponsiveGrid gap={16} minWidth={150}>
         {statCards.map(c => {

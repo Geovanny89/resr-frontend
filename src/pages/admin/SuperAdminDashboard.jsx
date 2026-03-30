@@ -9,6 +9,10 @@ const STATUS_COLORS = { active: '#10b981', blocked: '#ef4444' };
 const STATUS_LABELS = { active: 'Activo', blocked: 'Bloqueado' };
 const SUB_STATUS = { pending: 'Pendiente', paid: 'Al dia', overdue: 'Vencido' };
 
+// URL base para imágenes
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
+
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -207,7 +211,7 @@ export default function SuperAdminDashboard() {
                     </td>
                     <td>
                       {b.paymentScreenshot ? (
-                        <a href={`${(api.defaults.baseURL||'').replace('/api','')}${b.paymentScreenshot}`} target="_blank" rel="noreferrer" className="btn-secondary" style={{padding:'4px 10px',fontSize:11,textDecoration:'none',display:'inline-block'}}>
+                        <a href={`${BACKEND_URL}${b.paymentScreenshot}`} target="_blank" rel="noreferrer" className="btn-secondary" style={{padding:'4px 10px',fontSize:11,textDecoration:'none',display:'inline-block'}}>
                           Ver imagen
                         </a>
                       ) : (

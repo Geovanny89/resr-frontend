@@ -67,6 +67,7 @@ export default function Schedule() {
       } else {
         await api.post('/schedules', { ...form, businessId: business.id });
       }
+      // Forzar la recarga de horarios para que se vean los cambios inmediatamente
       await load();
       resetForm();
       setShowModal(false);
