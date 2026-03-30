@@ -58,51 +58,66 @@ class NotificationService {
   /**
    * Programa una notificación para una cita
    * @param {Object} appointment - Datos de la cita
-   * @param {string} appointment.id - ID de la cita
-   * @param {string} appointment.startTime - Fecha/hora de inicio (ISO string)
-   * @param {string} appointment.clientName - Nombre del cliente
-   * @param {string} appointment.Service?.name - Nombre del servicio
-   * @param {string} employeeName - Nombre del empleado
+   * @param {string} role - Rol del usuario ('employee' o 'client')
    */
-  async scheduleAppointmentNotification(appointment, employeeName = '') {
+  async scheduleAppointmentNotification(appointment, role = 'employee') {
     if (!this.isNative) return;
 
     try {
       const startTime = new Date(appointment.startTime);
-      const notificationTime = new Date(startTime.getTime() - (60 * 60 * 1000)); // 1 hora antes
-      
-      // No programar si la hora ya pasó
-      if (notificationTime < new Date()) {
-        console.log('⏰ Hora de notificación ya pasó, omitiendo:', appointment.id);
-        return;
+      const now = new Date();
+
+      // Tiempos de notificación: 1 hora antes y 30 minutos antes
+      const times = [
+        { offset: 60 * 60 * 1000, label: '1 hora' },
+        { offset: 30 * 60 * 1000, label: '30 minutos' }
+      ];
+
+      for (const timeInfo of times) {
+        const notificationTime = new Date(startTime.getTime() - timeInfo.offset);
+        
+        // No programar si la hora ya pasó
+        if (notificationTime < now) continue;
+
+        // Generar ID único basado en el ID de la cita y el offset
+        const baseId = parseInt(appointment.id.toString().replace(/\D/g, '').slice(-7)) || Math.floor(Math.random() * 1000000);
+        const notificationId = baseId + (timeInfo.offset / 60000); // Diferenciar por minutos
+
+        const businessName = appointment.Business?.name || 'Negocio';
+        const serviceName = appointment.Service?.name || 'Servicio';
+
+        const title = role === 'client' ? `🔔 Recordatorio de Cita` : `📅 Nueva Cita Pendiente`;
+        const body = role === 'client' 
+          ? `Tu cita en "${businessName}" es en ${timeInfo.label} (${serviceName})`
+          : `Tienes una cita con ${appointment.clientName || 'un cliente'} en ${timeInfo.label} (${serviceName})`;
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: notificationId,
+              title,
+              body,
+              schedule: {
+                at: notificationTime,
+                allowWhileIdle: true,
+              },
+              sound: 'default',
+              attachments: [],
+              actionTypeId: '',
+              extra: {
+                appointmentId: appointment.id,
+                role: role,
+                type: 'appointment_reminder',
+              },
+              channelId: 'appointment_reminders',
+              smallIcon: 'ic_launcher_foreground',
+              iconColor: '#8B00CC',
+            },
+          ],
+        });
+
+        console.log(`✅ Notificación (${timeInfo.label}) programada para:`, appointment.id, 'a las:', notificationTime);
       }
-
-      const notificationId = parseInt(appointment.id.toString().replace(/\D/g, '').slice(0, 9)) || Math.floor(Math.random() * 1000000);
-
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: notificationId,
-            title: '🔔 Recordatorio de Cita',
-            body: `Tienes una cita con ${appointment.clientName || 'un cliente'} en 1 hora - ${appointment.Service?.name || 'Servicio'}`,
-            schedule: {
-              at: notificationTime,
-              allowWhileIdle: true,
-            },
-            channelId: 'appointment_reminders',
-            smallIcon: 'ic_launcher_foreground', // Usar el icono que ya sabemos que existe
-            iconColor: '#8B00CC',
-            extra: {
-              appointmentId: appointment.id,
-              employeeId: appointment.employeeId,
-              type: 'appointment_reminder',
-            },
-          },
-        ],
-      });
-
-      this.scheduledNotifications.set(appointment.id, notificationId);
-      console.log('✅ Notificación programada para:', appointment.id, 'a las:', notificationTime);
 
     } catch (error) {
       console.error('Error programando notificación:', error);
@@ -112,55 +127,50 @@ class NotificationService {
   /**
    * Programa notificaciones para múltiples citas
    * @param {Array} appointments - Array de citas
-   * @param {string} employeeId - ID del empleado (para filtrar)
-   * @param {string} employeeName - Nombre del empleado
+   * @param {string} identifier - ID del empleado o correo del cliente
+   * @param {string} role - 'employee' o 'client'
    */
-  async scheduleMultipleNotifications(appointments, employeeId, employeeName) {
+  async scheduleMultipleNotifications(appointments, identifier, role = 'employee') {
     if (!this.isNative) return;
 
-    // Cancelar notificaciones anteriores del empleado
-    await this.cancelEmployeeNotifications(employeeId);
+    // Cancelar notificaciones anteriores
+    await this.cancelRoleNotifications(identifier, role);
 
-    // Filtrar citas futuras del empleado
+    // Filtrar citas futuras válidas
     const futureAppointments = appointments.filter(apt => {
-      const isForEmployee = apt.employeeId === employeeId;
       const isFuture = new Date(apt.startTime) > new Date();
       const isConfirmed = ['pending', 'confirmed', 'attention'].includes(apt.status);
-      return isForEmployee && isFuture && isConfirmed;
+      return isFuture && isConfirmed;
     });
 
-    console.log(`📅 Programando ${futureAppointments.length} notificaciones para ${employeeName}`);
+    console.log(`📅 Programando ${futureAppointments.length} notificaciones para rol: ${role}`);
 
     // Programar notificación para cada cita
     for (const appointment of futureAppointments) {
-      await this.scheduleAppointmentNotification(appointment, employeeName);
+      await this.scheduleAppointmentNotification(appointment, role);
     }
 
-    // Actualizar badge
+    // Actualizar badge (puntico)
     await this.updateBadge(futureAppointments.length);
   }
 
   /**
-   * Cancela notificaciones de un empleado
-   * @param {string} employeeId - ID del empleado
+   * Cancela notificaciones de un rol/usuario específico
    */
-  async cancelEmployeeNotifications(employeeId) {
+  async cancelRoleNotifications(identifier, role) {
     if (!this.isNative) return;
 
     try {
-      // Obtener notificaciones pendientes
       const pending = await LocalNotifications.getPending();
       
-      // Cancelar notificaciones del empleado
       const notificationsToCancel = pending.notifications
-        .filter(n => n.extra?.employeeId === employeeId)
+        .filter(n => n.extra?.role === role)
         .map(n => n.id);
 
       if (notificationsToCancel.length > 0) {
         await LocalNotifications.cancel({
           notifications: notificationsToCancel.map(id => ({ id })),
         });
-        console.log('🗑️ Notificaciones canceladas:', notificationsToCancel.length);
       }
     } catch (error) {
       console.error('Error cancelando notificaciones:', error);

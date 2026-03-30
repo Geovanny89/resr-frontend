@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import notificationService from '../../services/notificationService';
+import { Capacitor } from '@capacitor/core';
 import { 
   format, 
   addMonths, 
@@ -17,7 +19,7 @@ import {
   parseISO
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, User as UserIcon, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, User as UserIcon, XCircle, LogOut, RefreshCw } from 'lucide-react';
 
 const STATUS_LABELS = { 
   pending: 'Pendiente', 
@@ -37,11 +39,14 @@ const STATUS_COLORS = {
 
 export default function MyAppointments() {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState('calendar'); // 'calendar' or 'list'
+
+  const clientEmail = localStorage.getItem('clientEmail');
 
   useEffect(() => {
     loadAppointments();
@@ -50,13 +55,31 @@ export default function MyAppointments() {
   const loadAppointments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/appointments/my-client-appointments');
+      // Si hay un clientEmail en localStorage (modo cliente simplificado), usamos ese
+      const params = clientEmail ? { email: clientEmail } : {};
+      const response = await api.get('/appointments/my-client-appointments', { params });
       setAppointments(response.data);
+      
+      // Programar notificaciones automáticamente si estamos en APK
+      if (Capacitor.isNativePlatform() && response.data.length > 0) {
+        notificationService.scheduleMultipleNotifications(
+          response.data,
+          'client', // ID genérico para clientes
+          'Cliente'
+        );
+      }
     } catch (e) {
       console.error("Error cargando citas", e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('clientEmail');
+    localStorage.removeItem('userRole');
+    logout();
+    navigate('/login');
   };
 
   const handleCancel = async (id) => {
@@ -222,104 +245,99 @@ export default function MyAppointments() {
     );
   };
 
+  const renderCalendar = () => (
+    <div className="my-appointments-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 30, alignItems: 'start' }}>
+      <div className="calendar-container">
+        {renderHeader()}
+        <div style={{ background: 'white', padding: 20, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          {renderDays()}
+          {renderCells()}
+        </div>
+      </div>
+      <div className="details-container">
+        {renderSelectedDateAppointments()}
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f7fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <style>{`
-        @media (max-width: 900px) {
-          .my-appointments-layout {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-          }
-          .my-appointments-header {
-            flex-direction: column;
-            align-items: stretch !important;
-            gap: 12px;
-          }
-          .my-appointments-month-controls {
-            justify-content: center;
-          }
-          .my-appointments-month-title {
-            min-width: 0 !important;
-            font-size: 16px !important;
-          }
-        }
-        @media (max-width: 640px) {
-          .my-appointments-topbar-inner {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 10px;
-          }
-          .my-appointments-topbar-actions {
-            width: 100%;
-            justify-content: space-between;
-          }
-          .my-appointments-wrapper {
-            padding: 20px 12px !important;
-          }
-          .my-appointments-title {
-            font-size: 24px !important;
-          }
-          .my-appointment-card {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 12px;
-          }
-          .my-appointment-card-meta {
-            grid-template-columns: 1fr !important;
-          }
-          .my-appointment-card-actions {
-            margin-left: 0 !important;
-            width: 100%;
-          }
-        }
-      `}</style>
-      {/* Navbar */}
-      <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '15px 20px', color: 'white', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div className="my-appointments-topbar-inner" style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ background: 'white', padding: 6, borderRadius: 8, fontSize: 18 }}>🎲</div>
-            <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.5px' }}>K-DICE</h1>
-          </div>
-          <div className="my-appointments-topbar-actions" style={{ display: 'flex', gap: 12 }}>
-            <Link to="/" style={{ color: 'white', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '6px 12px' }}>Inicio</Link>
-            <button onClick={() => logout()} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
-              Salir
-            </button>
-          </div>
+    <div className="my-appointments-page" style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 80 }}>
+      <div className="my-appointments-topbar" style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)', padding: '24px 16px', color: 'white', borderBottomRightRadius: 24, borderBottomLeftRadius: 24, boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Mis Citas</h1>
+          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}>
+            <LogOut size={20} />
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', gap: 12, background: 'rgba(255,255,255,0.1)', padding: 4, borderRadius: 12 }}>
+          <button 
+            onClick={() => setView('calendar')}
+            style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: view === 'calendar' ? 'white' : 'transparent', color: view === 'calendar' ? '#4f46e5' : 'white', fontWeight: 700, fontSize: 14, transition: 'all 0.2s' }}
+          >
+            Calendario
+          </button>
+          <button 
+            onClick={() => setView('list')}
+            style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: view === 'list' ? 'white' : 'transparent', color: view === 'list' ? '#4f46e5' : 'white', fontWeight: 700, fontSize: 14, transition: 'all 0.2s' }}
+          >
+            Lista
+          </button>
         </div>
       </div>
 
-      <div className="my-appointments-wrapper" style={{ maxWidth: 1000, margin: '0 auto', padding: '30px 20px' }}>
-        <div style={{ marginBottom: 30 }}>
-          <h1 className="my-appointments-title" style={{ fontSize: 28, fontWeight: 800, color: '#1a202c', marginBottom: 8 }}>Mis Citas</h1>
-          <p style={{ color: '#718096' }}>Gestiona tus reservas y horarios</p>
-        </div>
+      <div className="my-appointments-content" style={{ padding: 16 }}>
+        {/* Sección de Negocios Frecuentes para re-agendar */}
+        {appointments.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#2d3748', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RefreshCw size={18} color="#4f46e5" /> Agendar nueva cita en:
+            </h3>
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
+              {[...new Map(appointments.map(a => [a.Business.slug, a.Business])).values()].map(biz => (
+                <Link 
+                  key={biz.slug}
+                  to={`/${biz.slug}`}
+                  style={{ 
+                    flex: '0 0 auto',
+                    background: 'white',
+                    padding: '12px 20px',
+                    borderRadius: 16,
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <span style={{ fontWeight: 700, color: '#4f46e5', fontSize: 14 }}>{biz.name}</span>
+                  <span style={{ fontSize: 11, color: '#718096' }}>Agendar →</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 50 }}>
-            <div className="spinner" style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #667eea', borderRadius: '50%', width: 40, height: 40, margin: '0 auto 20px', animation: 'spin 1s linear infinite' }}></div>
-            <p style={{ color: '#718096', fontWeight: 500 }}>Cargando tus citas...</p>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div className="spinner" style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #4f46e5', borderRadius: '50%', width: 40, height: 40, margin: '0 auto 16px', animation: 'spin 1s linear infinite' }}></div>
+            <p style={{ color: '#718096' }}>Cargando tus citas...</p>
+          </div>
+        ) : appointments.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>No tienes citas aún</h3>
+            <p style={{ fontSize: 14, color: '#718096', lineHeight: 1.5, marginBottom: 24 }}>
+              Cuando agendes una cita en cualquiera de nuestros negocios aliados, aparecerá aquí automáticamente.
+            </p>
+            <Link to="/" style={{ background: '#4f46e5', color: 'white', padding: '12px 24px', borderRadius: 12, textDecoration: 'none', fontWeight: 600, display: 'inline-flex' }}>
+              Explorar Negocios
+            </Link>
           </div>
         ) : (
-          <>
-            {view === 'calendar' ? (
-              <div className="my-appointments-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 30, alignItems: 'start' }}>
-                <div className="calendar-container">
-                  {renderHeader()}
-                  <div style={{ background: 'white', padding: 20, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                    {renderDays()}
-                    {renderCells()}
-                  </div>
-                </div>
-                <div className="details-container">
-                  {renderSelectedDateAppointments()}
-                </div>
-              </div>
-            ) : (
-              renderListView()
-            )}
-          </>
+          view === 'calendar' ? renderCalendar() : renderListView()
         )}
       </div>
     </div>
