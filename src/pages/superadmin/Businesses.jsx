@@ -109,9 +109,9 @@ export default function BusinessesResponsive() {
   const handleSubscriptionUpdate = async () => {
     setSaving(true);
     try {
-      await api.patch(`/businesses/${subModal.id}/subscription-dates`, subForm);
+      const response = await api.patch(`/businesses/${subModal.id}/subscription-dates`, subForm);
       setBusinesses(prev => prev.map(b => 
-        b.id === subModal.id ? { ...b, ...subForm } : b
+        b.id === subModal.id ? { ...b, ...response.data } : b
       ));
       showToast('Suscripción actualizada');
       setSubModal(null);
