@@ -245,11 +245,21 @@ export default function MyAppointments() {
     );
   };
 
+  const handleRebook = (bizSlug) => {
+    // Redirigir directamente al flujo de agendado (/slug/book)
+    navigate(`/${bizSlug}/book`);
+  };
+
   const renderCalendar = () => (
-    <div className="my-appointments-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 30, alignItems: 'start' }}>
+    <div className="my-appointments-layout" style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+      gap: 24, 
+      alignItems: 'start' 
+    }}>
       <div className="calendar-container">
         {renderHeader()}
-        <div style={{ background: 'white', padding: 20, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <div style={{ background: 'white', padding: 12, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
           {renderDays()}
           {renderCells()}
         </div>
@@ -262,6 +272,37 @@ export default function MyAppointments() {
 
   return (
     <div className="my-appointments-page" style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 80 }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .my-appointments-header {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch !important;
+          }
+          .my-appointments-month-controls {
+            justify-content: space-between;
+          }
+          .my-appointments-month-title {
+            min-width: 0 !important;
+            flex: 1;
+          }
+          .my-appointment-card {
+            flex-direction: column;
+            align-items: stretch !important;
+          }
+          .my-appointment-card-actions {
+            margin-left: 0 !important;
+            margin-top: 12px;
+          }
+          .my-appointment-card-actions button {
+            width: 100%;
+            justify-content: center;
+          }
+          .my-appointment-card-meta {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       <div className="my-appointments-topbar" style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)', padding: '24px 16px', color: 'white', borderBottomRightRadius: 24, borderBottomLeftRadius: 24, boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Mis Citas</h1>
@@ -295,26 +336,26 @@ export default function MyAppointments() {
             </h3>
             <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
               {[...new Map(appointments.map(a => [a.Business.slug, a.Business])).values()].map(biz => (
-                <Link 
+                <button 
                   key={biz.slug}
-                  to={`/${biz.slug}`}
+                  onClick={() => handleRebook(biz.slug)}
                   style={{ 
                     flex: '0 0 auto',
                     background: 'white',
                     padding: '12px 20px',
                     borderRadius: 16,
-                    textDecoration: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     border: '1px solid #e2e8f0',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 4
+                    gap: 4,
+                    cursor: 'pointer'
                   }}
                 >
                   <span style={{ fontWeight: 700, color: '#4f46e5', fontSize: 14 }}>{biz.name}</span>
                   <span style={{ fontSize: 11, color: '#718096' }}>Agendar →</span>
-                </Link>
+                </button>
               ))}
             </div>
           </div>

@@ -234,6 +234,25 @@ export default function BookAppointment() {
     </div>
   );
 
+  // ── Flujo de navegación ──
+  const handleBack = () => {
+    // Si hay un clientEmail en localStorage, significa que viene de la APK de clientes
+    if (localStorage.getItem('clientEmail')) {
+      navigate('/my-appointments');
+    } else {
+      navigate(`/${slug}`);
+    }
+  };
+
+  const getImgUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const API_BASE_URL = api.defaults.baseURL || '';
+    const BACKEND_URL = API_BASE_URL.replace(/\/api$/, '');
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    return `${BACKEND_URL}${cleanUrl}`;
+  };
+
   // ── Confirmación ──
   if (confirmed) return (
     <div style={{ minHeight: '100vh', background: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -256,14 +275,14 @@ export default function BookAppointment() {
           <div><strong>Nombre:</strong> {selected.clientName}</div>
         </div>
         <button
-          onClick={() => navigate(`/${slug}`)}
+          onClick={handleBack}
           style={{
             background: gradient, color: 'white', border: 'none',
             borderRadius: 10, padding: '12px 32px', fontSize: 15,
             fontWeight: 700, cursor: 'pointer', width: '100%',
           }}
         >
-          Volver al inicio
+          Volver
         </button>
       </div>
     </div>
@@ -294,7 +313,7 @@ export default function BookAppointment() {
       <div style={{ background: gradient, padding: '14px 16px', color: 'white' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => navigate(`/${slug}`)}
+            onClick={handleBack}
             style={{
               background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
               borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13,
@@ -304,7 +323,7 @@ export default function BookAppointment() {
             ← Volver
           </button>
           {business?.logoUrl && (
-            <img src={business.logoUrl} alt="logo" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.8)', flexShrink: 0 }} />
+            <img src={getImgUrl(business.logoUrl)} alt="logo" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.8)', flexShrink: 0 }} />
           )}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -436,7 +455,7 @@ export default function BookAppointment() {
                     overflow: 'hidden', border: `2px solid ${colors.border}`,
                   }}>
                     {emp.photoUrl
-                      ? <img src={emp.photoUrl} alt={emp.User?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <span style={{ fontSize: 24 }}>👤</span>
                     }
                   </div>
