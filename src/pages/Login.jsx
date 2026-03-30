@@ -9,12 +9,14 @@ export default function Login() {
   const navigate  = useNavigate();
   const [form, setForm]       = useState({ email: '', password: '' });
   const [error, setError]     = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setDebugInfo('');
     setLoading(true);
     try {
       const res = await api.post('/auth/login', form);
@@ -24,17 +26,23 @@ export default function Login() {
       else if (role === 'employee') navigate('/employee');
       else if (role === 'superadmin') navigate('/superadmin');
       else navigate('/my-appointments');
-      } catch (err) {
-        if (!err.response) {
-          setError('No se pudo conectar al servidor. Revisa tu internet o la configuración del servidor.');
-          console.error('Network Error:', err);
+    } catch (err) {
+      if (!err.response) {
+        setError('No se pudo conectar al servidor. Revisa tu internet o la configuración del servidor (CORS/URL).');
+        setDebugInfo(`BaseURL: ${api.defaults.baseURL} | Error: ${err.message}`);
+        console.error('Network Error:', err);
+      } else {
+        // Si el servidor responde con HTML (ej. Nginx 404/502), mostrar un mensaje más claro
+        const contentType = err.response.headers?.['content-type'] || '';
+        if (contentType.includes('text/html')) {
+          setError(`El servidor respondió con un error (Código: ${err.response.status}). Posible error de Nginx o servidor apagado.`);
         } else {
-          // Intentar obtener el mensaje de error del servidor
-          const serverError = err.response.data?.error || err.response.data?.message || 'Error al iniciar sesión';
+          const serverError = err.response.data?.error || err.response.data?.message || 'Error al iniciar sesión (Verifica tus credenciales)';
           setError(serverError);
-          console.error('Login Error:', err.response.status, err.response.data);
         }
-      } finally {
+        console.error('Login Error:', err.response.status, err.response.data);
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -74,7 +82,16 @@ export default function Login() {
             Sistema de gestión de citas y pagos
           </p>
         </div>
-        {error && <div className="alert alert-error"><span>⚠️</span> {error}</div>}
+        {error && (
+          <div className="alert alert-error" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div><span>⚠️</span> {error}</div>
+            {debugInfo && (
+              <div style={{ fontSize: '10px', opacity: 0.8, marginTop: 4, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 4 }}>
+                Debug: {debugInfo}
+              </div>
+            )}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Correo electrónico</label>

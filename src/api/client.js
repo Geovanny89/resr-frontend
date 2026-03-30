@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 
-const envApiUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/['"`]/g, '');
+const envApiUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/['"`]/g, '').trim();
 const isNativeApp = Capacitor.isNativePlatform();
 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
@@ -9,7 +9,12 @@ const isLocalDev = window.location.hostname === 'localhost' || window.location.h
 const defaultNativeURL = 'https://api-reservas.k-dice.com/api';
 let rawBaseURL = isNativeApp 
   ? (envApiUrl && envApiUrl.startsWith('http') ? envApiUrl : defaultNativeURL)
-  : (isLocalDev ? '/api' : (envApiUrl || '/api'));
+  : (isLocalDev ? '/api' : (envApiUrl && envApiUrl.startsWith('http') ? envApiUrl : '/api'));
+
+// Si por alguna razón rawBaseURL sigue siendo solo "/api" en la APK, forzar la de producción
+if (isNativeApp && rawBaseURL === '/api') {
+  rawBaseURL = defaultNativeURL;
+}
 
 // Limpiar la URL base de posibles barras diagonales finales para evitar doble barra //
 const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL.slice(0, -1) : rawBaseURL;

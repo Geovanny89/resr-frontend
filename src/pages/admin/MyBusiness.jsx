@@ -5,12 +5,9 @@ import AdminLayout from '../../components/AdminLayout';
 import { Store, Globe, Image, Palette, Share2, Clock, Eye, Upload, Trash2, Plus } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
-// URL base para imágenes - si es relativa, usar el dominio del backend
-const API_BASE_URL = api.defaults.baseURL || '/api';
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-// En desarrollo local el backend corre en el puerto 4000, en producción usamos el subdominio api-reservas
-const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
+// Extraer la URL base del backend desde el cliente API
+const API_BASE_URL = api.defaults.baseURL || '';
+const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
 
 function getImgUrl(url) {
   if (!url) return null;
