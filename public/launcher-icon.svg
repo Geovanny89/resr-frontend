@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo degradado principal -->
+  <defs>
+    <linearGradient id="mainGradient" x1="512" y1="200" x2="512" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF8C00"/>
+      <stop offset="30%" stop-color="#FF6B00"/>
+      <stop offset="60%" stop-color="#E6007E"/>
+      <stop offset="100%" stop-color="#8B00CC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo degradado -->
+  <rect width="1024" height="1024" fill="url(#mainGradient)"/>
+
+  <!-- Borde blanco cuadrado -->
+  <rect 
+    x="80" y="80" 
+    width="864" height="864" 
+    rx="120" 
+    fill="none" 
+    stroke="#FFFFFF" 
+    stroke-width="48"/>
+
+  <!-- Contenido central -->
+  <!-- Calendario pequeño encima -->
+  <!-- Calendario fondo -->
+  <rect 
+    x="412" y="240" 
+    width="200" height="180" 
+    rx="20" 
+    fill="#FFFFFF"/>
+
+  <!-- Parte superior del calendario (pestañas) -->
+  <rect 
+    x="445" y="215" 
+    width="32" height="38" 
+    rx="6" 
+    fill="#FFFFFF"/>
+  <rect 
+    x="547" y="215" 
+    width="32" height="38" 
+    rx="6" 
+    fill="#FFFFFF"/>
+
+  <!-- Líneas del calendario -->
+  <line x1="432" y1="300" x2="592" y2="300" stroke="#1A1A1A" stroke-width="14" stroke-linecap="round"/>
+  <line x1="432" y1="335" x2="592" y2="335" stroke="#1A1A1A" stroke-width="14" stroke-linecap="round"/>
+  
+  <!-- Checkmark -->
+  <path d="M465 365 L490 390 L545 325" fill="none" stroke="#1A1A1A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Texto KD - Más grande y más visible -->
+  <text 
+    x="512" y="680" 
+    text-anchor="middle" 
+    font-family="Arial Black, Helvetica, sans-serif" 
+    font-size="420" 
+    font-weight="900" 
+    fill="#FFFFFF" 
+    stroke="#000000" 
+    stroke-width="32" 
+    paint-order="stroke fill">KD</text>
+
+</svg>

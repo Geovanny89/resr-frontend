@@ -1,0 +1,230 @@
+/* 📱 Responsive Styles for SuperAdmin Businesses */
+
+/* Grid container for businesses */
+.businesses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+/* Modal responsive styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-responsive {
+  max-width: 600px !important;
+  width: 95% !important;
+  margin: 20px auto !important;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: var(--gray-100);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modal-close:hover {
+  background: var(--danger);
+  color: white;
+  transform: rotate(90deg);
+}
+
+.modal-close:active {
+  transform: rotate(90deg) scale(0.95);
+}
+
+.modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.detail-value {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Tablet y móviles */
+@media (max-width: 1024px) {
+  .businesses-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .modal-responsive {
+    width: 98% !important;
+    margin: 10px auto !important;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Móviles */
+@media (max-width: 768px) {
+  .businesses-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 8px;
+  }
+  
+  .modal-responsive {
+    width: 95% !important;
+    margin: 5px auto !important;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding-bottom: 12px;
+  }
+  
+  .modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .detail-item {
+    gap: 2px;
+  }
+  
+  .detail-label {
+    font-size: 12px;
+  }
+  
+  .detail-value {
+    font-size: 13px;
+  }
+  
+  .card {
+    margin: 0 -8px !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Botones más grandes en móvil */
+  .btn {
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    min-height: 44px;
+  }
+  
+  .btn-sm {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    min-height: 40px;
+  }
+  
+  /* Inputs más grandes en móvil */
+  input, select {
+    min-height: 44px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* Pequeños móviles */
+@media (max-width: 480px) {
+  .modal-close {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    padding: 8px;
+  }
+  
+  .modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .modal-responsive {
+    margin: 0 !important;
+    border-radius: 8px;
+  }
+}
