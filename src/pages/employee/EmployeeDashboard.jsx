@@ -94,6 +94,32 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const [showChangePwModal, setShowChangePwModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await api.patch('/auth/change-password', {
+        oldPassword: pwForm.oldPassword,
+        newPassword: pwForm.newPassword
+      });
+      alert('Contraseña actualizada correctamente');
+      setShowChangePwModal(false);
+      setPwForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al cambiar la contraseña');
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
   };
@@ -139,6 +165,21 @@ export default function EmployeeDashboard() {
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <ThemeToggle />
+              <button
+                onClick={() => setShowChangePwModal(true)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                Cambiar Clave
+              </button>
               <button
                 onClick={handleLogout}
                 style={{
@@ -331,6 +372,66 @@ export default function EmployeeDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal Cambiar Contraseña */}
+      {showChangePwModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: colors.cardBg, padding: 24, borderRadius: 16, maxWidth: 400, width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: colors.text, marginBottom: 8 }}>Cambiar Contraseña</h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 20 }}>Ingresa tu clave actual y la nueva para actualizarla.</p>
+            
+            <form onSubmit={handlePasswordChange}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Contraseña Actual</label>
+                <input 
+                  type="password" 
+                  value={pwForm.oldPassword}
+                  onChange={e => setPwForm({ ...pwForm, oldPassword: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Nueva Contraseña</label>
+                <input 
+                  type="password" 
+                  value={pwForm.newPassword}
+                  onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Confirmar Nueva Contraseña</label>
+                <input 
+                  type="password" 
+                  value={pwForm.confirmPassword}
+                  onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowChangePwModal(false)}
+                  style={{ flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: colors.bgSecondary, color: colors.text, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={pwLoading}
+                  style={{ flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: colors.primary, color: 'white', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {pwLoading ? 'Guardando...' : 'Actualizar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
