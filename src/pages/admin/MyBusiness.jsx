@@ -7,15 +7,17 @@ import { Capacitor } from '@capacitor/core';
 
 // URL base para imágenes - si es relativa, usar el dominio del backend
 const API_BASE_URL = api.defaults.baseURL || '/api';
-const BASE_URL = API_BASE_URL.replace('/api', '');
-// En desarrollo local usar proxy de Vite, en producción usar dominio real
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const BACKEND_URL = BASE_URL.startsWith('http') ? BASE_URL : (isLocal ? '' : 'https://api-reservas.k-dice.com');
+
+// En desarrollo local el backend corre en el puerto 4000, en producción usamos el subdominio api-reservas
+const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
 
 function getImgUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  return `${BACKEND_URL}${url}`;
+  // Asegurar que la URL comience con / si no lo tiene
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${BACKEND_URL}${cleanUrl}`;
 }
 
 const SUB_STATUS_COLORS  = { pending: '#f6ad55', paid: '#48bb78', overdue: '#f56565' };
