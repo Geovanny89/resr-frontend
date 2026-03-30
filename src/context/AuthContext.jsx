@@ -33,6 +33,7 @@ export function AuthProvider({ children }) {
   const login = (newToken, userData, biz = null) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.removeItem('clientEmail'); // Limpiar modo cliente si inicia sesión real
     setToken(newToken);
     setUser(userData);
     if (biz) {
@@ -41,10 +42,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginAsClient = (email) => {
+    localStorage.setItem('clientEmail', email);
+    localStorage.setItem('userRole', 'client');
+    setUser({ role: 'client', email }); // Usuario virtual para el contexto
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('business');
+    localStorage.removeItem('clientEmail');
+    localStorage.removeItem('userRole');
     setToken(null);
     setUser(null);
     setBusiness(null);
@@ -62,7 +71,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, business, bizLoading, login, logout, refreshBusiness, setBusiness }}>
+    <AuthContext.Provider value={{ token, user, business, bizLoading, login, loginAsClient, logout, refreshBusiness, setBusiness }}>
       {children}
     </AuthContext.Provider>
   );

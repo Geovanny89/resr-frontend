@@ -6,7 +6,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, User, ArrowRight, RefreshCw, X } from '
 import { Capacitor } from '@capacitor/core';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginAsClient: authLoginAsClient } = useAuth();
   const navigate  = useNavigate();
   const [form, setForm]       = useState({ email: '', password: '' });
   const [error, setError]     = useState('');
@@ -63,9 +63,8 @@ export default function Login() {
     setClientLoading(true);
     setError('');
     try {
-      // Para clientes, guardamos su correo en localStorage para simular sesión persistente
-      localStorage.setItem('clientEmail', clientEmail);
-      localStorage.setItem('userRole', 'client');
+      // Usar la nueva función del AuthContext para que el sistema reconozca al cliente
+      authLoginAsClient(clientEmail);
       // Redirigir a mis citas
       navigate('/my-appointments');
     } catch (err) {
