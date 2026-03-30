@@ -4,7 +4,7 @@ import api from '../../api/client';
 import {
   Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
   Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  User, Calendar, CreditCard
+  CreditCard, Calendar, User
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
@@ -24,7 +24,12 @@ export default function BusinessesResponsive() {
   const [screenshot, setScreenshot]     = useState(null);
   const [detailBiz, setDetailBiz]       = useState(null);
   const [subModal, setSubModal]         = useState(null);
-  const [subForm, setSubForm]           = useState({ subscriptionStatus: '', lastPaymentDate: '' });
+  const [subForm, setSubForm]           = useState({ 
+    subscriptionStatus: '', 
+    lastPaymentDate: '',
+    subscriptionStartDate: '',
+    subscriptionEndDate: ''
+  });
   const [saving, setSaving]             = useState(false);
   const [toast, setToast]               = useState(null);
 
@@ -37,9 +42,10 @@ export default function BusinessesResponsive() {
         api.get('/businesses'),
         api.get('/business-types/all'),
       ]);
-      setBusinesses(bRes.data);
-      setBusinessTypes(tRes.data);
-    } catch {
+      setBusinesses(bRes.data || []);
+      setBusinessTypes(tRes.data || []);
+    } catch (err) {
+      console.error(err);
       showToast('Error al cargar datos', 'error');
     } finally {
       setLoading(false);
@@ -54,16 +60,20 @@ export default function BusinessesResponsive() {
   const getTypeInfo = (typeId) => {
     const type = businessTypes.find(t => t.id === typeId);
     return type ? {
-      icon: type.id === 1 ? <Building2 size={14} /> : <Building2 size={14} />,
+      icon: <Building2 size={14} />,
       label: type.name
     } : { icon: <Building2 size={14} />, label: 'Desconocido' };
   };
 
-  const filtered = businesses.filter(biz => {
+  const filtered = (businesses || []).filter(biz => {
+    const name = biz.name || '';
+    const slug = biz.slug || '';
+    const ownerName = biz.Owner?.name || '';
+    
     const matchSearch = !search || 
-      biz.name.toLowerCase().includes(search.toLowerCase()) ||
-      biz.slug.toLowerCase().includes(search.toLowerCase()) ||
-      biz.Owner?.name?.toLowerCase().includes(search.toLowerCase());
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      slug.toLowerCase().includes(search.toLowerCase()) ||
+      ownerName.toLowerCase().includes(search.toLowerCase());
     
     const matchStatus = filterStatus === 'all' || biz.status === filterStatus;
     const matchSub = filterSub === 'all' || biz.subscriptionStatus === filterSub;
@@ -74,7 +84,7 @@ export default function BusinessesResponsive() {
   const handleStatusToggle = async (biz) => {
     try {
       const newStatus = biz.status === 'active' ? 'blocked' : 'active';
-      await api.patch(`/superadmin/businesses/${biz.id}/status`, { status: newStatus });
+      await api.patch(`/businesses/${biz.id}/status`, { status: newStatus });
       setBusinesses(prev => prev.map(b => 
         b.id === biz.id ? { ...b, status: newStatus } : b
       ));
@@ -87,13 +97,12 @@ export default function BusinessesResponsive() {
   const handleSubscriptionUpdate = async () => {
     setSaving(true);
     try {
-      await api.patch(`/superadmin/businesses/${subModal.id}/subscription`, subForm);
+      await api.patch(`/businesses/${subModal.id}/subscription-dates`, subForm);
       setBusinesses(prev => prev.map(b => 
         b.id === subModal.id ? { ...b, ...subForm } : b
       ));
       showToast('Suscripción actualizada');
       setSubModal(null);
-      setSubForm({ subscriptionStatus: '', lastPaymentDate: '' });
     } catch {
       showToast('Error al actualizar suscripción', 'error');
     } finally {
@@ -107,64 +116,51 @@ export default function BusinessesResponsive() {
     
     return (
       <div className="card" style={{ 
-        marginBottom: 16, 
-        padding: 16,
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        background: 'var(--surface)',
-        transition: 'transform 0.2s, box-shadow 0.2s'
+        padding: 20, border: '1px solid var(--border)',
+        borderRadius: 16, background: 'var(--surface)',
+        display: 'flex', flexDirection: 'column', height: '100%',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
           <div style={{
-            width: 50, 
-            height: 50, 
-            borderRadius: 12, 
-            flexShrink: 0,
-            background: biz.status === 'active' ? '#ede9fe' : '#f3f4f6',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            fontSize: 20,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+            background: biz.status === 'active' ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : '#f3f4f6',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+            border: '1px solid rgba(124, 58, 237, 0.1)'
           }}>
             {biz.logoUrl
-              ? <img src={biz.logoUrl} alt="" style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} />
+              ? <img src={biz.logoUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
               : typeInfo.icon
             }
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.2 }}>{biz.name}</h3>
-            <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{biz.slug}</p>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{biz.Owner?.name || '—'}</p>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{biz.Owner?.email || '—'}</p>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{biz.name}</h3>
+            <p style={{ margin: '2px 0 4px', fontSize: 12, color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace' }}>/{biz.slug}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{biz.Owner?.name || '—'}</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{biz.Owner?.email || '—'}</p>
+            </div>
           </div>
         </div>
 
         {/* Badges */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-            background: 'var(--gray-100)', color: 'var(--gray-700)'
-          }}>
-            {typeInfo.icon} {typeInfo.label}
-          </span>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-            background: biz.status === 'active' ? '#d1fae5' : '#fee2e2',
-            color: biz.status === 'active' ? '#065f46' : '#991b1b'
+        <div style={{ display: 'flex', gap: 8, marginBottom: 'auto', flexWrap: 'wrap' }}>
+          <span className="badge" style={{ 
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+            background: biz.status === 'active' ? '#d1fae5' : '#fee2e2', 
+            color: biz.status === 'active' ? '#065f46' : '#991b1b',
+            display: 'flex', alignItems: 'center', gap: 4
           }}>
             {biz.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
             {biz.status === 'active' ? 'Activa' : 'Bloqueada'}
           </span>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-            background: subInfo.bg, color: subInfo.text
+          <span className="badge" style={{ 
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+            background: subInfo.bg, color: subInfo.text,
+            display: 'flex', alignItems: 'center', gap: 4
           }}>
-            {biz.subscriptionStatus === 'paid'    && <CheckCircle size={12} />}
+            {biz.subscriptionStatus === 'paid' && <CheckCircle size={12} />}
             {biz.subscriptionStatus === 'pending' && <Clock size={12} />}
             {biz.subscriptionStatus === 'overdue' && <AlertTriangle size={12} />}
             {subInfo.label}
@@ -172,269 +168,197 @@ export default function BusinessesResponsive() {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
-            {biz.paymentScreenshot && (
-              <button
-                onClick={() => setScreenshot({ url: biz.paymentScreenshot, business: biz })}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: 'linear-gradient(135deg, #ede9fe, #f5f3ff)',
-                  border: '1px solid #ddd6fe', color: '#7c3aed', cursor: 'pointer',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >
-                <Image size={13} /> Comprobante
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => setDetailBiz(biz)}
-              style={{
-                padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center',
-                transition: 'transform 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          {biz.paymentScreenshot && (
+            <button 
+              className="btn-icon" 
+              onClick={() => setScreenshot({ url: biz.paymentScreenshot, business: biz })}
+              title="Ver comprobante"
+              style={{ background: '#f3f4f6', color: '#4b5563' }}
             >
-              <Eye size={14} />
+              <Image size={18} />
             </button>
-            <button
-              onClick={() => handleStatusToggle(biz)}
-              style={{
-                padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                background: biz.status === 'active' ? '#fef2f2' : '#f0fdf4',
-                color: biz.status === 'active' ? '#dc2626' : '#16a34a',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                transition: 'transform 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-            >
-              {biz.status === 'active' ? <Lock size={14} /> : <Unlock size={14} />}
-            </button>
-          </div>
+          )}
+          <button 
+            className="btn-icon" 
+            onClick={() => setDetailBiz(biz)}
+            title="Ver detalles"
+            style={{ background: '#eff6ff', color: '#2563eb' }}
+          >
+            <Eye size={18} />
+          </button>
+          <button 
+            className="btn-icon" 
+            onClick={() => handleStatusToggle(biz)}
+            title={biz.status === 'active' ? 'Bloquear' : 'Desbloquear'}
+            style={{ 
+              background: biz.status === 'active' ? '#fff1f2' : '#f0fdf4', 
+              color: biz.status === 'active' ? '#e11d48' : '#16a34a' 
+            }}
+          >
+            {biz.status === 'active' ? <Lock size={18} /> : <Unlock size={18} />}
+          </button>
         </div>
       </div>
     );
   };
 
   return (
-    <SuperAdminLayout>
-      {/* Toast */}
+    <SuperAdminLayout title="Empresas">
       {toast && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          padding: '12px 20px', borderRadius: 8, fontSize: 14,
-          background: toast.type === 'success' ? '#10b981' : '#ef4444',
-          color: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}>
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 20px', borderRadius: 8, background: toast.type === 'success' ? '#10b981' : '#ef4444', color: 'white' }}>
           {toast.msg}
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Empresas</h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            Gestiona todas las empresas registradas
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn-outline" onClick={() => setSubModal({})}>
-            <CreditCard size={16} /> Suscripciones
-          </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h2 style={{ margin: 0 }}>Gestión de Empresas</h2>
+        <button className="btn-primary" onClick={loadAll}><RefreshCw size={16} /> Actualizar</button>
+      </div>
+
+      <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="all">Todos los estados</option>
+            <option value="active">Activas</option>
+            <option value="blocked">Bloqueadas</option>
+          </select>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ flex: 1, minWidth: 280, position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, slug o propietario..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{ paddingLeft: 36, width: '100%', height: 40 }}
-              />
-            </div>
-            <div style={{ position: 'relative', minWidth: 160 }}>
-              <Filter size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ paddingLeft: 30, height: 40 }}>
-                <option value="all">Todos los estados</option>
-                <option value="active">Activas</option>
-                <option value="blocked">Bloqueadas</option>
-              </select>
-            </div>
-            <div style={{ position: 'relative', minWidth: 180 }}>
-              <CreditCard size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <select value={filterSub} onChange={e => setFilterSub(e.target.value)} style={{ paddingLeft: 30, height: 40 }}>
-                <option value="all">Todas las suscripciones</option>
-                <option value="paid">Pagado</option>
-                <option value="pending">Pendiente</option>
-                <option value="overdue">Vencido</option>
-              </select>
-            </div>
-            <button className="btn-outline btn-sm" onClick={loadAll} style={{ flexShrink: 0, height: 40, width: '100%', minWidth: 120 }}>
-              <RefreshCw size={14} /> Actualizar
-            </button>
-          </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-muted)' }}>
-            Mostrando <strong>{filtered.length}</strong> de <strong>{businesses.length}</strong> empresas
-          </div>
-        </div>
-      </div>
-
-      {/* Loading */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 20px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #ede9fe', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 12 }}>Cargando empresas...</p>
-          </div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Building2 size={48} color="#d1d5db" style={{ margin: '0 auto 16px' }} />
-          <p style={{ color: 'var(--text-muted)', fontSize: 16, marginBottom: 8 }}>No se encontraron empresas</p>
-          <p style={{ color: 'var(--text-light)', fontSize: 14 }}>Intenta con otros filtros</p>
-        </div>
+        <p>Cargando empresas...</p>
       ) : (
-        <div className="businesses-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
           {filtered.map(biz => <BusinessCard key={biz.id} biz={biz} />)}
         </div>
       )}
 
-      {/* Modals */}
-      {/* Modal de detalle */}
       {detailBiz && (
         <div className="modal-overlay" onClick={() => setDetailBiz(null)}>
-          <div className="modal-content modal-responsive" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Detalle de Empresa</h3>
-              <button className="modal-close" onClick={() => setDetailBiz(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{detailBiz.name}</h3>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>Información detallada del negocio</p>
+              </div>
+              <button className="btn-icon" onClick={() => setDetailBiz(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)' }}>
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="detail-grid">
-                <div className="detail-item">
-                  <span className="detail-label">Nombre:</span>
-                  <span className="detail-value">{detailBiz.name}</span>
+            
+            <div style={{ padding: 28 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                    <Search size={20} />
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Identificador</p>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}>/{detailBiz.slug}</p>
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Slug:</span>
-                  <span className="detail-value">/{detailBiz.slug}</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Propietario</p>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}>{detailBiz.Owner?.email}</p>
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Email:</span>
-                  <span className="detail-value">{detailBiz.Owner?.email}</span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '20px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <div>
+                    <p style={{ margin: '0 0 6px', fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Suscripción desde</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Calendar size={16} color="#3b82f6" />
+                      <span style={{ fontSize: 15, fontWeight: 600, color: '#1e293b' }}>
+                        {detailBiz.subscriptionStartDate ? new Date(detailBiz.subscriptionStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No definida'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 6px', fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vence el día</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Clock size={16} color="#ef4444" />
+                      <span style={{ fontSize: 15, fontWeight: 700, color: '#dc2626' }}>
+                        {detailBiz.subscriptionEndDate ? new Date(detailBiz.subscriptionEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No definida'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Teléfono:</span>
-                  <span className="detail-value">{detailBiz.Owner?.phone || 'No registrado'}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Estado:</span>
-                  <span className={`badge ${detailBiz.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                    {detailBiz.status === 'active' ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                    {detailBiz.status === 'active' ? 'Activa' : 'Bloqueada'}
-                  </span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Suscripción:</span>
-                  <span className={`badge ${SUB_LABELS[detailBiz.subscriptionStatus]?.bg || '#fef3c7'}`}>
-                    {SUB_LABELS[detailBiz.subscriptionStatus]?.label || 'Pendiente'}
-                  </span>
-                </div>
+
+                <button 
+                  className="btn-primary" 
+                  style={{ width: '100%', padding: '14px', borderRadius: 10, fontWeight: 700, marginTop: 4, fontSize: 15 }}
+                  onClick={() => {
+                    setSubForm({
+                      subscriptionStatus: detailBiz.subscriptionStatus || 'pending',
+                      lastPaymentDate: detailBiz.lastPaymentDate ? detailBiz.lastPaymentDate.split('T')[0] : '',
+                      subscriptionStartDate: detailBiz.subscriptionStartDate ? detailBiz.subscriptionStartDate.split('T')[0] : '',
+                      subscriptionEndDate: detailBiz.subscriptionEndDate ? detailBiz.subscriptionEndDate.split('T')[0] : ''
+                    });
+                    setSubModal(detailBiz);
+                    setDetailBiz(null);
+                  }}
+                >
+                  <CreditCard size={18} style={{ marginRight: 8 }} />
+                  Actualizar Suscripción
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de suscripción */}
       {subModal && (
         <div className="modal-overlay" onClick={() => setSubModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                {subModal.id ? 'Actualizar Suscripción' : 'Nueva Suscripción'}
-              </h3>
-              <button onClick={() => setSubModal(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>
-                <X />
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Actualizar Suscripción</h2>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{subModal.name}</p>
+              </div>
+              <button onClick={() => setSubModal(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={20} />
               </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Estado de Suscripción</label>
-                <select 
-                  value={subForm.subscriptionStatus} 
-                  onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))}
-                  style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="paid">Pagado</option>
-                  <option value="pending">Pendiente</option>
-                  <option value="overdue">Vencido</option>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de suscripción</label>
+                <select value={subForm.subscriptionStatus} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }}>
+                  <option value="pending">⏳ Pendiente</option>
+                  <option value="paid">✅ Al día</option>
+                  <option value="overdue">❌ Vencido</option>
                 </select>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Fecha de Último Pago</label>
-                <input
-                  type="date"
-                  value={subForm.lastPaymentDate}
-                  onChange={e => setSubForm(prev => ({ ...prev, lastPaymentDate: e.target.value }))}
-                  style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inicio</label>
+                  <input type="date" value={subForm.subscriptionStartDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStartDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vencimiento</label>
+                  <input type="date" value={subForm.subscriptionEndDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionEndDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }} />
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
-                <button className="btn-outline" onClick={() => setSubModal(null)}>
-                  Cancelar
-                </button>
-                <button 
-                  className="btn" 
-                  onClick={handleSubscriptionUpdate}
-                  disabled={saving}
-                  style={{ opacity: saving ? 0.7 : 1 }}
-                >
-                  {saving ? 'Guardando...' : 'Guardar'}
-                </button>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <button className="btn-secondary" style={{ flex: 1, padding: '12px', borderRadius: 8, fontWeight: 600 }} onClick={() => setSubModal(null)}>Cancelar</button>
+                <button className="btn-primary" style={{ flex: 2, padding: '12px', borderRadius: 8, fontWeight: 700 }} onClick={handleSubscriptionUpdate} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar'}</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de screenshot */}
       {screenshot && (
         <div className="modal-overlay" onClick={() => setScreenshot(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 800, width: '90%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                Comprobante de Pago - {screenshot.business.name}
-              </h3>
-              <button onClick={() => setScreenshot(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>
-                <X />
-              </button>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <img 
-                src={screenshot.url} 
-                alt="Comprobante de pago" 
-                style={{ maxWidth: '100%', maxHeight: 500, borderRadius: 8, border: '1px solid var(--border)' }}
-              />
-            </div>
+          <div className="modal-content" style={{ maxWidth: 600, background: 'var(--surface)', padding: 20, borderRadius: 16 }}>
+            <img src={screenshot.url} alt="Pago" style={{ width: '100%', borderRadius: 8 }} />
+            <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setScreenshot(null)}>Cerrar</button>
           </div>
         </div>
       )}

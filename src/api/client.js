@@ -14,9 +14,14 @@ let rawBaseURL = isNativeApp
 // Limpiar la URL base de posibles barras diagonales finales para evitar doble barra //
 const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL.slice(0, -1) : rawBaseURL;
 
-if (isNativeApp || isLocalDev) {
-  console.log('API BaseURL:', baseURL);
-}
+// Log detallado para debug
+console.log('=== API Client Debug ===');
+console.log('isNativeApp:', isNativeApp);
+console.log('isLocalDev:', isLocalDev);
+console.log('envApiUrl:', envApiUrl);
+console.log('Capacitor platform:', Capacitor.getPlatform?.() || 'N/A');
+console.log('API BaseURL:', baseURL);
+console.log('========================');
 
 const api = axios.create({ baseURL });
 
@@ -29,6 +34,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    console.error('API Error:', err.message);
+    console.error('API Error config:', err.config?.url);
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';

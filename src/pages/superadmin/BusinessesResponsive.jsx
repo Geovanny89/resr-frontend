@@ -24,7 +24,12 @@ export default function BusinessesResponsive() {
   const [screenshot, setScreenshot]     = useState(null);
   const [detailBiz, setDetailBiz]       = useState(null);
   const [subModal, setSubModal]         = useState(null);
-  const [subForm, setSubForm]           = useState({ subscriptionStatus: '', lastPaymentDate: '' });
+  const [subForm, setSubForm]           = useState({ 
+    subscriptionStatus: '', 
+    lastPaymentDate: '',
+    subscriptionStartDate: '',
+    subscriptionEndDate: ''
+  });
   const [saving, setSaving]             = useState(false);
   const [toast, setToast]               = useState(null);
 
@@ -87,13 +92,18 @@ export default function BusinessesResponsive() {
   const handleSubscriptionUpdate = async () => {
     setSaving(true);
     try {
-      await api.patch(`/superadmin/businesses/${subModal.id}/subscription`, subForm);
+      await api.patch(`/businesses/${subModal.id}/subscription-dates`, subForm);
       setBusinesses(prev => prev.map(b => 
         b.id === subModal.id ? { ...b, ...subForm } : b
       ));
       showToast('Suscripción actualizada');
       setSubModal(null);
-      setSubForm({ subscriptionStatus: '', lastPaymentDate: '' });
+      setSubForm({
+        subscriptionStatus: '',
+        lastPaymentDate: '',
+        subscriptionStartDate: '',
+        subscriptionEndDate: ''
+      });
     } catch {
       showToast('Error al actualizar suscripción', 'error');
     } finally {
@@ -248,7 +258,15 @@ export default function BusinessesResponsive() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn-outline" onClick={() => setSubModal({})}>
+          <button className="btn-outline" onClick={() => {
+            setSubForm({
+              subscriptionStatus: '',
+              lastPaymentDate: '',
+              subscriptionStartDate: '',
+              subscriptionEndDate: ''
+            });
+            setSubModal({});
+          }}>
             <CreditCard size={16} /> Suscripciones
           </button>
         </div>
@@ -357,6 +375,14 @@ export default function BusinessesResponsive() {
                     {SUB_LABELS[detailBiz.subscriptionStatus]?.label || 'Pendiente'}
                   </span>
                 </div>
+                <div className="detail-item">
+                  <span className="detail-label">Suscripción desde:</span>
+                  <span className="detail-value">{detailBiz.subscriptionStartDate ? new Date(detailBiz.subscriptionStartDate).toLocaleDateString('es-ES') : 'No definida'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Vence el día:</span>
+                  <span className="detail-value">{detailBiz.subscriptionEndDate ? new Date(detailBiz.subscriptionEndDate).toLocaleDateString('es-ES') : 'No definida'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -366,7 +392,7 @@ export default function BusinessesResponsive() {
       {/* Modal de suscripción */}
       {subModal && (
         <div className="modal-overlay" onClick={() => setSubModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%', background: 'var(--surface)', padding: 24, borderRadius: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
                 {subModal.id ? 'Actualizar Suscripción' : 'Nueva Suscripción'}
@@ -395,6 +421,24 @@ export default function BusinessesResponsive() {
                   type="date"
                   value={subForm.lastPaymentDate}
                   onChange={e => setSubForm(prev => ({ ...prev, lastPaymentDate: e.target.value }))}
+                  style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Suscripción desde</label>
+                <input
+                  type="date"
+                  value={subForm.subscriptionStartDate}
+                  onChange={e => setSubForm(prev => ({ ...prev, subscriptionStartDate: e.target.value }))}
+                  style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Vence el día</label>
+                <input
+                  type="date"
+                  value={subForm.subscriptionEndDate}
+                  onChange={e => setSubForm(prev => ({ ...prev, subscriptionEndDate: e.target.value }))}
                   style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}
                 />
               </div>
