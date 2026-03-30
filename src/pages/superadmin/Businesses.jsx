@@ -8,6 +8,18 @@ import {
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
+// Extraer la URL base del backend desde el cliente API
+const API_BASE_URL = api.defaults.baseURL || '';
+const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
+
+function getImgUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  // Asegurar que la URL comience con / si no lo tiene
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${BACKEND_URL}${cleanUrl}`;
+}
+
 const SUB_LABELS = {
   pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7', text: '#92400e' },
   paid:    { label: 'Pagado',    color: '#10b981', bg: '#d1fae5', text: '#065f46' },
@@ -130,7 +142,7 @@ export default function BusinessesResponsive() {
             border: '1px solid rgba(124, 58, 237, 0.1)'
           }}>
             {biz.logoUrl
-              ? <img src={biz.logoUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
+              ? <img src={getImgUrl(biz.logoUrl)} alt="" style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
               : typeInfo.icon
             }
           </div>
@@ -357,7 +369,7 @@ export default function BusinessesResponsive() {
       {screenshot && (
         <div className="modal-overlay" onClick={() => setScreenshot(null)}>
           <div className="modal-content" style={{ maxWidth: 600, background: 'var(--surface)', padding: 20, borderRadius: 16 }}>
-            <img src={screenshot.url} alt="Pago" style={{ width: '100%', borderRadius: 8 }} />
+            <img src={getImgUrl(screenshot.url)} alt="Pago" style={{ width: '100%', borderRadius: 8 }} />
             <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setScreenshot(null)}>Cerrar</button>
           </div>
         </div>

@@ -12,7 +12,20 @@ console.log('🧹 Limpiando build anterior y regenerando APK...\n');
 
 try {
   // 1. Limpiar build anterior
-  console.log('🗑️ Limpiando build anterior...');
+  console.log('🗑️ Limpiando archivos basura y builds anteriores...');
+  
+  // Eliminar APKs antiguas de la carpeta pública para que no se metan dentro de la nueva APK
+  const publicApkDir = path.join(__dirname, '../public/apk');
+  if (fs.existsSync(publicApkDir)) {
+    const files = fs.readdirSync(publicApkDir);
+    files.forEach(file => {
+      if (file.endsWith('.apk')) {
+        fs.unlinkSync(path.join(publicApkDir, file));
+        console.log(`✅ APK antigua eliminada: ${file}`);
+      }
+    });
+  }
+
   if (fs.existsSync(path.join(__dirname, '../dist'))) {
     fs.rmSync(path.join(__dirname, '../dist'), { recursive: true });
     console.log('✅ Carpeta dist eliminada');
@@ -24,36 +37,42 @@ try {
   }
 
   // 2. Build del frontend
-  console.log('🔨 Build del frontend con cambios actualizados...');
-  execSync('npm run build', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+  console.log('🔨 Build del frontend en modo PRODUCCIÓN...');
+  execSync('npm run build:prod', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
 
   // 3. Sync con Capacitor
   console.log('🔄 Sincronizando con Capacitor...');
   execSync('npx cap sync android', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
 
-  // 4. Generar APK
-  console.log('📱 Generando APK con cambios actualizados...');
+  // 4. Generar APK (RELEASE - Optimizada)
+  console.log('📱 Generando APK de RELEASE (Optimizada para peso mínimo)...');
   
   // Para Windows, usar gradlew.bat directamente
   const gradlewPath = path.join(__dirname, '../android/gradlew.bat');
   
   if (fs.existsSync(gradlewPath)) {
-    // Ejecutar gradlew.bat directamente
-    execSync('gradlew.bat assembleDebug', { 
-      stdio: 'inherit', 
-      cwd: path.join(__dirname, '../android'),
-      shell: true
-    });
-  } else {
-    // Para Linux/Mac, usar gradlew
-    execSync('./gradlew assembleDebug', { 
-      stdio: 'inherit', 
-      cwd: path.join(__dirname, '../android') 
-    });
+    // Intentar generar versión Release (más liviana)
+    try {
+      execSync('gradlew.bat assembleRelease', { 
+        stdio: 'inherit', 
+        cwd: path.join(__dirname, '../android'),
+        shell: true
+      });
+    } catch (e) {
+      console.log('⚠️ No se pudo generar Release (posible falta de firma). Generando Debug optimizada...');
+      execSync('gradlew.bat assembleDebug', { 
+        stdio: 'inherit', 
+        cwd: path.join(__dirname, '../android'),
+        shell: true
+      });
+    }
   }
 
-  // 5. Copiar APK a carpeta pública
-  const apkSource = path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk');
+  // 5. Buscar el APK generado (priorizar Release, luego Debug)
+  const releasePath = path.join(__dirname, '../android/app/build/outputs/apk/release/app-release-unsigned.apk');
+  const debugPath = path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk');
+  
+  const apkSource = fs.existsSync(releasePath) ? releasePath : debugPath;
   const apkDestination = path.join(__dirname, '../public/apk/kdice-reservas.apk');
 
   if (fs.existsSync(apkSource)) {
