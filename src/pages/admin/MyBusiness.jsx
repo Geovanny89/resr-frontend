@@ -5,11 +5,17 @@ import AdminLayout from '../../components/AdminLayout';
 import { Store, Globe, Image, Palette, Share2, Clock, Eye, Upload, Trash2, Plus } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
-const BASE_URL = (api.defaults.baseURL || '').replace('/api', '');
+// URL base para imágenes - si es relativa, usar el dominio del backend
+const API_BASE_URL = api.defaults.baseURL || '/api';
+const BASE_URL = API_BASE_URL.replace('/api', '');
+// En desarrollo local usar proxy de Vite, en producción usar dominio real
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_URL = BASE_URL.startsWith('http') ? BASE_URL : (isLocal ? '' : 'https://api-reservas.k-dice.com');
+
 function getImgUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  return `${BASE_URL}${url}`;
+  return `${BACKEND_URL}${url}`;
 }
 
 const SUB_STATUS_COLORS  = { pending: '#f6ad55', paid: '#48bb78', overdue: '#f56565' };

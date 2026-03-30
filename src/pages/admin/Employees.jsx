@@ -6,6 +6,19 @@ import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveForm from '../../components/ResponsiveForm';
 import { Upload } from 'lucide-react';
 
+// URL base para imágenes - si es relativa, usar el dominio del backend
+const API_BASE_URL = api.defaults.baseURL || '/api';
+const BASE_URL = API_BASE_URL.replace('/api', '');
+// En desarrollo local usar proxy de Vite, en producción usar dominio real
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_URL = BASE_URL.startsWith('http') ? BASE_URL : (isLocal ? '' : 'https://api-reservas.k-dice.com');
+
+function getImgUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `${BACKEND_URL}${url}`;
+}
+
 export default function Employees() {
   const { business } = useAuth();
   const [employees, setEmployees] = useState([]);
@@ -62,7 +75,7 @@ export default function Employees() {
       ownerPct: emp.ownerPct,
       photoUrl: emp.photoUrl || ''
     });
-    setPhotoPreview(emp.photoUrl ? emp.photoUrl : null);
+    setPhotoPreview(emp.photoUrl ? getImgUrl(emp.photoUrl) : null);
     setError('');
     setSuccess('');
     setShowModal(true);
