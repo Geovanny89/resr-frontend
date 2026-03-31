@@ -596,8 +596,8 @@ export default function Reports() {
                   style={{
                     padding: '12px 20px', fontSize: 14, fontWeight: activeTab === tab ? 700 : 500,
                     color: activeTab === tab ? '#667eea' : '#718096',
-                    borderBottom: activeTab === tab ? '2px solid #667eea' : 'none',
-                    background: 'none', border: 'none', cursor: 'pointer'
+                    borderBottom: activeTab === tab ? '2px solid #667eea' : '2px solid transparent',
+                    background: 'none', borderLeft: 'none', borderTop: 'none', borderRight: 'none', cursor: 'pointer'
                   }}>
                   {tab === 'overview' && 'Resumen'}
                   {tab === 'employees' && 'Por empleado'}

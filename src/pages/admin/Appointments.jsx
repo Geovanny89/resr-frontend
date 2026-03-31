@@ -99,30 +99,40 @@ export default function Appointments() {
     }
 
     try {
-      // Usar endpoint de prueba temporalmente
-      const res = await api.get(`/appointments/test-availability`);
-      console.log('Respuesta de disponibilidad (prueba):', res.data);
-      setAvailableSlots(res.data.availableSlots || []);
+      const res = await api.get(`/appointments/availability?date=${date}&employeeId=${employeeId}&serviceId=${serviceId}&businessId=${business.id}`);
+      console.log('Respuesta de disponibilidad:', res.data);
+      
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const nowTimeStr = now.toLocaleTimeString('en-US', { 
+        timeZone: 'America/Bogota', 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      let slots = res.data.availableSlots || [];
+      
+      // Solo filtramos si es hoy para no mostrar horas pasadas
+      if (date === todayStr) {
+        slots = slots.filter(slot => slot >= nowTimeStr);
+      }
+      
+      setAvailableSlots(slots);
     } catch (e) {
       console.error('Error al cargar disponibilidad:', e);
-      // Si falla el endpoint de prueba, intentar el real
-      try {
-        const resReal = await api.get(`/appointments/availability?date=${date}&employeeId=${employeeId}&serviceId=${serviceId}&businessId=${business.id}`);
-        console.log('Respuesta de disponibilidad (real):', resReal.data);
-        setAvailableSlots(resReal.data.availableSlots || []);
-      } catch (e2) {
-        console.error('Error al cargar disponibilidad (real):', e2);
-        setAvailableSlots([]);
-      }
+      setAvailableSlots([]);
     }
   };
 
   const filteredAppointments = useMemo(() => {
     const dateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    
     const filtered = appointments.filter(apt => {
       const aptDate = new Date(apt.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       return aptDate === dateStr;
     });
+    
     // Reiniciar a la primera página cuando cambian las citas filtradas
     setCurrentPage(1);
     return filtered;
@@ -246,7 +256,6 @@ export default function Appointments() {
             onDateSelect={setSelectedDate}
             selectedDate={selectedDate}
             disabledDates={getDisabledDates()}
-            minDate={new Date()}
           />
         </div>
 
@@ -515,9 +524,13 @@ export default function Appointments() {
                     MozAppearance: 'none',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
-                  onFocus={(e) => {
-                    console.log('Input enfocado');
-                    e.target.showPicker?.();
+                  onClick={(e) => {
+                    console.log('Input clickeado');
+                    try {
+                      e.target.showPicker?.();
+                    } catch (err) {
+                      console.error('showPicker error:', err);
+                    }
                   }}
                 />
                 <div style={{

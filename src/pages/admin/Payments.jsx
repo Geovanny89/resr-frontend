@@ -21,7 +21,7 @@ const MONTHS_ES = [
 ];
 
 // ─── Componente para detalle de empleado con paginación ────────────────
-function EmployeeDetail({ emp, paginationPages, setPaginationPages }) {
+function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) {
   const itemsPerPage = 5;
   const currentPage = paginationPages[emp.name] || 1;
   const totalPages = Math.ceil(emp.appointments.length / itemsPerPage);
@@ -37,88 +37,127 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages }) {
   
   return (
     <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-      <div className="table-wrapper" style={{ overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
-        <table className="table" style={{ minWidth: '400px', fontSize: '11px', width: '100%', tableLayout: 'fixed' }}>
-          <thead>
-            <tr>
-              <th style={{ padding: '8px 4px', width: '25%' }}>Fecha</th>
-              <th style={{ padding: '8px 4px', width: '25%' }}>Servicio</th>
-              <th style={{ padding: '8px 4px', width: '15%' }}>Precio</th>
-              <th style={{ padding: '8px 4px', width: '17%' }}>Emp.</th>
-              <th style={{ padding: '8px 4px', width: '18%' }}>Neg.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedAppointments.map((a, i) => (
-              <tr key={i}>
-                <td style={{ fontSize: '10px', padding: '8px 4px', wordBreak: 'break-word' }}>{fmtDate(a.date)}</td>
-                <td style={{ fontSize: '10px', padding: '8px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.service}>{a.service}</td>
-                <td style={{ padding: '8px 2px' }}><span className="money" style={{ fontSize: '10px' }}>{fmt(a.price)}</span></td>
-                <td style={{ padding: '8px 2px' }}><span className="money positive" style={{ fontSize: '10px' }}>{fmt(a.employeeEarns)}</span></td>
-                <td style={{ padding: '8px 2px' }}><span className="money positive" style={{ fontSize: '10px' }}>{fmt(a.ownerEarns)}</span></td>
+      {!isMobile ? (
+        /* Vista para pantallas grandes (Tabla) */
+        <div className="table-wrapper">
+          <table className="table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Servicio</th>
+                <th>Precio</th>
+                <th>Empleado gana</th>
+                <th>Negocio gana</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
-              <td colSpan={2} style={{ padding: '10px 4px', fontWeight: 700, fontSize: '11px' }}>TOTALES</td>
-              <td style={{ padding: '10px 2px' }}><span className="money" style={{ fontSize: '11px' }}>{fmt(emp.total)}</span></td>
-              <td style={{ padding: '10px 2px' }}><span className="money positive" style={{ fontSize: '11px' }}>{fmt(emp.employeeEarns)}</span></td>
-              <td style={{ padding: '10px 2px' }}><span className="money positive" style={{ fontSize: '11px' }}>{fmt(emp.ownerEarns)}</span></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      
-      {/* Paginación */}
+            </thead>
+            <tbody>
+              {paginatedAppointments.map((a, i) => (
+                <tr key={i}>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDate(a.date)}</td>
+                  <td>{a.service}</td>
+                  <td><span className="money">{fmt(a.price)}</span></td>
+                  <td><span className="money positive">{fmt(a.employeeEarns)}</span></td>
+                  <td><span className="money positive">{fmt(a.ownerEarns)}</span></td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
+                <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700 }}>TOTALES</td>
+                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(emp.total)}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.employeeEarns)}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.ownerEarns)}</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      ) : (
+        /* Vista para pantallas pequeñas (Cards) */
+        <div style={{ display: 'grid', gap: 12 }}>
+          {paginatedAppointments.map((a, i) => (
+            <div key={i} style={{ 
+              background: 'var(--gray-50)', 
+              borderRadius: 12, 
+              padding: 12, 
+              border: '1px solid var(--border)',
+              fontSize: '13px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                <span style={{ fontWeight: 700, color: 'var(--gray-600)' }}>{fmtDate(a.date)}</span>
+                <span style={{ fontWeight: 800, color: 'var(--primary)' }}>{a.service}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Precio total:</div>
+                  <div style={{ fontWeight: 700 }}>{fmt(a.price)}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Comisión Emp:</div>
+                  <div style={{ fontWeight: 700, color: 'var(--success)' }}>{fmt(a.employeeEarns)}</div>
+                </div>
+                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--gray-500)' }}>GANANCIA NEGOCIO:</span>
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--success)' }}>{fmt(a.ownerEarns)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Totales en móvil */}
+          <div style={{ 
+            background: 'var(--primary)', 
+            color: 'white', 
+            borderRadius: 12, 
+            padding: 14, 
+            marginTop: 4,
+            boxShadow: '0 4px 6px rgba(79, 70, 229, 0.2)'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: 4, fontWeight: 600 }}>RESUMEN DE ESTA PÁGINA</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Total Facturado:</span>
+              <span style={{ fontWeight: 800 }}>{fmt(paginatedAppointments.reduce((s, a) => s + parseFloat(a.price), 0))}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <span>Ganancia Negocio:</span>
+              <span style={{ fontSize: '18px', fontWeight: 900 }}>{fmt(paginatedAppointments.reduce((s, a) => s + parseFloat(a.ownerEarns), 0))}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paginación (Mejorada para móvil) */}
       {totalPages > 1 && (
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'center', 
-          gap: 8, 
-          marginTop: 12,
-          padding: '8px',
-          background: 'var(--gray-50)',
-          borderRadius: 8
+          gap: 10, 
+          marginTop: 16,
+          padding: '10px 0',
+          borderTop: '1px solid var(--border)'
         }}>
           <button
-            onClick={() => setPage(Math.max(1, currentPage - 1))}
+            className="btn-outline btn-sm"
             disabled={currentPage === 1}
-            style={{
-              padding: '6px 12px',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              background: currentPage === 1 ? 'var(--gray-200)' : 'white',
-              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-              fontSize: 12,
-              fontWeight: 600
-            }}
+            onClick={(e) => { e.stopPropagation(); setPage(currentPage - 1); }}
+            style={{ minWidth: '80px', height: '36px' }}
           >
-            ← Anterior
+            ← Ant.
           </button>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-            Página {currentPage} de {totalPages}
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)', minWidth: '100px', textAlign: 'center' }}>
+            {currentPage} / {totalPages}
           </span>
           <button
-            onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            style={{
-              padding: '6px 12px',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              background: currentPage === totalPages ? 'var(--gray-200)' : 'white',
-              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-              fontSize: 12,
-              fontWeight: 600
-            }}
+            className="btn-outline btn-sm"
+            disabled={currentPage >= totalPages}
+            onClick={(e) => { e.stopPropagation(); setPage(currentPage + 1); }}
+            style={{ minWidth: '80px', height: '36px' }}
           >
-            Siguiente →
+            Sig. →
           </button>
         </div>
       )}
-      
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
+      <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: 8 }}>
         Mostrando {paginatedAppointments.length} de {emp.appointments.length} citas
       </div>
     </div>
@@ -138,9 +177,12 @@ function getMonthLabel(monthStr) {
 // ─── Selector de Mes/Año ────────────────────────────────────────────────────
 
 function MonthYearPicker({ value, onChange, onClose }) {
+  // Obtener fecha actual en zona horaria de Colombia (UTC-5)
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1; // 1-12
+  const colombiaDateStr = today.toLocaleString('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const [yearStr, monthStr] = colombiaDateStr.split('-');
+  const currentYear = parseInt(yearStr);
+  const currentMonth = parseInt(monthStr); // Ya es 1-12
 
   // Extraer correctamente año y mes del string YYYY-MM
   const [viewYear, setViewYear] = useState(value ? parseInt(value.split('-')[0]) : currentYear);
@@ -218,12 +260,12 @@ function MonthYearPicker({ value, onChange, onClose }) {
 export default function Payments() {
   const { business } = useAuth();
   
-  // Inicializar con el mes actual en formato YYYY-MM (sin desfase de zona horaria)
+  // Inicializar con el mes actual en formato YYYY-MM (zona horaria Colombia UTC-5)
   const [month, setMonth] = useState(() => {
     const today = new Date();
-    const year = today.getFullYear();
-    const monthNum = today.getMonth() + 1;
-    return `${year}-${String(monthNum).padStart(2, '0')}`;
+    const colombiaDateStr = today.toLocaleString('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const [yearStr, monthStr] = colombiaDateStr.split('-');
+    return `${yearStr}-${monthStr}`;
   });
 
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -237,8 +279,11 @@ export default function Payments() {
     if (!business?.id) return;
     setLoading(true);
     setError('');
+    console.log('🔍 Cargando reporte para mes:', month); // DEBUG
     try {
-      const res = await api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`);
+      const url = `/employees/commission-report?businessId=${business.id}&month=${month}`;
+      console.log('🔍 URL de petición:', url); // DEBUG
+      const res = await api.get(url);
       // Asegurarnos de que los cálculos del negocio sean los reales (Total - Comisión)
       const data = res.data;
       if (data.appointments) {
@@ -288,12 +333,17 @@ export default function Payments() {
     setSendingEmail(p => ({ ...p, [employeeName]: true }));
     try {
       const empData = byEmployee[employeeName];
+      
+      // Generar PDF individual del empleado
+      const pdfBase64 = generateEmployeePDF(empData, month, business?.name);
+      
       await api.post('/notifications/payment-summary', {
         businessId: business.id,
         employeeName,
         month,
         totalEarned: empData.employeeEarns,
         appointmentsCount: empData.appointments.length,
+        pdfBase64, // Adjuntar PDF
       });
       setEmailResult(p => ({ ...p, [employeeName]: 'sent' }));
       setTimeout(() => setEmailResult(p => ({ ...p, [employeeName]: null })), 4000);
@@ -305,6 +355,57 @@ export default function Payments() {
     }
   };
 
+  // Generar PDF individual para un empleado (retorna base64)
+  const generateEmployeePDF = (emp, month, businessName) => {
+    const doc = new jsPDF();
+    const monthLabel = getMonthLabel(month);
+
+    // Header
+    doc.setFillColor(79, 70, 229);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('KDice POS — Reporte de Pagos', 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${businessName || ''} · ${monthLabel}`, 14, 30);
+
+    // Info del empleado
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Empleado: ${emp.name}`, 14, 55);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total a recibir: ${fmt(emp.employeeEarns)}`, 14, 65);
+    doc.text(`Citas completadas: ${emp.appointments.length}`, 14, 73);
+
+    // Detalle de citas
+    autoTable(doc, {
+      startY: 85,
+      head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
+      body: emp.appointments.map(a => [
+        fmtDate(a.date),
+        a.service,
+        fmt(a.price),
+        fmt(a.employeeEarns),
+        fmt(a.ownerEarns),
+      ]),
+      foot: [[
+        '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
+      ]],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [100, 116, 139] },
+      footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+    });
+
+    // Retornar como base64
+    return doc.output('datauristring').split(',')[1];
+  };
+
+  // Descargar PDF completo con todos los empleados
   const downloadPDF = () => {
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
@@ -372,6 +473,13 @@ export default function Payments() {
 
   const [expandedEmp, setExpandedEmp] = useState(null);
   const [paginationPages, setPaginationPages] = useState({}); // Estado de paginación por empleado
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Usar la función segura para obtener el label del mes
   const monthLabel = getMonthLabel(month);
@@ -578,6 +686,7 @@ export default function Payments() {
                       emp={emp} 
                       paginationPages={paginationPages}
                       setPaginationPages={setPaginationPages}
+                      isMobile={isMobile}
                     />
                   )}
                 </div>
