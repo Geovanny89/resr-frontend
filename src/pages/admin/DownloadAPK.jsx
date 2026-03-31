@@ -1,29 +1,24 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Importamos useNavigate
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../api/client';
-import { ArrowLeft } from 'lucide-react'; // Usamos Lucide para un icono limpio
+import { ArrowLeft, Download, FileCode, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function DownloadAPK() {
-  const { user, business } = useAuth();
-  const navigate = useNavigate(); // Inicializamos el hook
+  const { business } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [apkStatus, setApkStatus] = useState(null);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    if (business?.id) {
-      loadAPKStatus();
-    }
-  }, [business]);
+    loadAPKStatus();
+  }, []);
 
   const loadAPKStatus = async () => {
     try {
-      // Verificar si la APK global existe en la carpeta del backend
-      // Usamos la URL absoluta del backend o una relativa si están en el mismo dominio
-      const downloadUrl = 'http://localhost:4000/downloads/kdice-reservas.apk'; // Ajustar según entorno
-      const response = await fetch(downloadUrl, { method: 'HEAD' });
+      // Verificar si la APK global existe en la carpeta pública
+      const response = await fetch('/apk/kdice-reservas.apk', { method: 'HEAD' });
       
       if (response.ok) {
         const contentLength = response.headers.get('content-length');
@@ -32,15 +27,10 @@ export default function DownloadAPK() {
         setApkStatus({
           apkReady: true,
           apkSize: sizeInMB ? `${sizeInMB} MB` : 'Desconocido',
-          lastGenerated: new Date().toISOString(),
+          lastGenerated: new Date().toLocaleString(),
           universal: true
         });
       } else {
-        // Intentar con ruta relativa por si acaso
-        const relResponse = await fetch('/api/downloads/kdice-reservas.apk', { method: 'HEAD' });
-        if (relResponse.ok) {
-           // ... similar logic
-        }
         setApkStatus({
           apkReady: false,
           apkSize: null,
@@ -59,23 +49,23 @@ export default function DownloadAPK() {
     }
   };
 
-  if (!business) {
-    return (
-      <div style={{ padding: 32, textAlign: 'center', color: '#e53e3e' }}>
-        <p>No tienes un negocio registrado</p>
-      </div>
-    );
-  }
-
   const handleDownloadAPK = async () => {
     setLoading(true);
     setError('');
     setSuccessMsg('');
 
     try {
-      // Descargar APK desde el backend
-      const downloadUrl = 'http://localhost:4000/downloads/kdice-reservas.apk';
+      // Descargar APK global directamente desde la carpeta pública
+      const downloadUrl = '/apk/kdice-reservas.apk';
       
+      // Verificar si el archivo existe antes de intentar descargar
+      const response = await fetch(downloadUrl, { method: 'HEAD' });
+      if (!response.ok) {
+        setError('La APK no está disponible. Contacta al administrador para que suba la APK generada desde Android Studio.');
+        setLoading(false);
+        return;
+      }
+
       setSuccessMsg('¡APK lista! Iniciando descarga...');
 
       // Crear link de descarga
@@ -98,189 +88,125 @@ export default function DownloadAPK() {
     background: 'white',
     borderRadius: 16,
     padding: 32,
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    marginBottom: 24,
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+    maxWidth: 500,
+    margin: '40px auto',
+    textAlign: 'center'
+  };
+
+  const buttonStyle = {
+    background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '14px 28px',
+    borderRadius: 12,
+    fontSize: 16,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    width: '100%',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)'
   };
 
   return (
-    <div className="download-apk-root" style={{ padding: 32, maxWidth: 800, width: '100%' }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .download-apk-root { padding: 16px !important; }
-          .download-apk-card { padding: 18px !important; }
-          .download-apk-feature-grid { grid-template-columns: 1fr !important; }
-          .download-apk-actions { grid-template-columns: 1fr !important; }
-          .back-button { margin-bottom: 12px !important; }
-        }
-      `}</style>
-
-      {/* Botón Volver */}
+    <div style={{ padding: 20, minHeight: '100vh', background: '#f8fafc' }}>
       <button 
         onClick={() => navigate(-1)} 
-        className="back-button"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'none',
-          border: 'none',
-          color: '#667eea',
+        style={{ 
+          background: 'none', 
+          border: 'none', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 8, 
+          color: '#64748b', 
           cursor: 'pointer',
-          fontWeight: 600,
-          marginBottom: 20,
-          padding: '8px 0',
-          fontSize: '15px'
+          fontSize: 15,
+          fontWeight: 500,
+          marginBottom: 20
         }}
       >
-        <ArrowLeft size={20} />
-        Volver
+        <ArrowLeft size={18} /> Volver
       </button>
 
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: '#1a202c' }}>
-        📱 Descargar App Móvil KDice
-      </h1>
-      <p style={{ color: '#718096', marginBottom: 32 }}>
-        Descarga la aplicación móvil real para gestionar tu negocio desde Android
-      </p>
-
-      {/* Info del negocio */}
-      <div className="download-apk-card" style={cardStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a202c', marginBottom: 16 }}>
-          Tu Negocio
-        </h2>
-        <div style={{ background: '#f7fafc', borderRadius: 8, padding: 16, border: '1px solid #e2e8f0', marginBottom: 20 }}>
-          <p style={{ margin: '6px 0', color: '#4a5568' }}>
-            <strong>Nombre:</strong> {business.name}
-          </p>
-          <p style={{ margin: '6px 0', color: '#4a5568' }}>
-            <strong>Slug:</strong>{' '}
-            <code style={{ background: '#edf2f7', padding: '2px 8px', borderRadius: 4 }}>{business.slug}</code>
-          </p>
-        </div>
-
-        {/* Estado de la APK */}
-        {apkStatus && (
-          <div style={{
-            background: apkStatus.apkReady ? '#f0fff4' : '#fff5f5',
-            border: `1px solid ${apkStatus.apkReady ? '#9ae6b4' : '#feb2b2'}`,
-            borderRadius: 8, padding: 16, marginBottom: 20,
-          }}>
-            <p style={{ margin: 0, color: apkStatus.apkReady ? '#22543d' : '#c53030', fontWeight: 600 }}>
-              {apkStatus.apkReady ? '✅ APK disponible' : '⚠️ APK no disponible'}
-              {apkStatus.apkSize && ` — ${apkStatus.apkSize}`}
-            </p>
-            {apkStatus.lastGenerated && (
-              <p style={{ margin: '4px 0 0', color: '#718096', fontSize: 13 }}>
-                Última actualización: {new Date(apkStatus.lastGenerated).toLocaleDateString('es')}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Aviso informativo */}
-        <div style={{
-          background: '#eef2ff', borderRadius: 8, padding: 16,
-          border: '1px solid #c7d2fe', marginBottom: 24,
+      <div style={cardStyle}>
+        <div style={{ 
+          width: 64, 
+          height: 64, 
+          background: '#eef2ff', 
+          borderRadius: 20, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          margin: '0 auto 24px',
+          color: '#4f46e5'
         }}>
-          <p style={{ margin: 0, color: '#4c51bf', fontSize: 14 }}>
-            ℹ️ Esta es una APK universal <strong>KDice Reservas</strong>. Al instalarla e iniciar sesión con tu cuenta de <strong>{business.name}</strong>,
-            verás automáticamente los datos de tu negocio.
-          </p>
+          <FileCode size={32} />
         </div>
 
-        {/* Mensajes */}
-        {error && (
-          <div style={{ background: '#fed7d7', color: '#c53030', padding: 16, borderRadius: 8, marginBottom: 20, fontSize: 14 }}>
-            ❌ {error}
-          </div>
-        )}
-        {successMsg && (
-          <div style={{ background: '#c6f6d5', color: '#22543d', padding: 16, borderRadius: 8, marginBottom: 20, fontSize: 14 }}>
-            ✅ {successMsg}
-          </div>
-        )}
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>
+          Descargar APK
+        </h1>
+        <p style={{ color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>
+          Descarga la última versión de la aplicación para Android e instálala en tu dispositivo móvil.
+        </p>
 
-        {/* Botón de descarga */}
-        <div className="download-apk-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
-          <button
-            onClick={handleDownloadAPK}
-            disabled={loading}
-            style={{
-              background: loading ? '#a0aec0' : '#667eea',
-              color: 'white', border: 'none', borderRadius: 12,
-              padding: '18px 24px', fontWeight: 700, fontSize: 16,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s', textAlign: 'center',
-              boxShadow: loading ? 'none' : '0 4px 12px rgba(102,126,234,0.4)',
-            }}
-          >
-            {loading ? '⏳ Preparando descarga...' : '📥 Descargar APK para Android'}
-          </button>
-
-          <div style={{
-            background: '#f7f8fc', border: '2px dashed #e2e8f0',
-            borderRadius: 12, padding: '18px 24px', textAlign: 'center',
-            color: '#a0aec0', fontSize: 14,
+        {apkStatus?.apkReady ? (
+          <div style={{ 
+            background: '#f0fdf4', 
+            border: '1px solid #bbf7d0', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 24,
+            textAlign: 'left'
           }}>
-            🍎 iOS — Contacta a soporte
-          </div>
-        </div>
-      </div>
-
-      {/* Instrucciones */}
-      <div className="download-apk-card" style={{ ...cardStyle, background: '#f7fafc', boxShadow: 'none', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a202c', marginBottom: 20 }}>
-          📖 Cómo instalar la APK en Android
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-          {[
-            { num: '1', title: 'Descarga', desc: 'Toca el botón "Descargar APK" y espera que termine' },
-            { num: '2', title: 'Ajustes', desc: 'Habilita "Fuentes desconocidas" en los ajustes de tu teléfono' },
-            { num: '3', title: 'Instala', desc: 'Abre el archivo APK desde tu carpeta de Descargas' },
-            { num: '4', title: 'Inicia sesión', desc: 'Usa tu cuenta de admin o cliente' },
-          ].map((step) => (
-            <div key={step.num} style={{
-              background: 'white', borderRadius: 12, padding: 20,
-              border: '1px solid #e2e8f0', textAlign: 'center',
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%', background: '#667eea',
-                color: 'white', fontWeight: 800, fontSize: 18,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 12px',
-              }}>
-                {step.num}
-              </div>
-              <p style={{ fontWeight: 700, color: '#2d3748', margin: '0 0 8px' }}>{step.title}</p>
-              <p style={{ color: '#718096', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#166534', fontWeight: 600, marginBottom: 8 }}>
+              <CheckCircle size={18} /> Versión disponible
             </div>
-          ))}
-        </div>
-      </div>
+            <div style={{ fontSize: 14, color: '#166534', opacity: 0.8 }}>
+              Tamaño: <strong>{apkStatus.apkSize}</strong><br />
+              Generada: <strong>{apkStatus.lastGenerated}</strong>
+            </div>
+          </div>
+        ) : (
+          <div style={{ 
+            background: '#fff7ed', 
+            border: '1px solid #ffedd5', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 24,
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#9a3412', fontWeight: 600, marginBottom: 8 }}>
+              <AlertCircle size={18} /> Sin versión disponible
+            </div>
+            <p style={{ fontSize: 13, color: '#9a3412', opacity: 0.8, margin: 0 }}>
+              El administrador aún no ha subido la APK.
+            </p>
+          </div>
+        )}
 
-      {/* Funcionalidades */}
-      <div className="download-apk-card" style={{ ...cardStyle, background: '#fef5e7', boxShadow: 'none', border: '1px solid #f9e79f', marginTop: 0 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: '#7d6608', marginBottom: 16 }}>
-          ✨ Funcionalidades de la App
-        </h3>
-        <div className="download-apk-feature-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
-            <p style={{ fontWeight: 700, color: '#5d4e37', marginBottom: 8 }}>👑 Admin</p>
-            <ul style={{ color: '#5d4e37', lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
-              <li>Ver citas del día</li>
-              <li>Cambiar estados</li>
-              <li>Gestionar servicios</li>
-            </ul>
-          </div>
-          <div>
-            <p style={{ fontWeight: 700, color: '#5d4e37', marginBottom: 8 }}>👤 Cliente</p>
-            <ul style={{ color: '#5d4e37', lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
-              <li>Ver citas agendadas</li>
-              <li>Historial completo</li>
-              <li>Info de empleados</li>
-            </ul>
-          </div>
-        </div>
+        <button 
+          onClick={handleDownloadAPK} 
+          disabled={loading || !apkStatus?.apkReady}
+          style={{
+            ...buttonStyle,
+            opacity: (loading || !apkStatus?.apkReady) ? 0.6 : 1,
+            cursor: (loading || !apkStatus?.apkReady) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? 'Preparando...' : (
+            <>
+              <Download size={20} /> Descargar ahora
+            </>
+          )}
+        </button>
+
+        {error && <p style={{ color: '#ef4444', marginTop: 16, fontSize: 14 }}>{error}</p>}
+        {successMsg && <p style={{ color: '#22c55e', marginTop: 16, fontSize: 14 }}>{successMsg}</p>}
       </div>
     </div>
   );

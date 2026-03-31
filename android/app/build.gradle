@@ -15,51 +15,12 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
-        
-        ndk {
-            // Solo incluimos arquitecturas ARM para reducir el peso.
-            // La mayoría de los celulares reales usan ARM.
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
-        }
     }
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Comprimir assets web
-            aaptOptions {
-                cruncherEnabled true
-                additionalParameters "--no-version-vectors"
-            }
-        }
-        debug {
-            // También optimizar debug si es necesario
             minifyEnabled false
-            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
-    }
-    
-    // Habilitar split APK por arquitectura (genera APKs más pequeños individuales)
-    bundle {
-        language { enableSplit = true }
-        density { enableSplit = true }
-        abi { enableSplit = true }
-    }
-    
-    packagingOptions {
-        // Excluir archivos innecesarios
-        exclude 'META-INF/DEPENDENCIES'
-        exclude 'META-INF/LICENSE'
-        exclude 'META-INF/LICENSE.txt'
-        exclude 'META-INF/NOTICE'
-        exclude 'META-INF/NOTICE.txt'
-        exclude 'META-INF/ASL2.0'
-        exclude 'META-INF/*.kotlin_module'
-        exclude '**/*.kotlin_metadata'
-        exclude '**/*.kotlin_builtins'
-        // No comprimir assets web (ya están comprimidos)
-        doNotStrip '**/*.so'
     }
 }
 
