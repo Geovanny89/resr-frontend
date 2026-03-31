@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/client';
 import { ArrowLeft, Download, FileCode, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function DownloadAPK() {
@@ -18,7 +19,8 @@ export default function DownloadAPK() {
   const loadAPKStatus = async () => {
     try {
       // Verificar si la APK global existe en la carpeta pública
-      const response = await fetch('/apk/kdice-reservas.apk', { method: 'HEAD' });
+      // Usamos cache: 'no-cache' para evitar falsos positivos
+      const response = await fetch('/apk/kdice-reservas.apk', { method: 'HEAD', cache: 'no-cache' });
       
       if (response.ok) {
         const contentLength = response.headers.get('content-length');
@@ -59,9 +61,9 @@ export default function DownloadAPK() {
       const downloadUrl = '/apk/kdice-reservas.apk';
       
       // Verificar si el archivo existe antes de intentar descargar
-      const response = await fetch(downloadUrl, { method: 'HEAD' });
+      const response = await fetch(downloadUrl, { method: 'HEAD', cache: 'no-cache' });
       if (!response.ok) {
-        setError('La APK no está disponible. Contacta al administrador para que suba la APK generada desde Android Studio.');
+        setError('La APK no está disponible en el servidor. Contacta al administrador.');
         setLoading(false);
         return;
       }

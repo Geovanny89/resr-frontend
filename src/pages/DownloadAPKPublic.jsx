@@ -26,8 +26,17 @@ export default function DownloadAPKPublic() {
     setError('');
 
     try {
-      // Descargar desde URL directa
-      const downloadUrl = '/downloads/kdice-app.apk';
+      // Descargar desde API del backend (ruta universal)
+      const downloadUrl = '/api/apk/download/kdice/android';
+      
+      // Verificar primero
+      const checkRes = await api.get('/apk/check-update/kdice');
+      if (!checkRes.data?.apkExists) {
+        setError('La APK no está disponible en el servidor.');
+        setDownloading(false);
+        return;
+      }
+      
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = 'kdice-app.apk';

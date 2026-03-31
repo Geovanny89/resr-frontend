@@ -37,8 +37,19 @@ try {
     fs.unlinkSync(frontendApkPath);
   }
 
-  // Copiar la APK
+  // Copiar a la carpeta public (para futuros builds)
   fs.copyFileSync(androidApkPath, frontendApkPath);
+  
+  // Copiar también a la carpeta dist (para que esté disponible de inmediato si el servidor está corriendo)
+  const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
+  const distApkDir = path.dirname(distApkPath);
+  if (fs.existsSync(path.join(__dirname, '../dist'))) {
+    if (!fs.existsSync(distApkDir)) {
+      fs.mkdirSync(distApkDir, { recursive: true });
+    }
+    fs.copyFileSync(androidApkPath, distApkPath);
+    console.log('✅ APK copiada también a /dist para disponibilidad inmediata.');
+  }
   
   // Obtener información del archivo
   const stats = fs.statSync(frontendApkPath);
