@@ -252,8 +252,16 @@ export default function Reports() {
   // Estadísticas
   const done       = appointments.filter(a => a.status === 'done');
   const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0), 0);
-  const ownerRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.ownerPct || 100) / 100, 0);
   const empRev     = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.commissionPct || 0) / 100, 0);
+  // Descontar de la ganancia del dueño el pago del empleado
+  const ownerRev   = done.reduce((s, a) => {
+    const price         = parseFloat(a.Service?.price || 0);
+    const ownerPct      = a.Employee?.ownerPct || 100;
+    const commissionPct = a.Employee?.commissionPct || 0;
+    const empPayment    = (price * commissionPct / 100);
+    const ownerProfit   = (price * ownerPct / 100) - empPayment;
+    return s + ownerProfit;
+  }, 0);
 
   // Datos para gráficas
   const byStatus = Object.entries(
@@ -348,18 +356,26 @@ export default function Reports() {
   const downloadExcel = async () => {
     console.log('[downloadExcel] Starting...');
     try {
-      const rows = appointments.map(a => ({
-        'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
-        'Cliente': a.clientName || '',
-        'Teléfono': a.clientPhone || '',
-        'Servicio': a.Service?.name || '',
-        'Precio': parseFloat(a.Service?.price || 0),
-        'Empleado': a.Employee?.User?.name || '',
-        'Comisión empleado (%)': a.Employee?.commissionPct || 0,
-        'Empleado gana': parseFloat(a.Service?.price || 0) * (a.Employee?.commissionPct || 0) / 100,
-        'Negocio gana': parseFloat(a.Service?.price || 0) * (a.Employee?.ownerPct || 100) / 100,
-        'Estado': STATUS_LABELS[a.status] || a.status,
-      }));
+      const rows = appointments.map(a => {
+        const price         = parseFloat(a.Service?.price || 0);
+        const commissionPct = a.Employee?.commissionPct || 0;
+        const ownerPct      = a.Employee?.ownerPct || 100;
+        const empEarns      = price * commissionPct / 100;
+        const ownerEarns    = (price * ownerPct / 100) - empEarns;
+
+        return {
+          'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
+          'Cliente': a.clientName || '',
+          'Teléfono': a.clientPhone || '',
+          'Servicio': a.Service?.name || '',
+          'Precio': price,
+          'Empleado': a.Employee?.User?.name || '',
+          'Comisión empleado (%)': commissionPct,
+          'Empleado gana': empEarns,
+          'Negocio gana': ownerEarns,
+          'Estado': STATUS_LABELS[a.status] || a.status,
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();

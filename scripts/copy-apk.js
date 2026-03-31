@@ -9,39 +9,57 @@ const __dirname = path.dirname(__filename);
 
 console.log('🔄 Copiando APK generada a frontend...\n');
 
-// Rutas
-const androidApkPath = path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk');
+// Rutas posibles (priorizando Release sobre Debug)
+const releaseApkPath = path.join(__dirname, '../android/app/build/outputs/apk/release/app-release-unsigned.apk');
+const releaseApkPathSigned = path.join(__dirname, '../android/app/build/outputs/apk/release/app-release.apk');
+const debugApkPath = path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk');
+
+let androidApkPath = null;
+if (fs.existsSync(releaseApkPathSigned)) {
+  androidApkPath = releaseApkPathSigned;
+} else if (fs.existsSync(releaseApkPath)) {
+  androidApkPath = releaseApkPath;
+} else if (fs.existsSync(debugApkPath)) {
+  androidApkPath = debugApkPath;
+}
+
+// Nueva ruta: fuera del frontend para evitar que se incluya en el build
+const backendPublicPath = path.join(__dirname, '../../../backend/public/downloads/kdice-reservas.apk');
+// También mantenemos una referencia por si acaso, pero el objetivo es sacarla de public/apk
 const frontendApkPath = path.join(__dirname, '../public/apk/kdice-reservas.apk');
 
 try {
-  // Verificar si existe la APK generada por Android Studio
-  if (!fs.existsSync(androidApkPath)) {
-    console.log('❌ No se encontró la APK generada por Android Studio');
-    console.log('📱 Primero genera la APK en Android Studio:');
-    console.log('   1. Abre el proyecto en Android Studio');
-    console.log('   2. Ve a Build > Build Bundle(s) / APK(s) > Build APK(s)');
-    console.log('   3. Espera a que termine la compilación');
-    console.log('   4. Luego ejecuta este script nuevamente');
+  // Verificar si existe alguna APK
+  if (!androidApkPath) {
+    console.log('❌ No se encontró ninguna APK generada en Android Studio');
+    console.log('📱 Asegúrate de generar la APK en Android Studio:');
+    console.log('   1. Ve a Build > Build Bundle(s) / APK(s) > Build APK(s)');
+    console.log('   2. Elige "Release" para que pese menos (8-10MB)');
     process.exit(1);
   }
 
-  // Verificar si existe la carpeta de destino
-  const apkDir = path.dirname(frontendApkPath);
-  if (!fs.existsSync(apkDir)) {
-    fs.mkdirSync(apkDir, { recursive: true });
-    console.log('📁 Carpeta de destino creada:', apkDir);
+  const isRelease = androidApkPath.includes('release');
+  if (!isRelease) {
+    console.log('⚠️  AVISO: Estás usando una APK de DEBUG. Pesa más (~25MB).');
+    console.log('💡 Para bajar el peso a 8-10MB, genera la versión de RELEASE en Android Studio.');
   }
 
-  // Eliminar el placeholder si existe
+  // 1. Copiar a la carpeta de descargas del backend (Recomendado)
+  const backendDir = path.dirname(backendPublicPath);
+  if (!fs.existsSync(backendDir)) {
+    fs.mkdirSync(backendDir, { recursive: true });
+  }
+  fs.copyFileSync(androidApkPath, backendPublicPath);
+  console.log('✅ APK copiada al Backend:', backendPublicPath);
+
+  // 2. Limpiar la carpeta public/apk del frontend para que no se meta en el build
   if (fs.existsSync(frontendApkPath)) {
     fs.unlinkSync(frontendApkPath);
+    console.log('🗑️  APK antigua eliminada de frontend/public/apk para ahorrar peso.');
   }
 
-  // Copiar la APK
-  fs.copyFileSync(androidApkPath, frontendApkPath);
-  
-  // Obtener información del archivo
-  const stats = fs.statSync(frontendApkPath);
+  // Obtener información del archivo copiado al backend
+  const stats = fs.statSync(backendPublicPath);
   const sizeInMB = (stats.size / 1024 / 1024).toFixed(2);
   const lastModified = stats.mtime.toLocaleString();
 

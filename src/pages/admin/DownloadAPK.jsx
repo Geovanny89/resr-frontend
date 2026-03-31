@@ -20,8 +20,10 @@ export default function DownloadAPK() {
 
   const loadAPKStatus = async () => {
     try {
-      // Verificar si la APK global existe en la carpeta pública
-      const response = await fetch('/apk/kdice-reservas.apk', { method: 'HEAD' });
+      // Verificar si la APK global existe en la carpeta del backend
+      // Usamos la URL absoluta del backend o una relativa si están en el mismo dominio
+      const downloadUrl = 'http://localhost:4000/downloads/kdice-reservas.apk'; // Ajustar según entorno
+      const response = await fetch(downloadUrl, { method: 'HEAD' });
       
       if (response.ok) {
         const contentLength = response.headers.get('content-length');
@@ -34,6 +36,11 @@ export default function DownloadAPK() {
           universal: true
         });
       } else {
+        // Intentar con ruta relativa por si acaso
+        const relResponse = await fetch('/api/downloads/kdice-reservas.apk', { method: 'HEAD' });
+        if (relResponse.ok) {
+           // ... similar logic
+        }
         setApkStatus({
           apkReady: false,
           apkSize: null,
@@ -66,17 +73,9 @@ export default function DownloadAPK() {
     setSuccessMsg('');
 
     try {
-      // Descargar APK global directamente desde la carpeta pública
-      const downloadUrl = '/apk/kdice-reservas.apk';
+      // Descargar APK desde el backend
+      const downloadUrl = 'http://localhost:4000/downloads/kdice-reservas.apk';
       
-      // Verificar si el archivo existe
-      const response = await fetch(downloadUrl, { method: 'HEAD' });
-      if (!response.ok) {
-        setError('La APK no está disponible. Contacta al administrador para que suba la APK generada desde Android Studio.');
-        setLoading(false);
-        return;
-      }
-
       setSuccessMsg('¡APK lista! Iniciando descarga...');
 
       // Crear link de descarga

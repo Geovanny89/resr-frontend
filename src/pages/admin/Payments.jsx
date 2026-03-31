@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
   DollarSign, TrendingUp, Users, Calendar, CheckCircle,
-  Download, Mail, RefreshCw, ChevronDown, ChevronLeft, ChevronRight
+  Download, Mail, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { savePDF, saveExcel } from '../../utils/fileDownload';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -179,72 +181,122 @@ export default function Payments() {
     }
   };
 
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    const monthLabel = getMonthLabel(month);
+  const downloadPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      const monthLabel = getMonthLabel(month);
 
-    // Header
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('KDice POS — Reporte de Pagos', 14, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${business?.name || ''} · ${monthLabel}`, 14, 30);
-
-    // Resumen
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Financiero', 14, 55);
-
-    const totals = report?.totals || {};
-    autoTable(doc, {
-      startY: 60,
-      head: [['Concepto', 'Monto']],
-      body: [
-        ['Ingresos totales del negocio', fmt(totals.total)],
-        ['Ganancia del dueño', fmt(totals.ownerTotal)],
-        ['Total a pagar empleados', fmt(totals.employeeTotal)],
-      ],
-      styles: { fontSize: 11 },
-      headStyles: { fillColor: [79, 70, 229] },
-    });
-
-    // Por empleado
-    let y = doc.lastAutoTable.finalY + 14;
-    employees.forEach(emp => {
-      doc.setFontSize(12);
+      // Header
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Empleado: ${emp.name}`, 14, y);
-      y += 4;
+      doc.text('KDice POS — Reporte de Pagos', 14, 18);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${business?.name || ''} · ${monthLabel}`, 14, 30);
 
+      // Resumen
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumen Financiero', 14, 55);
+
+      const totals = report?.totals || {};
       autoTable(doc, {
-        startY: y,
-        head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
-        body: emp.appointments.map(a => [
-          fmtDate(a.date),
-          a.service,
-          fmt(a.price),
-          fmt(a.employeeEarns),
-          fmt(a.ownerEarns),
-        ]),
-        foot: [[
-          '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
-        ]],
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [100, 116, 139] },
-        footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+        startY: 60,
+        head: [['Concepto', 'Monto']],
+        body: [
+          ['Ingresos totales del negocio', fmt(totals.total)],
+          ['Ganancia del dueño', fmt(totals.ownerTotal)],
+          ['Total a pagar empleados', fmt(totals.employeeTotal)],
+        ],
+        styles: { fontSize: 11 },
+        headStyles: { fillColor: [79, 70, 229] },
       });
-      y = doc.lastAutoTable.finalY + 12;
-    });
 
-    doc.save(`pagos-${month}.pdf`);
+      // Por empleado
+      let y = doc.lastAutoTable.finalY + 14;
+      employees.forEach(emp => {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Empleado: ${emp.name}`, 14, y);
+        y += 4;
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
+          body: emp.appointments.map(a => [
+            fmtDate(a.date),
+            a.service,
+            fmt(a.price),
+            fmt(a.employeeEarns),
+            fmt(a.ownerEarns),
+          ]),
+          foot: [[
+            '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
+          ]],
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [100, 116, 139] },
+          footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+        });
+        y = doc.lastAutoTable.finalY + 12;
+      });
+
+      await savePDF(doc, `pagos-${month}.pdf`);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alert('Error al generar PDF: ' + error.message);
+    }
+  };
+
+  const downloadExcel = async () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      
+      // Hoja de Resumen
+      const totals = report?.totals || {};
+      const summaryData = [
+        { 'Concepto': 'Ingresos totales del negocio', 'Monto': totals.total },
+        { 'Concepto': 'Ganancia del dueño', 'Monto': totals.ownerTotal },
+        { 'Concepto': 'Total a pagar empleados', 'Monto': totals.employeeTotal },
+      ];
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen');
+
+      // Una hoja por empleado o una hoja general con todos los detalles
+      const allAppointments = report?.appointments || [];
+      const detailData = allAppointments.map(a => ({
+        'Empleado': a.employee,
+        'Fecha': fmtDate(a.date),
+        'Servicio': a.service,
+        'Precio': a.price,
+        'Empleado gana': parseFloat(a.employeeEarns),
+        'Negocio gana': parseFloat(a.ownerEarns)
+      }));
+      const wsDetail = XLSX.utils.json_to_sheet(detailData);
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle de Pagos');
+
+      await saveExcel(wb, `pagos-${month}.xlsx`);
+    } catch (error) {
+      console.error('Error generando Excel:', error);
+      alert('Error al generar Excel: ' + error.message);
+    }
   };
 
   const [expandedEmp, setExpandedEmp] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 7;
+
+  const handleExpand = (empName) => {
+    if (expandedEmp === empName) {
+      setExpandedEmp(null);
+    } else {
+      setExpandedEmp(empName);
+      setCurrentPage(1);
+    }
+  };
 
   // Usar la función segura para obtener el label del mes
   const monthLabel = getMonthLabel(month);
@@ -300,9 +352,14 @@ export default function Payments() {
             {loading ? 'Cargando...' : 'Actualizar'}
           </button>
           {report && (
-            <button className="btn-outline" onClick={downloadPDF}>
-              <Download size={15} /> Descargar PDF
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-outline" onClick={downloadPDF}>
+                <Download size={15} /> PDF
+              </button>
+              <button className="btn-success" onClick={downloadExcel} style={{ color: 'white' }}>
+                <FileSpreadsheet size={15} /> Excel
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -403,7 +460,7 @@ export default function Payments() {
                   <div
                     className="payments-employee-header"
                     style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
-                    onClick={() => setExpandedEmp(expandedEmp === emp.name ? null : emp.name)}
+                    onClick={() => handleExpand(emp.name)}
                   >
                     <div className="avatar" style={{ width: 44, height: 44, fontSize: 16 }}>
                       {emp.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
@@ -460,7 +517,9 @@ export default function Payments() {
                             </tr>
                           </thead>
                           <tbody>
-                            {emp.appointments.map((a, i) => (
+                            {emp.appointments
+                              .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                              .map((a, i) => (
                               <tr key={i}>
                                 <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDate(a.date)}</td>
                                 <td>{a.service}</td>
@@ -480,6 +539,31 @@ export default function Payments() {
                           </tfoot>
                         </table>
                       </div>
+
+                      {/* Paginación interna para el detalle */}
+                      {emp.appointments.length > PAGE_SIZE && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 16, padding: '8px 0' }}>
+                          <button
+                            className="btn-outline btn-sm"
+                            disabled={currentPage === 1}
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(p => p - 1); }}
+                            style={{ padding: '4px 8px' }}
+                          >
+                            <ChevronLeft size={16} /> Anterior
+                          </button>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                            Página {currentPage} de {Math.ceil(emp.appointments.length / PAGE_SIZE)}
+                          </span>
+                          <button
+                            className="btn-outline btn-sm"
+                            disabled={currentPage >= Math.ceil(emp.appointments.length / PAGE_SIZE)}
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(p => p + 1); }}
+                            style={{ padding: '4px 8px' }}
+                          >
+                            Siguiente <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

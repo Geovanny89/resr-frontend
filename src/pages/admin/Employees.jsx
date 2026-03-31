@@ -85,7 +85,7 @@ export default function Employees() {
 
   const handleCommissionChange = (val) => {
     const pct = Math.min(100, Math.max(0, parseFloat(val) || 0));
-    setForm(f => ({ ...f, commissionPct: pct, ownerPct: parseFloat((100 - pct).toFixed(2)) }));
+    setForm(f => ({ ...f, commissionPct: pct }));
   };
 
   const handlePhotoUpload = async (e) => {
@@ -140,6 +140,7 @@ export default function Employees() {
           name: form.name,
           email: form.email,
           commissionPct: form.commissionPct,
+          ownerPct: form.ownerPct,
           photoUrl: form.photoUrl
         });
         setSuccess('Empleado actualizado');
@@ -149,6 +150,7 @@ export default function Employees() {
           email: form.email,
           password: form.password,
           commissionPct: form.commissionPct,
+          ownerPct: form.ownerPct,
           businessId: business.id,
           photoUrl: form.photoUrl
         });
@@ -343,10 +345,12 @@ export default function Employees() {
                   },
                   {
                     name: 'ownerPct',
-                    label: 'Para el negocio (%)',
+                    label: 'Base para el negocio (%)',
                     type: 'number',
-                    disabled: true,
+                    min: 0,
+                    max: 100,
                     value: form.ownerPct,
+                    onChange: e => setForm({ ...form, ownerPct: parseFloat(e.target.value) || 0 }),
                     fullWidth: true
                   }
                 ]}
