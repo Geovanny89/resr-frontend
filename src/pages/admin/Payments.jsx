@@ -20,6 +20,111 @@ const MONTHS_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
+// ─── Componente para detalle de empleado con paginación ────────────────
+function EmployeeDetail({ emp, paginationPages, setPaginationPages }) {
+  const itemsPerPage = 5;
+  const currentPage = paginationPages[emp.name] || 1;
+  const totalPages = Math.ceil(emp.appointments.length / itemsPerPage);
+  
+  const paginatedAppointments = emp.appointments.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  
+  const setPage = (page) => {
+    setPaginationPages(prev => ({ ...prev, [emp.name]: page }));
+  };
+  
+  return (
+    <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+      <div className="table-wrapper" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+        <table className="table" style={{ minWidth: '100%', fontSize: '12px' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: '8px 6px' }}>Fecha</th>
+              <th style={{ padding: '8px 6px' }}>Servicio</th>
+              <th style={{ padding: '8px 6px' }}>Precio</th>
+              <th style={{ padding: '8px 6px' }}>Empleado</th>
+              <th style={{ padding: '8px 6px' }}>Negocio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedAppointments.map((a, i) => (
+              <tr key={i}>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 11, padding: '8px 6px' }}>{fmtDate(a.date)}</td>
+                <td style={{ fontSize: 11, padding: '8px 6px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.service}</td>
+                <td style={{ padding: '8px 6px' }}><span className="money" style={{ fontSize: 11 }}>{fmt(a.price)}</span></td>
+                <td style={{ padding: '8px 6px' }}><span className="money positive" style={{ fontSize: 11 }}>{fmt(a.employeeEarns)}</span></td>
+                <td style={{ padding: '8px 6px' }}><span className="money positive" style={{ fontSize: 11 }}>{fmt(a.ownerEarns)}</span></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
+              <td colSpan={2} style={{ padding: '10px 6px', fontWeight: 700, fontSize: 12 }}>TOTALES ({emp.appointments.length} citas)</td>
+              <td style={{ padding: '10px 6px' }}><span className="money" style={{ fontSize: 12 }}>{fmt(emp.total)}</span></td>
+              <td style={{ padding: '10px 6px' }}><span className="money positive" style={{ fontSize: 12 }}>{fmt(emp.employeeEarns)}</span></td>
+              <td style={{ padding: '10px 6px' }}><span className="money positive" style={{ fontSize: 12 }}>{fmt(emp.ownerEarns)}</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          gap: 8, 
+          marginTop: 12,
+          padding: '8px',
+          background: 'var(--gray-50)',
+          borderRadius: 8
+        }}>
+          <button
+            onClick={() => setPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: currentPage === 1 ? 'var(--gray-200)' : 'white',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: 12,
+              fontWeight: 600
+            }}
+          >
+            ← Anterior
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: currentPage === totalPages ? 'var(--gray-200)' : 'white',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: 12,
+              fontWeight: 600
+            }}
+          >
+            Siguiente →
+          </button>
+        </div>
+      )}
+      
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
+        Mostrando {paginatedAppointments.length} de {emp.appointments.length} citas
+      </div>
+    </div>
+  );
+}
+
 // ─── Utilidades de fecha segura (sin desfase de zona horaria) ────────────────
 
 function getMonthLabel(monthStr) {
@@ -245,6 +350,7 @@ export default function Payments() {
   };
 
   const [expandedEmp, setExpandedEmp] = useState(null);
+  const [paginationPages, setPaginationPages] = useState({}); // Estado de paginación por empleado
 
   // Usar la función segura para obtener el label del mes
   const monthLabel = getMonthLabel(month);
@@ -445,42 +551,13 @@ export default function Payments() {
                     </div>
                   </div>
 
-                  {/* Detalle expandible */}
+                  {/* Detalle expandible con paginación - CORREGIDO */}
                   {expandedEmp === emp.name && (
-                    <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                      <div className="table-wrapper">
-                        <table className="table">
-                          <thead>
-                            <tr>
-                              <th>Fecha</th>
-                              <th>Servicio</th>
-                              <th>Precio del servicio</th>
-                              <th>Empleado gana</th>
-                              <th>Negocio gana</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {emp.appointments.map((a, i) => (
-                              <tr key={i}>
-                                <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDate(a.date)}</td>
-                                <td>{a.service}</td>
-                                <td><span className="money">{fmt(a.price)}</span></td>
-                                <td><span className="money positive">{fmt(a.employeeEarns)}</span></td>
-                                <td><span className="money positive">{fmt(a.ownerEarns)}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
-                              <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700 }}>TOTALES</td>
-                              <td style={{ padding: '12px 16px' }}><span className="money">{fmt(emp.total)}</span></td>
-                              <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.employeeEarns)}</span></td>
-                              <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.ownerEarns)}</span></td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </div>
+                    <EmployeeDetail 
+                      emp={emp} 
+                      paginationPages={paginationPages}
+                      setPaginationPages={setPaginationPages}
+                    />
                   )}
                 </div>
               ))}

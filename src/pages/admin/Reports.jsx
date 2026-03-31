@@ -247,11 +247,12 @@ export default function Reports() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Estadísticas
+  // Estadísticas - CORREGIDO: calcular ganancia correctamente
   const done       = appointments.filter(a => a.status === 'done');
   const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0), 0);
-  const ownerRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.ownerPct || 100) / 100, 0);
-  const empRev     = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.commissionPct || 0) / 100, 0);
+  // La ganancia del dueño es lo que queda después de pagar al empleado
+  const empRev     = done.reduce((s, a) => s + parseFloat(a.employeeEarns || a.Service?.price * (a.Employee?.commissionPct || 0) / 100 || 0), 0);
+  const ownerRev   = totalRev - empRev; // Ganancia real del negocio
 
   // Datos para gráficas
   const byStatus = Object.entries(
