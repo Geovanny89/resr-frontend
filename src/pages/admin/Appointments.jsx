@@ -21,6 +21,9 @@ export default function Appointments() {
   const { business } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const [selectedDate, setSelectedDate] = useState(() => {
     // Inicializar con la fecha actual en Colombia
     const colombiaStr = new Date().toLocaleString("en-US", {timeZone: "America/Bogota"});
@@ -116,11 +119,21 @@ export default function Appointments() {
 
   const filteredAppointments = useMemo(() => {
     const dateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-    return appointments.filter(apt => {
+    const filtered = appointments.filter(apt => {
       const aptDate = new Date(apt.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       return aptDate === dateStr;
     });
+    // Reiniciar a la primera página cuando cambian las citas filtradas
+    setCurrentPage(1);
+    return filtered;
   }, [appointments, selectedDate]);
+
+  const paginatedAppointments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAppointments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAppointments, currentPage]);
+
+  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
 
   const handleStatusChange = async (appointmentId, newStatus) => {
     try {
@@ -308,7 +321,7 @@ export default function Appointments() {
                 )
               }
             ]}
-            data={filteredAppointments}
+            data={paginatedAppointments}
             actions={(row) => {
               const actions = [
                 {
@@ -351,6 +364,39 @@ export default function Appointments() {
             loading={loading}
             emptyMessage="No hay citas para esta fecha"
           />
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 12, 
+              marginTop: 20,
+              padding: '12px',
+              borderTop: '1px solid var(--border)'
+            }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="btn-outline btn-sm"
+                style={{ padding: '6px 12px' }}
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="btn-outline btn-sm"
+                style={{ padding: '6px 12px' }}
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

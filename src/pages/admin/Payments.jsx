@@ -37,34 +37,34 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages }) {
   
   return (
     <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-      <div className="table-wrapper" style={{ overflowX: 'auto', maxWidth: '100%' }}>
-        <table className="table" style={{ minWidth: '100%', fontSize: '12px' }}>
+      <div className="table-wrapper" style={{ overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+        <table className="table" style={{ minWidth: '400px', fontSize: '11px', width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              <th style={{ padding: '8px 6px' }}>Fecha</th>
-              <th style={{ padding: '8px 6px' }}>Servicio</th>
-              <th style={{ padding: '8px 6px' }}>Precio</th>
-              <th style={{ padding: '8px 6px' }}>Empleado</th>
-              <th style={{ padding: '8px 6px' }}>Negocio</th>
+              <th style={{ padding: '8px 4px', width: '25%' }}>Fecha</th>
+              <th style={{ padding: '8px 4px', width: '25%' }}>Servicio</th>
+              <th style={{ padding: '8px 4px', width: '15%' }}>Precio</th>
+              <th style={{ padding: '8px 4px', width: '17%' }}>Emp.</th>
+              <th style={{ padding: '8px 4px', width: '18%' }}>Neg.</th>
             </tr>
           </thead>
           <tbody>
             {paginatedAppointments.map((a, i) => (
               <tr key={i}>
-                <td style={{ whiteSpace: 'nowrap', fontSize: 11, padding: '8px 6px' }}>{fmtDate(a.date)}</td>
-                <td style={{ fontSize: 11, padding: '8px 6px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.service}</td>
-                <td style={{ padding: '8px 6px' }}><span className="money" style={{ fontSize: 11 }}>{fmt(a.price)}</span></td>
-                <td style={{ padding: '8px 6px' }}><span className="money positive" style={{ fontSize: 11 }}>{fmt(a.employeeEarns)}</span></td>
-                <td style={{ padding: '8px 6px' }}><span className="money positive" style={{ fontSize: 11 }}>{fmt(a.ownerEarns)}</span></td>
+                <td style={{ fontSize: '10px', padding: '8px 4px', wordBreak: 'break-word' }}>{fmtDate(a.date)}</td>
+                <td style={{ fontSize: '10px', padding: '8px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.service}>{a.service}</td>
+                <td style={{ padding: '8px 2px' }}><span className="money" style={{ fontSize: '10px' }}>{fmt(a.price)}</span></td>
+                <td style={{ padding: '8px 2px' }}><span className="money positive" style={{ fontSize: '10px' }}>{fmt(a.employeeEarns)}</span></td>
+                <td style={{ padding: '8px 2px' }}><span className="money positive" style={{ fontSize: '10px' }}>{fmt(a.ownerEarns)}</span></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
-              <td colSpan={2} style={{ padding: '10px 6px', fontWeight: 700, fontSize: 12 }}>TOTALES ({emp.appointments.length} citas)</td>
-              <td style={{ padding: '10px 6px' }}><span className="money" style={{ fontSize: 12 }}>{fmt(emp.total)}</span></td>
-              <td style={{ padding: '10px 6px' }}><span className="money positive" style={{ fontSize: 12 }}>{fmt(emp.employeeEarns)}</span></td>
-              <td style={{ padding: '10px 6px' }}><span className="money positive" style={{ fontSize: 12 }}>{fmt(emp.ownerEarns)}</span></td>
+              <td colSpan={2} style={{ padding: '10px 4px', fontWeight: 700, fontSize: '11px' }}>TOTALES</td>
+              <td style={{ padding: '10px 2px' }}><span className="money" style={{ fontSize: '11px' }}>{fmt(emp.total)}</span></td>
+              <td style={{ padding: '10px 2px' }}><span className="money positive" style={{ fontSize: '11px' }}>{fmt(emp.employeeEarns)}</span></td>
+              <td style={{ padding: '10px 2px' }}><span className="money positive" style={{ fontSize: '11px' }}>{fmt(emp.ownerEarns)}</span></td>
             </tr>
           </tfoot>
         </table>
@@ -238,9 +238,30 @@ export default function Payments() {
     setLoading(true);
     setError('');
     try {
-      // Enviar el mes en formato YYYY-MM
       const res = await api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`);
-      setReport(res.data);
+      // Asegurarnos de que los cálculos del negocio sean los reales (Total - Comisión)
+      const data = res.data;
+      if (data.appointments) {
+        data.appointments = data.appointments.map(appt => {
+          const price = parseFloat(appt.price);
+          const empEarns = parseFloat(appt.employeeEarns);
+          // Forzar el cálculo real en el frontend por si el backend aún no se ha actualizado
+          const ownerEarns = price - empEarns;
+          return { ...appt, ownerEarns: ownerEarns.toFixed(2) };
+        });
+        
+        // Recalcular totales
+        const total = data.appointments.reduce((acc, a) => acc + parseFloat(a.price), 0);
+        const employeeTotal = data.appointments.reduce((acc, a) => acc + parseFloat(a.employeeEarns), 0);
+        const ownerTotal = total - employeeTotal;
+        
+        data.totals = {
+          total,
+          employeeTotal,
+          ownerTotal
+        };
+      }
+      setReport(data);
     } catch (e) {
       setError(e.response?.data?.error || 'Error al cargar el reporte');
     } finally {

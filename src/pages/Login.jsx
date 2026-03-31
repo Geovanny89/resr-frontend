@@ -289,7 +289,7 @@ export default function Login() {
                 <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#059669', marginBottom: 8 }}>¡Correo enviado!</p>
                 <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  Revisa tu bandeja de entrada. Te hemos enviado una nueva contraseña temporal.
+                  Revisa tu bandeja de entrada. Te hemos enviado un enlace para que puedas crear una nueva contraseña.
                 </p>
                 <button 
                   onClick={() => setShowForgotModal(false)}

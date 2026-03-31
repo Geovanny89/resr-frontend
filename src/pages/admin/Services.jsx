@@ -16,6 +16,8 @@ export default function Services() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     if (business?.id) loadServices();
@@ -34,6 +36,13 @@ export default function Services() {
       .catch(() => setServices([]))
       .finally(() => setLoading(false));
   };
+
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return services.slice(startIndex, startIndex + itemsPerPage);
+  }, [services, currentPage]);
+
+  const totalPages = Math.ceil(services.length / itemsPerPage);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -156,7 +165,7 @@ export default function Services() {
               { key: 'price', label: 'Precio', render: v => `$${Number(v).toLocaleString('es-CO')}` },
               { key: 'durationMin', label: 'Duración', render: v => `${v} min` }
             ]}
-            data={services}
+            data={paginatedServices}
             actions={[
               { label: '✏️ Editar', onClick: handleEdit, color: 'var(--primary)' },
               { label: '🗑️ Eliminar', onClick: handleDelete, color: 'var(--danger)' }
@@ -164,6 +173,39 @@ export default function Services() {
             loading={loading}
             emptyMessage="No hay servicios creados. ¡Crea uno para empezar!"
           />
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 12, 
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: '1px solid var(--border)'
+            }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="btn-outline btn-sm"
+                style={{ padding: '6px 12px' }}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="btn-outline btn-sm"
+                style={{ padding: '6px 12px' }}
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>

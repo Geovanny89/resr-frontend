@@ -26,6 +26,8 @@ export default function Schedule() {
   const [saving, setSaving]             = useState(false);
   const [showModal, setShowModal]       = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 7;
 
   const load = async () => {
     if (!business?.id) return;
@@ -112,6 +114,13 @@ export default function Schedule() {
   const getTypeInfo = (type) => SCHEDULE_TYPES.find(t => t.value === type) || SCHEDULE_TYPES[0];
   const expandKey   = (empId, day) => `${empId}-${day}`;
 
+  const paginatedEmployees = employees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(employees.length / itemsPerPage);
+
   return (
     <AdminLayout title="Horarios" subtitle="Configura la disponibilidad de tu equipo">
 
@@ -167,7 +176,7 @@ export default function Schedule() {
           </div>
         ) : (
           <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {employees.map(emp => {
+            {paginatedEmployees.map(emp => {
               const empDays      = groupedSchedules[emp.id] || {};
               const isExpanded   = expandedEmp === emp.id;
               const totalScheds  = Object.values(empDays).flat().length;
@@ -325,6 +334,39 @@ export default function Schedule() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            gap: 12, 
+            marginTop: 10,
+            padding: '16px',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="btn-outline btn-sm"
+              style={{ padding: '6px 12px' }}
+            >
+              <ChevronLeft size={16} /> Anterior
+            </button>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="btn-outline btn-sm"
+              style={{ padding: '6px 12px' }}
+            >
+              Siguiente <ChevronRight size={16} />
+            </button>
           </div>
         )}
       </div>

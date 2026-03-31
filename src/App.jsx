@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login            from './pages/Login';
+import ResetPassword    from './pages/ResetPassword';
 import RegisterChoice   from './pages/RegisterChoice';
 import RegisterClient   from './pages/RegisterClient';
 import RegisterVendor   from './pages/RegisterVendor';
@@ -152,6 +153,7 @@ export default function App() {
         <MobileSlugBridge />
         <Routes>
           <Route path="/login"           element={<Login />} />
+          <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/register"        element={<RegisterChoice />} />
           <Route path="/register-client" element={<RegisterClient />} />
           <Route path="/register-vendor" element={<RegisterVendor />} />

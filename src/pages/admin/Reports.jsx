@@ -4,7 +4,7 @@ import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
   BarChart3, Download, FileText, Table2, RefreshCw,
-  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight
+  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, FileSpreadsheet
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { saveExcel } from '../../utils/fileDownload';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -333,6 +335,40 @@ export default function Reports() {
     doc.save(`informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
+  const downloadExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      
+      // Hoja de Resumen
+      const summaryData = [
+        { 'Métrica': 'Total citas en el período', 'Valor': appointments.length },
+        { 'Métrica': 'Citas completadas', 'Valor': done.length },
+        { 'Métrica': 'Ingresos totales', 'Valor': totalRev },
+        { 'Métrica': 'Ganancia del negocio', 'Valor': ownerRev },
+        { 'Métrica': 'Pago a empleados', 'Valor': empRev },
+      ];
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen');
+
+      // Hoja de Detalle
+      const detailData = appointments.map(a => ({
+        'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
+        'Cliente': a.clientName || '',
+        'Servicio': a.Service?.name || '',
+        'Empleado': a.Employee?.User?.name || '',
+        'Precio': parseFloat(a.Service?.price || 0),
+        'Estado': STATUS_LABELS[a.status] || a.status,
+      }));
+      const wsDetail = XLSX.utils.json_to_sheet(detailData);
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle de Citas');
+
+      saveExcel(wb, `informe-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      console.error('Error generando Excel:', error);
+      alert('Error al generar Excel');
+    }
+  };
+
   return (
     <AdminLayout title="Informes" subtitle="Análisis de actividad y finanzas">
       <style>{`
@@ -477,9 +513,12 @@ export default function Reports() {
             Actualizar
           </button>
 
-          <div className="reports-actions-right" style={{ marginLeft: 'auto' }}>
+          <div className="reports-actions-right" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button className="btn-outline btn-sm" onClick={downloadPDF} disabled={!appointments.length}>
-              <Download size={14} /> Descargar PDF
+              <Download size={14} /> PDF
+            </button>
+            <button className="btn-success btn-sm" onClick={downloadExcel} disabled={!appointments.length} style={{ color: 'white' }}>
+              <FileSpreadsheet size={14} /> Excel
             </button>
           </div>
         </div>

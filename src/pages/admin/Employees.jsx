@@ -34,6 +34,8 @@ export default function Employees() {
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const load = async () => {
     if (!business?.id) return;
@@ -57,6 +59,13 @@ export default function Employees() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const paginatedEmployees = employees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(employees.length / itemsPerPage);
 
   const openCreate = () => {
     setEditEmp(null);
@@ -222,7 +231,7 @@ export default function Employees() {
               render: v => `${v}%`
             }
           ]}
-          data={employees}
+          data={paginatedEmployees}
           actions={[
             { label: '✏️ Editar', onClick: openEdit, color: 'var(--primary)' },
             { label: '🗑️ Eliminar', onClick: handleDelete, color: 'var(--danger)' }
@@ -230,6 +239,39 @@ export default function Employees() {
           loading={loading}
           emptyMessage="No hay empleados. ¡Crea uno para empezar!"
         />
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            gap: 12, 
+            marginTop: 20,
+            padding: '16px',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="btn-outline btn-sm"
+              style={{ padding: '6px 12px' }}
+            >
+              Anterior
+            </button>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="btn-outline btn-sm"
+              style={{ padding: '6px 12px' }}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
