@@ -149,6 +149,7 @@ export default function Employees() {
           name: form.name,
           email: form.email,
           commissionPct: form.commissionPct,
+          ownerPct: form.ownerPct, // AGREGAR: enviar ownerPct también
           photoUrl: form.photoUrl
         });
         setSuccess('Empleado actualizado');
@@ -158,6 +159,7 @@ export default function Employees() {
           email: form.email,
           password: form.password,
           commissionPct: form.commissionPct,
+          ownerPct: form.ownerPct, // AGREGAR: enviar ownerPct también
           businessId: business.id,
           photoUrl: form.photoUrl
         });
