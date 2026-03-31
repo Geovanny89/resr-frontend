@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { savePDF } from '../../utils/fileDownload';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -406,7 +407,7 @@ export default function Payments() {
   };
 
   // Descargar PDF completo con todos los empleados
-  const downloadPDF = () => {
+  const downloadPDF = async () => { // async para usar savePDF
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
 
@@ -468,7 +469,8 @@ export default function Payments() {
       y = doc.lastAutoTable.finalY + 12;
     });
 
-    doc.save(`pagos-${month}.pdf`);
+    // Usar savePDF para compatibilidad con APK
+    await savePDF(doc, `pagos-${month}.pdf`);
   };
 
   const [expandedEmp, setExpandedEmp] = useState(null);

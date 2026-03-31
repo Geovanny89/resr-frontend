@@ -156,13 +156,6 @@ export default function Login() {
             <div className="form-group" style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)' }}>Contraseña</label>
-                <button 
-                  type="button" 
-                  onClick={() => setShowForgotModal(true)}
-                  style={{ fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  ¿Olvidaste tu contraseña?
-                </button>
               </div>
               <div className="input-group" style={{ position: 'relative' }}>
                 <Lock className="input-icon" size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -191,6 +184,15 @@ export default function Login() {
             >
               {loading ? 'Ingresando...' : <><LogIn size={18} /> Iniciar sesión</>}
             </button>
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <button 
+                type="button" 
+                onClick={() => setShowForgotModal(true)}
+                style={{ fontSize: 13, color: 'var(--primary)', background: 'none', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
           </form>
         ) : (
           /* ACCESO CLIENTE */

@@ -94,7 +94,6 @@ export default function AdminLayout({ children, title, subtitle }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">📱</div>
           <div>
             <div className="sidebar-logo-name">KDice POS</div>
             <div className="sidebar-logo-sub">{business?.name || 'Sistema de Citas'}</div>

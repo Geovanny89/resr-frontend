@@ -9,64 +9,78 @@ const __dirname = path.dirname(__filename);
 
 console.log('🔄 Copiando APK generada a frontend...\n');
 
-// Rutas
-const androidApkPath = path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk');
-const frontendApkPath = path.join(__dirname, '../public/apk/kdice-reservas.apk');
+// Posibles rutas de APK (debug y release con diferentes nombres)
+const possiblePaths = [
+  // Debug con splits habilitado (universal es la recomendada para pruebas)
+  path.join(__dirname, '../android/app/build/outputs/apk/debug/app-universal-debug.apk'),
+  path.join(__dirname, '../android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk'),
+  path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk'),
+  
+  // Release con splits habilitado
+  path.join(__dirname, '../android/app/build/outputs/apk/release/app-universal-release-unsigned.apk'),
+  path.join(__dirname, '../android/app/build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk'),
+  path.join(__dirname, '../android/app/build/outputs/apk/release/app-release-unsigned.apk'),
+];
+
+const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
+const publicApkPath = path.join(__dirname, '../public/apk/kdice-reservas.apk');
+const distApkDir = path.dirname(distApkPath);
+const publicApkDir = path.dirname(publicApkPath);
 
 try {
-  // Verificar si existe la APK generada por Android Studio
-  if (!fs.existsSync(androidApkPath)) {
-    console.log('❌ No se encontró la APK generada por Android Studio');
-    console.log('📱 Primero genera la APK en Android Studio:');
-    console.log('   1. Abre el proyecto en Android Studio');
-    console.log('   2. Ve a Build > Build Bundle(s) / APK(s) > Build APK(s)');
-    console.log('   3. Espera a que termine la compilación');
-    console.log('   4. Luego ejecuta este script nuevamente');
+  // Buscar la primera APK que exista
+  let androidApkPath = null;
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      androidApkPath = p;
+      break;
+    }
+  }
+
+  if (!androidApkPath) {
+    console.log('❌ No se encontró la APK generada');
+    console.log('📱 Primero genera la APK:');
+    console.log('   cd android');
+    console.log('   gradlew.bat assembleRelease');
+    console.log('   cd ..');
+    console.log('   npm run copy-apk');
     process.exit(1);
   }
 
-  // Verificar si existe la carpeta de destino
-  const apkDir = path.dirname(frontendApkPath);
-  if (!fs.existsSync(apkDir)) {
-    fs.mkdirSync(apkDir, { recursive: true });
-    console.log('📁 Carpeta de destino creada:', apkDir);
+  console.log(`📱 APK encontrada: ${androidApkPath}`);
+
+  // Crear carpetas de destino
+  if (!fs.existsSync(distApkDir)) {
+    fs.mkdirSync(distApkDir, { recursive: true });
+  }
+  if (!fs.existsSync(publicApkDir)) {
+    fs.mkdirSync(publicApkDir, { recursive: true });
   }
 
-  // Eliminar el placeholder si existe
-  if (fs.existsSync(frontendApkPath)) {
-    fs.unlinkSync(frontendApkPath);
-  }
+  // Eliminar APKs viejas
+  if (fs.existsSync(distApkPath)) fs.unlinkSync(distApkPath);
+  if (fs.existsSync(publicApkPath)) fs.unlinkSync(publicApkPath);
 
-  // Copiar a la carpeta public (para futuros builds)
-  fs.copyFileSync(androidApkPath, frontendApkPath);
-  
-  // Copiar también a la carpeta dist (para que esté disponible de inmediato si el servidor está corriendo)
-  const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
-  const distApkDir = path.dirname(distApkPath);
-  if (fs.existsSync(path.join(__dirname, '../dist'))) {
-    if (!fs.existsSync(distApkDir)) {
-      fs.mkdirSync(distApkDir, { recursive: true });
-    }
-    fs.copyFileSync(androidApkPath, distApkPath);
-    console.log('✅ APK copiada también a /dist para disponibilidad inmediata.');
-  }
-  
-  // Obtener información del archivo
-  const stats = fs.statSync(frontendApkPath);
+  // Copiar a ambas ubicaciones
+  fs.copyFileSync(androidApkPath, distApkPath);
+  fs.copyFileSync(androidApkPath, publicApkPath);
+
+  const stats = fs.statSync(distApkPath);
   const sizeInMB = (stats.size / 1024 / 1024).toFixed(2);
   const lastModified = stats.mtime.toLocaleString();
 
   console.log('✅ APK copiada exitosamente:');
   console.log(`📂 Origen: ${androidApkPath}`);
-  console.log(`📂 Destino: ${frontendApkPath}`);
+  console.log(`📂 Destino dist: ${distApkPath}`);
+  console.log(`📂 Destino public: ${publicApkPath}`);
   console.log(`📊 Tamaño: ${sizeInMB} MB`);
   console.log(`📅 Fecha: ${lastModified}`);
-  
-  console.log('\n🎉 APK lista para descargar desde el panel de admin!');
-  console.log('📱 Los usuarios pueden descargarla desde /admin/download-apk');
-  console.log('🌐 También disponible públicamente en /apk/kdice-reservas.apk');
+
+  console.log('\n🎉 APK lista para descargar!');
+  console.log('📱 /admin/download-apk');
+  console.log('🌐 /apk/kdice-reservas.apk');
 
 } catch (error) {
-  console.error('❌ Error al copiar la APK:', error.message);
+  console.error('❌ Error:', error.message);
   process.exit(1);
 }

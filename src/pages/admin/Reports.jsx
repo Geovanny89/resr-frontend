@@ -13,7 +13,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { saveExcel } from '../../utils/fileDownload';
+import { saveExcel, savePDF } from '../../utils/fileDownload';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -215,6 +215,8 @@ export default function Reports() {
   const [error, setError]               = useState('');
   const [activeTab, setActiveTab]       = useState('overview');
   const [isMobile, setIsMobile]         = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 480 : false);
+  const [detailPage, setDetailPage]       = useState(1); // PAGINACIÓN
+  const ITEMS_PER_PAGE = 5; // 5 citas por página
 
   const range = getDateRange(period, customStart, customEnd);
 
@@ -238,6 +240,9 @@ export default function Reports() {
   };
 
   useEffect(() => { loadData(); }, [business, period, customStart, customEnd]);
+  
+  // Reset página cuando cambian las citas
+  useEffect(() => { setDetailPage(1); }, [appointments]);
 
   // Escuchar cambios de tamaño para ajustar gráficos en móvil
   useEffect(() => {
@@ -255,6 +260,13 @@ export default function Reports() {
   // La ganancia del dueño es lo que queda después de pagar al empleado
   const empRev     = done.reduce((s, a) => s + parseFloat(a.employeeEarns || a.Service?.price * (a.Employee?.commissionPct || 0) / 100 || 0), 0);
   const ownerRev   = totalRev - empRev; // Ganancia real del negocio
+
+  // PAGINACIÓN - Calcular citas a mostrar (5 por página)
+  const totalPages = Math.ceil(appointments.length / ITEMS_PER_PAGE);
+  const paginatedAppointments = appointments.slice(
+    (detailPage - 1) * ITEMS_PER_PAGE,
+    detailPage * ITEMS_PER_PAGE
+  );
 
   // Datos para gráficas
   const byStatus = Object.entries(
@@ -281,7 +293,7 @@ export default function Reports() {
     }, {})
   ).map(([, v]) => v).sort((a, b) => b.revenue - a.revenue);
 
-  const downloadPDF = () => {
+  const downloadPDF = async () => { // async para usar savePDF
     const doc = new jsPDF();
     doc.setFillColor(79, 70, 229);
     doc.rect(0, 0, 210, 40, 'F');
@@ -332,7 +344,8 @@ export default function Reports() {
       headStyles: { fillColor: [100, 116, 139] },
     });
 
-    doc.save(`informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    // Usar savePDF para compatibilidad con APK
+    await savePDF(doc, `informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   const downloadExcel = () => {
@@ -733,7 +746,7 @@ export default function Reports() {
                     <tr><th>Fecha</th><th>Cliente</th><th>Servicio</th><th>Empleado</th><th>Precio</th><th>Estado</th></tr>
                   </thead>
                   <tbody>
-                    {appointments.map(a => (
+                    {paginatedAppointments.map(a => (
                       <tr key={a.id}>
                         <td style={{ fontSize: 13 }}>{new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
                         <td>{a.clientName}</td>
@@ -745,12 +758,35 @@ export default function Reports() {
                     ))}
                   </tbody>
                 </table>
+                
+                {/* Controles de paginación */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                    <button 
+                      onClick={() => setDetailPage(p => Math.max(1, p - 1))}
+                      disabled={detailPage === 1}
+                      className="btn-outline btn-sm"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>
+                      Página {detailPage} de {totalPages}
+                    </span>
+                    <button 
+                      onClick={() => setDetailPage(p => Math.min(totalPages, p + 1))}
+                      disabled={detailPage === totalPages}
+                      className="btn-outline btn-sm"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Mobile: cards (sin overflow horizontal) */}
               <div className="reports-mobile-only" style={{ display: 'none' }}>
                 <div style={{ display: 'grid', gap: 10 }}>
-                  {appointments.map(a => (
+                  {paginatedAppointments.map(a => (
                     <div
                       key={a.id}
                       style={{
@@ -798,6 +834,29 @@ export default function Reports() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Controles de paginación móvil */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 16 }}>
+                    <button 
+                      onClick={() => setDetailPage(p => Math.max(1, p - 1))}
+                      disabled={detailPage === 1}
+                      className="btn-outline btn-sm"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>
+                      Página {detailPage} de {totalPages}
+                    </span>
+                    <button 
+                      onClick={() => setDetailPage(p => Math.min(totalPages, p + 1))}
+                      disabled={detailPage === totalPages}
+                      className="btn-outline btn-sm"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
