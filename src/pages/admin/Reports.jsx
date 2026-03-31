@@ -12,8 +12,6 @@ import {
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
-import { savePDF, saveExcel } from '../../utils/fileDownload';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -252,16 +250,8 @@ export default function Reports() {
   // Estadísticas
   const done       = appointments.filter(a => a.status === 'done');
   const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0), 0);
+  const ownerRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.ownerPct || 100) / 100, 0);
   const empRev     = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) * (a.Employee?.commissionPct || 0) / 100, 0);
-  // Descontar de la ganancia del dueño el pago del empleado
-  const ownerRev   = done.reduce((s, a) => {
-    const price         = parseFloat(a.Service?.price || 0);
-    const ownerPct      = a.Employee?.ownerPct || 100;
-    const commissionPct = a.Employee?.commissionPct || 0;
-    const empPayment    = (price * commissionPct / 100);
-    const ownerProfit   = (price * ownerPct / 100) - empPayment;
-    return s + ownerProfit;
-  }, 0);
 
   // Datos para gráficas
   const byStatus = Object.entries(
@@ -288,118 +278,58 @@ export default function Reports() {
     }, {})
   ).map(([, v]) => v).sort((a, b) => b.revenue - a.revenue);
 
-  // Descargar PDF (compatible con APK)
-  const downloadPDF = async () => {
-    console.log('[downloadPDF] Starting...');
-    try {
-      const doc = new jsPDF();
-      doc.setFillColor(79, 70, 229);
-      doc.rect(0, 0, 210, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('KDice POS — Informe de Actividad', 14, 18);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${business?.name || ''} · ${range?.label || ''}`, 14, 30);
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(79, 70, 229);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('KDice POS — Informe de Actividad', 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${business?.name || ''} · ${range?.label || ''}`, 14, 30);
 
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Resumen', 14, 52);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen', 14, 52);
 
-      autoTable(doc, {
-        startY: 57,
-        head: [['Métrica', 'Valor']],
-        body: [
-          ['Total citas en el período', appointments.length],
-          ['Citas completadas', done.length],
-          ['Ingresos totales', fmt(totalRev)],
-          ['Ganancia del negocio', fmt(ownerRev)],
-          ['Pago a empleados', fmt(empRev)],
-        ],
-        headStyles: { fillColor: [79, 70, 229] },
-      });
+    autoTable(doc, {
+      startY: 57,
+      head: [['Métrica', 'Valor']],
+      body: [
+        ['Total citas en el período', appointments.length],
+        ['Citas completadas', done.length],
+        ['Ingresos totales', fmt(totalRev)],
+        ['Ganancia del negocio', fmt(ownerRev)],
+        ['Pago a empleados', fmt(empRev)],
+      ],
+      headStyles: { fillColor: [79, 70, 229] },
+    });
 
-      let y = doc.lastAutoTable.finalY + 12;
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Detalle de citas', 14, y);
-      y += 4;
+    let y = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detalle de citas', 14, y);
+    y += 4;
 
-      autoTable(doc, {
-        startY: y,
-        head: [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']],
-        body: appointments.map(a => [
-          new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
-          a.clientName || '',
-          a.Service?.name || '',
-          a.Employee?.User?.name || '',
-          fmt(a.Service?.price),
-          STATUS_LABELS[a.status] || a.status,
-        ]),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [100, 116, 139] },
-      });
+    autoTable(doc, {
+      startY: y,
+      head: [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']],
+      body: appointments.map(a => [
+        new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
+        a.clientName || '',
+        a.Service?.name || '',
+        a.Employee?.User?.name || '',
+        fmt(a.Service?.price),
+        STATUS_LABELS[a.status] || a.status,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [100, 116, 139] },
+    });
 
-      const filename = `informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`;
-      console.log('[downloadPDF] Calling savePDF with filename:', filename);
-      await savePDF(doc, filename);
-      console.log('[downloadPDF] savePDF completed');
-    } catch (error) {
-      console.error('[downloadPDF] Error:', error);
-      alert('Error al generar PDF: ' + error.message);
-    }
-  };
-
-  // Descargar Excel (compatible con APK)
-  const downloadExcel = async () => {
-    console.log('[downloadExcel] Starting...');
-    try {
-      const rows = appointments.map(a => {
-        const price         = parseFloat(a.Service?.price || 0);
-        const commissionPct = a.Employee?.commissionPct || 0;
-        const ownerPct      = a.Employee?.ownerPct || 100;
-        const empEarns      = price * commissionPct / 100;
-        const ownerEarns    = (price * ownerPct / 100) - empEarns;
-
-        return {
-          'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
-          'Cliente': a.clientName || '',
-          'Teléfono': a.clientPhone || '',
-          'Servicio': a.Service?.name || '',
-          'Precio': price,
-          'Empleado': a.Employee?.User?.name || '',
-          'Comisión empleado (%)': commissionPct,
-          'Empleado gana': empEarns,
-          'Negocio gana': ownerEarns,
-          'Estado': STATUS_LABELS[a.status] || a.status,
-        };
-      });
-
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Citas');
-
-      // Hoja de resumen
-      const summary = [
-        { 'Concepto': 'Total citas', 'Valor': appointments.length },
-        { 'Concepto': 'Citas completadas', 'Valor': done.length },
-        { 'Concepto': 'Ingresos totales', 'Valor': totalRev },
-        { 'Concepto': 'Ganancia negocio', 'Valor': ownerRev },
-        { 'Concepto': 'Pago empleados', 'Valor': empRev },
-      ];
-      const ws2 = XLSX.utils.json_to_sheet(summary);
-      XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
-
-      const filename = `informe-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      console.log('[downloadExcel] Calling saveExcel with filename:', filename);
-      await saveExcel(wb, filename);
-      console.log('[downloadExcel] saveExcel completed');
-    } catch (error) {
-      console.error('[downloadExcel] Error:', error);
-      alert('Error al generar Excel: ' + error.message);
-    }
+    doc.save(`informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (
@@ -546,12 +476,9 @@ export default function Reports() {
             Actualizar
           </button>
 
-          <div className="reports-actions-right" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <div className="reports-actions-right" style={{ marginLeft: 'auto' }}>
             <button className="btn-outline btn-sm" onClick={downloadPDF} disabled={!appointments.length}>
-              <FileText size={14} /> PDF
-            </button>
-            <button className="btn-success btn-sm" onClick={downloadExcel} disabled={!appointments.length}>
-              <Table2 size={14} /> Excel
+              <Download size={14} /> Descargar PDF
             </button>
           </div>
         </div>
