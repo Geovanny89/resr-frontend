@@ -258,7 +258,12 @@ export default function Reports() {
   const done       = appointments.filter(a => a.status === 'done');
   const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0), 0);
   // La ganancia del dueño es lo que queda después de pagar al empleado
-  const empRev     = done.reduce((s, a) => s + parseFloat(a.employeeEarns || a.Service?.price * (a.Employee?.commissionPct || 0) / 100 || 0), 0);
+  const empRev     = done.reduce((s, a) => {
+    const price = parseFloat(a.Service?.price || 0);
+    const commPct = parseFloat(a.Employee?.commissionPct || 0);
+    const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (price * commPct / 100);
+    return s + (isNaN(earned) ? 0 : earned);
+  }, 0);
   const ownerRev   = totalRev - empRev; // Ganancia real del negocio
 
   // PAGINACIÓN - Calcular citas a mostrar (5 por página)
@@ -784,7 +789,7 @@ export default function Reports() {
               </div>
 
               {/* Mobile: cards (sin overflow horizontal) */}
-              <div className="reports-mobile-only" style={{ display: 'none' }}>
+              <div className="reports-mobile-only">
                 <div style={{ display: 'grid', gap: 10 }}>
                   {paginatedAppointments.map(a => (
                     <div

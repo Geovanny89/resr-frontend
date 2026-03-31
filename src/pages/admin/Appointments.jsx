@@ -128,15 +128,16 @@ export default function Appointments() {
   const filteredAppointments = useMemo(() => {
     const dateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
     
-    const filtered = appointments.filter(apt => {
+    return appointments.filter(apt => {
       const aptDate = new Date(apt.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       return aptDate === dateStr;
     });
-    
-    // Reiniciar a la primera página cuando cambian las citas filtradas
-    setCurrentPage(1);
-    return filtered;
   }, [appointments, selectedDate]);
+
+  // Reiniciar a la primera página cuando cambian las citas filtradas
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredAppointments]);
 
   const paginatedAppointments = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
