@@ -21,26 +21,26 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Guardar en Downloads del dispositivo
+      // Guardar en la carpeta de la App y luego notificar/compartir
+      const path = `${filename}`;
       const result = await Filesystem.writeFile({
-        path: `Download/${filename}`,
+        path,
         data: base64Data,
-        directory: Directory.ExternalStorage,
-        recursive: true,
+        directory: Directory.Cache, // Usar Cache es más confiable para compartir
       });
 
-      // Intentar compartir
+      // Intentar compartir el archivo (esto permite al usuario guardarlo donde quiera)
       try {
         await Share.share({
           title: filename,
-          text: `Archivo guardado: ${filename}`,
-          dialogTitle: 'Guardar archivo',
+          text: `Archivo generado: ${filename}`,
+          url: result.uri, // Compartir el URI del archivo guardado
+          dialogTitle: 'Abrir o Guardar archivo',
         });
       } catch (shareError) {
-        console.log('Share dialog cancelled or failed:', shareError);
+        console.log('Share cancelled:', shareError);
       }
 
-      alert(`✅ Archivo guardado en Descargas: ${filename}`);
       return { success: true, uri: result.uri };
     } catch (error) {
       console.error('Error guardando archivo:', error);
@@ -100,29 +100,26 @@ export async function savePDF(doc, filename) {
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
       
-      // Guardar en Downloads
-      await Filesystem.writeFile({
-        path: `Download/${filename}`,
+      const path = `${filename}`;
+      const result = await Filesystem.writeFile({
+        path,
         data: base64,
-        directory: Directory.ExternalStorage,
-        recursive: true,
+        directory: Directory.Cache,
       });
 
-      // Intentar compartir
       try {
         await Share.share({
           title: filename,
-          text: `PDF guardado: ${filename}`,
-          dialogTitle: 'Guardar PDF',
+          text: `PDF generado: ${filename}`,
+          url: result.uri,
+          dialogTitle: 'Abrir o Guardar PDF',
         });
       } catch (shareError) {
-        console.log('Share dialog cancelled:', shareError);
+        console.log('Share cancelled:', shareError);
       }
-
-      alert(`✅ PDF guardado en Descargas: ${filename}`);
     } catch (error) {
       console.error('[savePDF] Error:', error);
-      alert('❌ Error al guardar PDF: ' + error.message);
+      alert('❌ Error al generar PDF: ' + error.message);
       throw error;
     }
   } else {
@@ -146,29 +143,26 @@ export async function saveExcel(wb, filename) {
       
       const base64 = await blobToBase64(blob);
       
-      // Guardar en Downloads
-      await Filesystem.writeFile({
-        path: `Download/${filename}`,
+      const path = `${filename}`;
+      const result = await Filesystem.writeFile({
+        path,
         data: base64,
-        directory: Directory.ExternalStorage,
-        recursive: true,
+        directory: Directory.Cache,
       });
 
-      // Intentar compartir
       try {
         await Share.share({
           title: filename,
-          text: `Excel guardado: ${filename}`,
-          dialogTitle: 'Guardar Excel',
+          text: `Excel generado: ${filename}`,
+          url: result.uri,
+          dialogTitle: 'Abrir o Guardar Excel',
         });
       } catch (shareError) {
-        console.log('Share dialog cancelled:', shareError);
+        console.log('Share cancelled:', shareError);
       }
-
-      alert(`✅ Excel guardado en Descargas: ${filename}`);
     } catch (error) {
       console.error('[saveExcel] Error:', error);
-      alert('❌ Error al guardar Excel: ' + error.message);
+      alert('❌ Error al generar Excel: ' + error.message);
       throw error;
     }
   } else {

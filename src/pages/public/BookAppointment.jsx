@@ -182,6 +182,7 @@ export default function BookAppointment() {
   }, [step, selected.date, selected.service, selected.employee]);
 
   const handleSubmit = async () => {
+    if (submitting) return; // Evitar doble envío
     setSubmitting(true);
     setError('');
     try {
