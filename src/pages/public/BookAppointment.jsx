@@ -157,36 +157,57 @@ export default function BookAppointment() {
     clientName: '', clientPhone: '', clientEmail: '', notes: '',
   });
   const [hasPreviousData, setHasPreviousData] = useState(false);
+  const [loadingClientData, setLoadingClientData] = useState(true);
 
   // Precargar datos del cliente si viene desde MyAppointments (APK)
   useEffect(() => {
-    const savedClientEmail = localStorage.getItem('clientEmail');
-    if (savedClientEmail) {
-      // Intentar recuperar datos del cliente desde citas anteriores
-      api.get('/appointments/my-client-appointments', { params: { email: savedClientEmail } })
-        .then(r => {
-          if (r.data && r.data.length > 0) {
+    const loadClientData = async () => {
+      const savedClientEmail = localStorage.getItem('clientEmail');
+      if (savedClientEmail) {
+        try {
+          // Intentar recuperar datos del cliente desde citas anteriores
+          const response = await api.get('/appointments/my-client-appointments', { 
+            params: { email: savedClientEmail } 
+          });
+          
+          if (response.data && response.data.length > 0) {
             // Usar datos de la cita más reciente
-            const lastApt = r.data[0];
+            const lastApt = response.data[0];
+            console.log('📋 Datos del cliente precargados:', {
+              clientName: lastApt.clientName,
+              clientPhone: lastApt.clientPhone,
+              clientEmail: savedClientEmail
+            });
+            
             setSelected(prev => ({
               ...prev,
               clientName: lastApt.clientName || '',
               clientPhone: lastApt.clientPhone || '',
               clientEmail: savedClientEmail,
             }));
+            
             if (lastApt.clientName && lastApt.clientPhone) {
               setHasPreviousData(true);
             }
           } else {
+            console.log('📋 No hay citas previas, solo pre-llenando email');
             // Solo pre-llenar el email si no hay citas previas
             setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
           }
-        })
-        .catch(() => {
+        } catch (err) {
+          console.error('❌ Error cargando datos del cliente:', err);
           // Solo pre-llenar el email si falla la petición
           setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
-        });
-    }
+        } finally {
+          setLoadingClientData(false);
+        }
+      } else {
+        console.log('📋 No hay clientEmail en localStorage');
+        setLoadingClientData(false);
+      }
+    };
+    
+    loadClientData();
   }, []);
 
   useEffect(() => {
@@ -610,12 +631,19 @@ export default function BookAppointment() {
               </>
             )}
 
-            {hasPreviousData && !submitting && (
+            {hasPreviousData && !submitting && !loadingClientData && (
               <div style={{ marginBottom: 16, padding: '10px 14px', background: colors.bgSecondary, borderRadius: 10, fontSize: 12, color: colors.textSecondary, border: `1px solid ${colors.border}` }}>
                 ✨ Se usará tu información guardada: <strong>{selected.clientName}</strong>. 
                 <span onClick={() => setStep(4)} style={{ color: primary, cursor: 'pointer', marginLeft: 6, fontWeight: 600, textDecoration: 'underline' }}>
                   Cambiar datos
                 </span>
+              </div>
+            )}
+
+            {loadingClientData && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', background: '#e0f2fe', borderRadius: 10, fontSize: 12, color: '#0369a1', border: '1px solid #7dd3fc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 14, height: 14, border: '2px solid #7dd3fc', borderTopColor: '#0369a1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                Cargando tus datos...
               </div>
             )}
 

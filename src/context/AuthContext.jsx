@@ -43,9 +43,10 @@ export function AuthProvider({ children }) {
   };
 
   const loginAsClient = (email) => {
-    localStorage.setItem('clientEmail', email);
+    const normalizedEmail = email.toLowerCase().trim();
+    localStorage.setItem('clientEmail', normalizedEmail);
     localStorage.setItem('userRole', 'client');
-    setUser({ role: 'client', email }); // Usuario virtual para el contexto
+    setUser({ role: 'client', email: normalizedEmail }); // Usuario virtual para el contexto
   };
 
   const logout = () => {

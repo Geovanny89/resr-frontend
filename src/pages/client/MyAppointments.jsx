@@ -46,8 +46,7 @@ export default function MyAppointments() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState('calendar'); // 'calendar' or 'list'
 
-  const clientEmail = localStorage.getItem('clientEmail');
-
+  // Recargar citas cada vez que se monta el componente
   useEffect(() => {
     loadAppointments();
   }, []);
@@ -55,9 +54,14 @@ export default function MyAppointments() {
   const loadAppointments = async () => {
     try {
       setLoading(true);
+      // Obtener el email del localStorage cada vez (no solo al inicio)
+      const clientEmail = localStorage.getItem('clientEmail');
+      console.log('📧 Cargando citas para:', clientEmail);
+      
       // Si hay un clientEmail en localStorage (modo cliente simplificado), usamos ese
       const params = clientEmail ? { email: clientEmail } : {};
       const response = await api.get('/appointments/my-client-appointments', { params });
+      console.log('📋 Citas cargadas:', response.data.length);
       setAppointments(response.data);
       
       // Programar notificaciones automáticamente si estamos en APK
@@ -426,6 +430,7 @@ function AppointmentCard({ apt, onCancel }) {
       </div>
       
       <div className="my-appointment-card-actions" style={{ marginLeft: 20 }}>
+        {/* Solo mostrar cancelar para citas que aún pueden cancelarse */}
         {(apt.status === 'pending' || apt.status === 'confirmed') && (
           <button 
             onClick={() => onCancel(apt.id)}
@@ -441,6 +446,16 @@ function AppointmentCard({ apt, onCancel }) {
             <XCircle size={16} />
             Cancelar
           </button>
+        )}
+        {apt.status === 'done' && (
+          <span style={{ fontSize: 12, color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            ✓ Completada
+          </span>
+        )}
+        {apt.status === 'cancelled' && (
+          <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            ✗ Cancelada
+          </span>
         )}
       </div>
     </div>

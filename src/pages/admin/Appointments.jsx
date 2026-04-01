@@ -4,7 +4,7 @@ import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveCalendar from '../../components/ResponsiveCalendar';
-import { Check, X, Mail, Plus } from 'lucide-react';
+import { Check, X, Mail, Plus, ChevronLeft } from 'lucide-react';
 
 const STATUS_LABELS = {
   pending: { label: 'Pendiente', color: '#f59e0b' },
