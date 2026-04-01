@@ -432,7 +432,7 @@ export default function BookAppointment() {
                   boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
                 }}
               >
-                <img src="/kdice-logo.svg" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'contain' }} />
+                <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
                 <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
                 <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
               </div>

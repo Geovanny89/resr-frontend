@@ -55,6 +55,12 @@ export default function Appointments() {
   }, [business]);
 
   useEffect(() => {
+    // Detectar si es móvil después de montar (seguro para APK)
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);

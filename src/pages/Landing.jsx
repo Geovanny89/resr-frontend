@@ -1,10 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Landing() {
   const navigate   = useNavigate();
   const [demoSlug] = useState('demo-kdice');
   const [navOpen, setNavOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(null);
+  const [navHidden, setNavHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down - hide nav
+        setNavHidden(true);
+      } else {
+        // Scrolling up - show nav
+        setNavHidden(false);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   const features = [
     { icon: '📅', title: 'Gestión de Citas',          desc: 'Sistema completo de reservas online con confirmación automática' },
@@ -109,8 +131,10 @@ export default function Landing() {
         padding: '0 24px', display: 'flex', justifyContent: 'space-between',
         alignItems: 'center', position: 'sticky', top: 0, zIndex: 100,
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: 64,
+        transform: navHidden ? 'translateY(-100%)' : 'translateY(0)',
+        transition: 'transform 0.3s ease'
       }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#667eea', flexShrink: 0 }}>📱 KDice POS</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#667eea', flexShrink: 0 }}>K-Dice </div>
 
         {/* Desktop links */}
         <div className="nav-links-desktop" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
@@ -315,12 +339,95 @@ export default function Landing() {
       <footer style={{ background: '#1a202c', color: 'white', padding: '36px 24px', textAlign: 'center', fontSize: 14 }}>
         <p style={{ marginBottom: 14, color: '#a0aec0' }}>© {new Date().getFullYear()} KDice. Todos los derechos reservados.</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <a href="#" style={{ color: '#a0aec0', textDecoration: 'none' }}>Privacidad</a>
-          <a href="#" style={{ color: '#a0aec0', textDecoration: 'none' }}>Términos</a>
-          <a href="#" style={{ color: '#a0aec0', textDecoration: 'none' }}>Contacto</a>
+          <button 
+            onClick={() => setModalOpen('privacy')}
+            style={{ color: '#a0aec0', textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}
+          >
+            Privacidad
+          </button>
+          <button 
+            onClick={() => setModalOpen('terms')}
+            style={{ color: '#a0aec0', textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}
+          >
+            Términos
+          </button>
           <a href="https://wa.me/573001234567" target="_blank" rel="noreferrer" style={{ color: '#25d366', textDecoration: 'none', fontWeight: 600 }}>WhatsApp</a>
         </div>
       </footer>
+
+      {/* Modal de Privacidad */}
+      {modalOpen === 'privacy' && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: 20, overflow: 'hidden'
+        }} onClick={() => setModalOpen(null)}>
+          <div style={{
+            background: 'white', borderRadius: 16, padding: '24px 32px 32px',
+            maxWidth: 600, width: '100%', maxHeight: '90vh',
+            overflowY: 'auto', position: 'relative',
+            display: 'flex', flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setModalOpen(null)}
+              style={{ position: 'absolute', top: 16, right: 20, background: 'none', border: 'none', fontSize: 28, cursor: 'pointer', color: '#666', zIndex: 10 }}
+            >
+              ×
+            </button>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, color: '#1a202c', paddingRight: 40 }}>Política de Privacidad</h2>
+            <div style={{ color: '#4a5568', lineHeight: 1.7, fontSize: 14 }}>
+              <p style={{ marginBottom: 16 }}><strong>1. Información que recopilamos</strong></p>
+              <p style={{ marginBottom: 16 }}>Recopilamos información necesaria para proporcionar nuestros servicios: nombre del negocio, información de contacto, datos de empleados y clientes, y registros de citas.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>2. Uso de la información</strong></p>
+              <p style={{ marginBottom: 16 }}>Utilizamos la información para gestionar citas, enviar recordatorios, generar reportes y mejorar nuestros servicios. No vendemos ni compartimos datos con terceros.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>3. Seguridad</strong></p>
+              <p style={{ marginBottom: 16 }}>Implementamos medidas de seguridad para proteger sus datos. Toda la información se transmite de forma encriptada.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>4. Contacto</strong></p>
+              <p>Si tiene preguntas sobre privacidad, contáctenos por WhatsApp.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Términos */}
+      {modalOpen === 'terms' && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: 20, overflow: 'hidden'
+        }} onClick={() => setModalOpen(null)}>
+          <div style={{
+            background: 'white', borderRadius: 16, padding: '24px 32px 32px',
+            maxWidth: 600, width: '100%', maxHeight: '90vh',
+            overflowY: 'auto', position: 'relative',
+            display: 'flex', flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setModalOpen(null)}
+              style={{ position: 'absolute', top: 16, right: 20, background: 'none', border: 'none', fontSize: 28, cursor: 'pointer', color: '#666', zIndex: 10 }}
+            >
+              ×
+            </button>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, color: '#1a202c', paddingRight: 40 }}>Términos de Servicio</h2>
+            <div style={{ color: '#4a5568', lineHeight: 1.7, fontSize: 14 }}>
+              <p style={{ marginBottom: 16 }}><strong>1. Aceptación</strong></p>
+              <p style={{ marginBottom: 16 }}>Al usar KDice, usted acepta estos términos. El servicio es proporcionado "tal cual" sin garantías explícitas.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>2. Suscripción</strong></p>
+              <p style={{ marginBottom: 16 }}>El servicio tiene un costo mensual de $60,000 COP. Puede cancelar en cualquier momento sin penalización.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>3. Responsabilidades</strong></p>
+              <p style={{ marginBottom: 16 }}>Usted es responsable de mantener la seguridad de su cuenta. KDice no se hace responsable por pérdidas de datos debido a negligencia del usuario.</p>
+              
+              <p style={{ marginBottom: 16 }}><strong>4. Soporte</strong></p>
+              <p>Ofrecemos soporte por WhatsApp durante horarios de oficina.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,13 +23,20 @@ export default function ResponsiveTable({
   emptyMessage = 'No hay datos'
 }) {
   const [expandedRows, setExpandedRows] = useState(new Set());
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Detectar cambios de tamaño
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Detectar si es móvil después de montar (seguro para APK)
+    const checkMobile = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
+    };
+    checkMobile();
+    
+    const handleResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, []);
 
   const toggleRow = (index) => {

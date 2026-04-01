@@ -106,7 +106,7 @@ export default function Login() {
             boxShadow: '0 8px 24px rgba(255, 94, 0, 0.2)',
             border: '2px solid rgba(255, 255, 255, 0.1)'
           }}>
-            <img src="/kdice-logo.svg" alt="KDice Reservas" 
+            <img src="/kdice.png" alt="KDice Reservas" 
                  style={{ 
                    width: 120, 
                    height: 120, 

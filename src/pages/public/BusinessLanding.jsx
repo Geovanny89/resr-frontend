@@ -28,11 +28,11 @@ function SocialLink({ href, children, label, color }) {
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width: 40, height: 40, borderRadius: '50%', background: color, color: 'white',
-        fontSize: 17, textDecoration: 'none', transition: 'transform 0.2s, box-shadow 0.2s',
+        fontSize: 17, textDecoration: 'none', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
         boxShadow: '0 2px 8px rgba(0,0,0,0.2)', flexShrink: 0,
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.25)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }}
     >
       {children}
     </a>
@@ -334,19 +334,19 @@ export default function BusinessLanding() {
           {hasSocials && (
             <div className="hero-social">
               <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-                <img src="/icons/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
+                <img src="/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
               </SocialLink>
               <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-                <img src="/icons/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
+                <img src="/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
               </SocialLink>
               <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-                <img src="/icons/tiktok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
+                <img src="/tik-tok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
               </SocialLink>
               <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-                <img src="/icons/twitter.png" alt="Twitter" style={{ width: 20, height: 20 }} />
+                <img src="/x.png" alt="Twitter" style={{ width: 20, height: 20 }} />
               </SocialLink>
               <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-                <img src="/icons/globe.png" alt="Web" style={{ width: 20, height: 20 }} />
+                <img src="/web.png" alt="Web" style={{ width: 20, height: 20 }} />
               </SocialLink>
             </div>
           )}
@@ -496,19 +496,19 @@ export default function BusinessLanding() {
         {hasSocials && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
             <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-              <img src="/icons/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
+              <img src="/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
             </SocialLink>
             <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-              <img src="/icons/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
+              <img src="/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
             </SocialLink>
             <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-              <img src="/icons/tiktok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
+              <img src="/tik-tok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
             </SocialLink>
             <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-              <img src="/icons/twitter.png" alt="Twitter" style={{ width: 20, height: 20 }} />
+              <img src="/x.png" alt="Twitter" style={{ width: 20, height: 20 }} />
             </SocialLink>
             <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-              <img src="/icons/globe.png" alt="Web" style={{ width: 20, height: 20 }} />
+              <img src="/web.png" alt="Web" style={{ width: 20, height: 20 }} />
             </SocialLink>
           </div>
         )}
