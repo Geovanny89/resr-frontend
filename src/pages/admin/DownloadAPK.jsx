@@ -18,11 +18,10 @@ export default function DownloadAPK() {
 
   const loadAPKStatus = () => {
     // Ya no consultamos al backend, asumimos que la APK está en la carpeta estática
-    // ya que viaja con Git.
     setApkStatus({
       apkReady: true,
       apkSize: '8-10 MB',
-      lastGenerated: 'Sincronizado con Git',
+      lastGenerated: 'Compilada localmente',
       universal: true
     });
   };

@@ -156,6 +156,7 @@ export default function BookAppointment() {
     service: null, employee: null, date: '', slot: null,
     clientName: '', clientPhone: '', clientEmail: '', notes: '',
   });
+  const [hasPreviousData, setHasPreviousData] = useState(false);
 
   // Precargar datos del cliente si viene desde MyAppointments (APK)
   useEffect(() => {
@@ -173,6 +174,9 @@ export default function BookAppointment() {
               clientPhone: lastApt.clientPhone || '',
               clientEmail: savedClientEmail,
             }));
+            if (lastApt.clientName && lastApt.clientPhone) {
+              setHasPreviousData(true);
+            }
           } else {
             // Solo pre-llenar el email si no hay citas previas
             setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
@@ -606,6 +610,15 @@ export default function BookAppointment() {
               </>
             )}
 
+            {hasPreviousData && !submitting && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', background: colors.bgSecondary, borderRadius: 10, fontSize: 12, color: colors.textSecondary, border: `1px solid ${colors.border}` }}>
+                ✨ Se usará tu información guardada: <strong>{selected.clientName}</strong>. 
+                <span onClick={() => setStep(4)} style={{ color: primary, cursor: 'pointer', marginLeft: 6, fontWeight: 600, textDecoration: 'underline' }}>
+                  Cambiar datos
+                </span>
+              </div>
+            )}
+
             <div className="book-action-row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
                 onClick={() => setStep(2)}
@@ -615,14 +628,15 @@ export default function BookAppointment() {
               </button>
               {selected.slot && (
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={hasPreviousData ? handleSubmit : () => setStep(4)}
+                  disabled={submitting}
                   style={{
                     background: gradient, color: 'white', border: 'none',
                     borderRadius: 8, padding: '10px 20px', cursor: 'pointer',
                     fontSize: 13, fontWeight: 700, flex: 1, maxWidth: 260,
                   }}
                 >
-                  Continuar →
+                  {submitting ? '⏳ Reservando...' : (hasPreviousData ? '✅ Confirmar Cita →' : 'Continuar →')}
                 </button>
               )}
             </div>
