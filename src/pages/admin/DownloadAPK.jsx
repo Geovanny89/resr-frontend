@@ -18,18 +18,14 @@ export default function DownloadAPK() {
 
   const loadAPKStatus = async () => {
     try {
-      // Verificar si la APK global existe en la carpeta pública
-      // Usamos cache: 'no-cache' para evitar falsos positivos
-      const response = await fetch('/apk/kdice-reservas.apk', { method: 'HEAD', cache: 'no-cache' });
+      // Verificar si la APK existe en el backend
+      const res = await api.get('/apk/check-update/kdice');
       
-      if (response.ok) {
-        const contentLength = response.headers.get('content-length');
-        const sizeInMB = contentLength ? (contentLength / 1024 / 1024).toFixed(1) : null;
-        
+      if (res.data?.apkExists) {
         setApkStatus({
           apkReady: true,
-          apkSize: sizeInMB ? `${sizeInMB} MB` : 'Desconocido',
-          lastGenerated: new Date().toLocaleString(),
+          apkSize: res.data.size ? `${(res.data.size / 1024 / 1024).toFixed(1)} MB` : 'Desconocido',
+          lastGenerated: res.data.lastModified ? new Date(res.data.lastModified).toLocaleString() : null,
           universal: true
         });
       } else {
@@ -57,12 +53,9 @@ export default function DownloadAPK() {
     setSuccessMsg('');
 
     try {
-      // Descargar APK global directamente desde la carpeta pública
-      const downloadUrl = '/apk/kdice-reservas.apk';
-      
-      // Verificar si el archivo existe antes de intentar descargar
-      const response = await fetch(downloadUrl, { method: 'HEAD', cache: 'no-cache' });
-      if (!response.ok) {
+      // Verificar primero que existe
+      const checkRes = await api.get('/apk/check-update/kdice');
+      if (!checkRes.data?.apkExists) {
         setError('La APK no está disponible en el servidor. Contacta al administrador.');
         setLoading(false);
         return;
@@ -70,7 +63,9 @@ export default function DownloadAPK() {
 
       setSuccessMsg('¡APK lista! Iniciando descarga...');
 
-      // Crear link de descarga
+      // Descargar desde el backend API (no desde public)
+      const downloadUrl = '/api/apk/download/kdice/android';
+      
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = 'kdice-reservas.apk';

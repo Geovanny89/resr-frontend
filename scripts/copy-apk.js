@@ -24,7 +24,11 @@ const possiblePaths = [
   path.join(__dirname, '../android/app/build/outputs/apk/debug/app-debug.apk'),
 ];
 
+// Carpeta para Git (fuera de public para no inflar el build)
+const staticApkPath = path.join(__dirname, '../public-static/apk/kdice-reservas.apk');
 const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
+
+const staticApkDir = path.dirname(staticApkPath);
 const distApkDir = path.dirname(distApkPath);
 
 try {
@@ -49,31 +53,36 @@ try {
 
   console.log(`📱 APK encontrada: ${androidApkPath}`);
 
-  // Crear carpetas de destino SOLO en dist
+  // Crear carpetas de destino
+  if (!fs.existsSync(staticApkDir)) {
+    fs.mkdirSync(staticApkDir, { recursive: true });
+  }
   if (!fs.existsSync(distApkDir)) {
     fs.mkdirSync(distApkDir, { recursive: true });
   }
 
-  // Eliminar APK vieja
+  // Eliminar APKs viejas
+  if (fs.existsSync(staticApkPath)) fs.unlinkSync(staticApkPath);
   if (fs.existsSync(distApkPath)) fs.unlinkSync(distApkPath);
 
-  // Copiar SOLO a dist (evitar public para no inflar la APK)
+  // Copiar a ambas ubicaciones
+  fs.copyFileSync(androidApkPath, staticApkPath);
   fs.copyFileSync(androidApkPath, distApkPath);
 
-  const stats = fs.statSync(distApkPath);
+  const stats = fs.statSync(staticApkPath);
   const sizeInMB = (stats.size / 1024 / 1024).toFixed(2);
   const lastModified = stats.mtime.toLocaleString();
 
-  console.log('✅ APK copiada exitosamente a /dist:');
+  console.log('✅ APK copiada exitosamente:');
   console.log(`📂 Origen: ${androidApkPath}`);
-  console.log(`📂 Destino: ${distApkPath}`);
+  console.log(`📂 Destino Git: ${staticApkPath}`);
+  console.log(`📂 Destino Dist: ${distApkPath}`);
   console.log(`📊 Tamaño: ${sizeInMB} MB`);
   console.log(`📅 Fecha: ${lastModified}`);
 
-  console.log('\n🎉 APK lista para descargar (Vía Servidor)!');
+  console.log('\n🎉 APK lista para subir vía GIT!');
   console.log('📱 /admin/download-apk');
   console.log('🌐 /apk/kdice-reservas.apk');
-  console.log('\n⚠️ NOTA: Se ha dejado de copiar a /public para reducir el peso de la APK final.');
 
 } catch (error) {
   console.error('❌ Error:', error.message);
