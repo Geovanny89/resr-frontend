@@ -326,12 +326,16 @@ export default function EmployeeDashboard() {
             marginBottom: 24,
             color: colors.text
           }}>
-            📅 Agenda para {new Date(selectedDate).toLocaleDateString('es-CO', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+            📅 Agenda para {(() => {
+              const [year, month, day] = selectedDate.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              return date.toLocaleDateString('es-CO', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            })()}
           </h2>
 
           {error && (
