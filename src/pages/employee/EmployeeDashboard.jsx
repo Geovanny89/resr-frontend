@@ -44,7 +44,7 @@ export default function EmployeeDashboard() {
       setEmployee(response.data);
       // También cargar info del negocio
       if (response.data?.businessId) {
-        const bizRes = await api.get(`/businesses/${response.data.businessId}/public`);
+        const bizRes = await api.get(`/businesses/by-id/${response.data.businessId}/public`);
         setBusiness(bizRes.data);
       }
     } catch (err) {
