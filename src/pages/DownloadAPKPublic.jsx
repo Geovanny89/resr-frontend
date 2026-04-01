@@ -12,34 +12,29 @@ export default function DownloadAPKPublic() {
     checkAPKAvailability();
   }, []);
 
-  const checkAPKAvailability = async () => {
-    try {
-      const res = await api.get('/apk/check-update/kdice');
-      setApkInfo(res.data);
-    } catch (e) {
-      console.error('Error checking APK:', e);
-    }
+  const checkAPKAvailability = () => {
+    // Ya no consultamos al backend, asumimos que la APK está en la carpeta estática del frontend
+    setApkInfo({
+      apkExists: true,
+      currentVersion: {
+        size: 10485760, // ~10MB aproximado para mostrar
+        lastModified: new Date().toISOString()
+      }
+    });
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     setDownloading(true);
     setError('');
 
     try {
-      // Descargar desde API del backend (ruta universal)
-      const downloadUrl = '/api/apk/download/kdice/android';
-      
-      // Verificar primero
-      const checkRes = await api.get('/apk/check-update/kdice');
-      if (!checkRes.data?.apkExists) {
-        setError('La APK no está disponible en el servidor.');
-        setDownloading(false);
-        return;
-      }
+      // Descargar directamente desde la carpeta estática del frontend
+      // La ruta /apk/ es servida como estática por el backend apuntando a frontend/public-static/apk/
+      const downloadUrl = '/apk/kdice-reservas.apk';
       
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = 'kdice-app.apk';
+      link.download = 'kdice-reservas.apk';
       link.setAttribute('target', '_blank');
       document.body.appendChild(link);
       link.click();
