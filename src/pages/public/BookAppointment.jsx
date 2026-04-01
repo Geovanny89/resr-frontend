@@ -158,6 +158,12 @@ export default function BookAppointment() {
   });
   const [hasPreviousData, setHasPreviousData] = useState(false);
   const [loadingClientData, setLoadingClientData] = useState(true);
+  
+  // Paginación para servicios y empleados
+  const [servicesPage, setServicesPage] = useState(1);
+  const [employeesPage, setEmployeesPage] = useState(1);
+  const servicesPerPage = 5;
+  const employeesPerPage = 8;
 
   // Precargar datos del cliente si viene desde MyAppointments (APK)
   useEffect(() => {
@@ -438,31 +444,91 @@ export default function BookAppointment() {
                 <p style={{ fontSize: 13, marginTop: 4 }}>Este negocio aún no tiene servicios configurados.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {business.Services.map(svc => (
-                  <div
-                    key={svc.id}
-                    className="book-svc"
-                    onClick={() => { setSelected(s => ({ ...s, service: svc })); setStep(1); }}
-                    style={{
-                      background: colors.cardBg, borderRadius: 14, padding: '16px 20px',
-                      border: `2px solid ${selected.service?.id === svc.id ? primary : colors.border}`,
-                      cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', boxShadow: `0 1px 4px ${colors.shadow}`,
-                      transition: 'all 0.15s', gap: 12,
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16, color: colors.text, marginBottom: 4 }}>{svc.name}</div>
-                      {svc.description && <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>{svc.description}</div>}
-                      <div style={{ fontSize: 12, color: colors.textSecondary }}>⏱ {svc.durationMin} min</div>
-                    </div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#059669', flexShrink: 0 }}>
-                      ${Number(svc.price).toLocaleString('es-CO')}
-                    </div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(() => {
+                    const totalPages = Math.ceil(business.Services.length / servicesPerPage);
+                    const startIndex = (servicesPage - 1) * servicesPerPage;
+                    const paginatedServices = business.Services.slice(startIndex, startIndex + servicesPerPage);
+                    
+                    return (
+                      <>
+                        {paginatedServices.map(svc => (
+                          <div
+                            key={svc.id}
+                            className="book-svc"
+                            onClick={() => { setSelected(s => ({ ...s, service: svc })); setStep(1); }}
+                            style={{
+                              background: colors.cardBg, borderRadius: 14, padding: '16px 20px',
+                              border: `2px solid ${selected.service?.id === svc.id ? primary : colors.border}`,
+                              cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+                              alignItems: 'center', boxShadow: `0 1px 4px ${colors.shadow}`,
+                              transition: 'all 0.15s', gap: 12,
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 16, color: colors.text, marginBottom: 4 }}>{svc.name}</div>
+                              {svc.description && <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>{svc.description}</div>}
+                              <div style={{ fontSize: 12, color: colors.textSecondary }}>⏱ {svc.durationMin} min</div>
+                            </div>
+                            <div style={{ fontSize: 20, fontWeight: 800, color: '#059669', flexShrink: 0 }}>
+                              ${Number(svc.price).toLocaleString('es-CO')}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </div>
+                
+                {/* Paginación de Servicios */}
+                {business.Services.length > servicesPerPage && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    gap: 12, 
+                    marginTop: 20,
+                    padding: '12px',
+                  }}>
+                    <button
+                      onClick={() => setServicesPage(p => Math.max(1, p - 1))}
+                      disabled={servicesPage === 1}
+                      style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        border: 'none',
+                        background: servicesPage === 1 ? colors.bgSecondary : primary,
+                        color: servicesPage === 1 ? colors.textSecondary : 'white',
+                        cursor: servicesPage === 1 ? 'not-allowed' : 'pointer',
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ‹ Anterior
+                    </button>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
+                      {servicesPage} / {Math.ceil(business.Services.length / servicesPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setServicesPage(p => Math.min(Math.ceil(business.Services.length / servicesPerPage), p + 1))}
+                      disabled={servicesPage === Math.ceil(business.Services.length / servicesPerPage)}
+                      style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        border: 'none',
+                        background: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? colors.bgSecondary : primary,
+                        color: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? colors.textSecondary : 'white',
+                        cursor: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? 'not-allowed' : 'pointer',
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Siguiente ›
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -474,49 +540,108 @@ export default function BookAppointment() {
             <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
               Servicio: <strong>{selected.service?.name}</strong>
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-              {/* Cualquier disponible */}
-              <div
-                className="book-emp"
-                onClick={() => { setSelected(s => ({ ...s, employee: null })); setStep(2); }}
-                style={{
-                  background: colors.cardBg, borderRadius: 14, padding: '20px 12px', textAlign: 'center',
-                  border: `2px solid ${colors.border}`, cursor: 'pointer',
-                  boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
-                }}
-              >
-                <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
-                <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
-                <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
-              </div>
+            {(() => {
+              const employees = business?.Employees || [];
+              const totalPages = Math.ceil(employees.length / employeesPerPage);
+              const startIndex = (employeesPage - 1) * employeesPerPage;
+              const paginatedEmployees = employees.slice(startIndex, startIndex + employeesPerPage);
+              
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+                    {/* Cualquier disponible */}
+                    <div
+                      className="book-emp"
+                      onClick={() => { setSelected(s => ({ ...s, employee: null })); setStep(2); }}
+                      style={{
+                        background: colors.cardBg, borderRadius: 14, padding: '20px 12px', textAlign: 'center',
+                        border: `2px solid ${colors.border}`, cursor: 'pointer',
+                        boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
+                      }}
+                    >
+                      <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
+                      <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
+                      <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
+                    </div>
 
-              {(business?.Employees || []).map(emp => (
-                <div
-                  key={emp.id}
-                  className="book-emp"
-                  onClick={() => { setSelected(s => ({ ...s, employee: emp })); setStep(2); }}
-                  style={{
-                    background: selected.employee?.id === emp.id ? '#eef2ff' : colors.cardBg,
-                    borderRadius: 14, padding: '20px 12px', textAlign: 'center',
-                    border: `2px solid ${selected.employee?.id === emp.id ? primary : colors.border}`,
-                    cursor: 'pointer', boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{
-                    width: 56, height: 56, borderRadius: '50%',
-                    background: '#eef2ff', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', margin: '0 auto 10px',
-                    overflow: 'hidden', border: `2px solid ${colors.border}`,
-                  }}>
-                    {emp.photoUrl
-                      ? <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <span style={{ fontSize: 24 }}>👤</span>
-                    }
+                    {paginatedEmployees.map(emp => (
+                      <div
+                        key={emp.id}
+                        className="book-emp"
+                        onClick={() => { setSelected(s => ({ ...s, employee: emp })); setStep(2); }}
+                        style={{
+                          background: selected.employee?.id === emp.id ? '#eef2ff' : colors.cardBg,
+                          borderRadius: 14, padding: '20px 12px', textAlign: 'center',
+                          border: `2px solid ${selected.employee?.id === emp.id ? primary : colors.border}`,
+                          cursor: 'pointer', boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{
+                          width: 56, height: 56, borderRadius: '50%',
+                          background: '#eef2ff', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', margin: '0 auto 10px',
+                          overflow: 'hidden', border: `2px solid ${colors.border}`,
+                        }}>
+                          {emp.photoUrl
+                            ? <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <span style={{ fontSize: 24 }}>👤</span>
+                          }
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>{emp.User?.name}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>{emp.User?.name}</div>
-                </div>
-              ))}
-            </div>
+                  
+                  {/* Paginación de Empleados */}
+                  {employees.length > employeesPerPage && (
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      gap: 12, 
+                      marginBottom: 20,
+                      padding: '12px',
+                    }}>
+                      <button
+                        onClick={() => setEmployeesPage(p => Math.max(1, p - 1))}
+                        disabled={employeesPage === 1}
+                        style={{ 
+                          padding: '8px 12px', 
+                          borderRadius: 8, 
+                          border: 'none',
+                          background: employeesPage === 1 ? colors.bgSecondary : primary,
+                          color: employeesPage === 1 ? colors.textSecondary : 'white',
+                          cursor: employeesPage === 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
+                      >
+                        ‹ Anterior
+                      </button>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
+                        {employeesPage} / {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setEmployeesPage(p => Math.min(totalPages, p + 1))}
+                        disabled={employeesPage === totalPages}
+                        style={{ 
+                          padding: '8px 12px', 
+                          borderRadius: 8, 
+                          border: 'none',
+                          background: employeesPage === totalPages ? colors.bgSecondary : primary,
+                          color: employeesPage === totalPages ? colors.textSecondary : 'white',
+                          cursor: employeesPage === totalPages ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Siguiente ›
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <button
               onClick={() => setStep(0)}
               style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}

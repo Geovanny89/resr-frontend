@@ -45,6 +45,8 @@ export default function MyAppointments() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState('calendar'); // 'calendar' or 'list'
+  const [listPage, setListPage] = useState(1);
+  const listItemsPerPage = 5;
 
   // Recargar citas cada vez que se monta el componente
   useEffect(() => {
@@ -240,11 +242,72 @@ export default function MyAppointments() {
       );
     }
 
+    // Paginación
+    const totalPages = Math.ceil(appointments.length / listItemsPerPage);
+    const startIndex = (listPage - 1) * listItemsPerPage;
+    const paginatedAppointments = appointments.slice(startIndex, startIndex + listItemsPerPage);
+
     return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        {appointments.map(apt => (
-          <AppointmentCard key={apt.id} apt={apt} onCancel={handleCancel} />
-        ))}
+      <div>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {paginatedAppointments.map(apt => (
+            <AppointmentCard key={apt.id} apt={apt} onCancel={handleCancel} />
+          ))}
+        </div>
+        
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            gap: 12, 
+            marginTop: 20,
+            padding: '12px',
+          }}>
+            <button
+              onClick={() => setListPage(p => Math.max(1, p - 1))}
+              disabled={listPage === 1}
+              style={{ 
+                padding: '8px 12px', 
+                borderRadius: 8, 
+                border: 'none',
+                background: listPage === 1 ? '#e2e8f0' : '#4f46e5',
+                color: listPage === 1 ? '#a0aec0' : 'white',
+                cursor: listPage === 1 ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <ChevronLeft size={16} /> Anterior
+            </button>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#2d3748' }}>
+              Página {listPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setListPage(p => Math.min(totalPages, p + 1))}
+              disabled={listPage === totalPages}
+              style={{ 
+                padding: '8px 12px', 
+                borderRadius: 8, 
+                border: 'none',
+                background: listPage === totalPages ? '#e2e8f0' : '#4f46e5',
+                color: listPage === totalPages ? '#a0aec0' : 'white',
+                cursor: listPage === totalPages ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              Siguiente <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
     );
   };

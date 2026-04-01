@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
-import { Plus, Trash2, Calendar, Clock, ChevronDown, ChevronUp, Edit2, X, Info } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, X, Info } from 'lucide-react';
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const SCHEDULE_TYPES = [
