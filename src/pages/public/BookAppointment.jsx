@@ -157,6 +157,34 @@ export default function BookAppointment() {
     clientName: '', clientPhone: '', clientEmail: '', notes: '',
   });
 
+  // Precargar datos del cliente si viene desde MyAppointments (APK)
+  useEffect(() => {
+    const savedClientEmail = localStorage.getItem('clientEmail');
+    if (savedClientEmail) {
+      // Intentar recuperar datos del cliente desde citas anteriores
+      api.get('/appointments/my-client-appointments', { params: { email: savedClientEmail } })
+        .then(r => {
+          if (r.data && r.data.length > 0) {
+            // Usar datos de la cita más reciente
+            const lastApt = r.data[0];
+            setSelected(prev => ({
+              ...prev,
+              clientName: lastApt.clientName || '',
+              clientPhone: lastApt.clientPhone || '',
+              clientEmail: savedClientEmail,
+            }));
+          } else {
+            // Solo pre-llenar el email si no hay citas previas
+            setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
+          }
+        })
+        .catch(() => {
+          // Solo pre-llenar el email si falla la petición
+          setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
+        });
+    }
+  }, []);
+
   useEffect(() => {
     api.get(`/businesses/${slug}/public`)
       .then(r => setBusiness(r.data))
