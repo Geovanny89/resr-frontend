@@ -545,6 +545,7 @@ export default function MyBusiness() {
                 <p style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
                   Este texto aparece en el encabezado de tu pagina publica. Puedes escribirlo libremente.
                 </p>
+                <br/>
                 <div className="form-group">
                   <label>Horario (texto libre)</label>
                   <textarea value={form.businessHours} onChange={e=>setForm({...form,businessHours:e.target.value})} rows={4}
