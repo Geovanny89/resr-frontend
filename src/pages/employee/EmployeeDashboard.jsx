@@ -164,13 +164,13 @@ export default function EmployeeDashboard() {
   return (
     <div style={{ minHeight: '100vh', background: colors.bg }}>
       {/* Header */}
-      <div style={{
+      <div className="employee-header" style={{
         background: colors.gradient,
         color: 'white',
-        padding: '20px 16px'
+        padding: '16px'
       }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{
+          <div className="employee-header-content" style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -178,40 +178,41 @@ export default function EmployeeDashboard() {
             gap: 12
           }}>
             {/* Logo y nombre del negocio */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+            <div className="employee-brand" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
               {business?.logoUrl ? (
                 <img 
                   src={getImgUrl(business.logoUrl)} 
                   alt={business?.name}
-                  style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}
+                  className="employee-logo"
+                  style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}
                 />
               ) : (
-                <div style={{ 
-                  width: 48, 
-                  height: 48, 
+                <div className="employee-logo" style={{ 
+                  width: 44, 
+                  height: 44, 
                   borderRadius: '50%', 
                   background: 'rgba(255,255,255,0.2)', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: 700,
                   flexShrink: 0
                 }}>
                   {getInitials(business?.name)}
                 </div>
               )}
-              <div style={{ minWidth: 0 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <h1 className="employee-business-name" style={{ fontSize: 18, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {business?.name || 'Negocio'}
                 </h1>
-                <p style={{ opacity: 0.9, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p className="employee-employee-name" style={{ opacity: 0.9, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {employee?.User?.name} • {business?.type || 'Empleado'}
                 </p>
               </div>
             </div>
             
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            <div className="employee-header-buttons" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
               <ThemeToggle />
               <button
                 onClick={() => setShowChangePwModal(true)}
@@ -255,16 +256,22 @@ export default function EmployeeDashboard() {
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
         <style>{`
           @media (max-width: 640px) {
-            .employee-header { flex-direction: column !important; align-items: flex-start !important; }
-            .employee-header-buttons { width: 100%; justify-content: space-between; }
+            .employee-header { padding: 12px !important; }
+            .employee-header-content { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+            .employee-brand { width: 100%; }
+            .employee-business-name { font-size: 16px !important; }
+            .employee-employee-name { font-size: 11px !important; }
+            .employee-logo { width: 36px !important; height: 36px !important; font-size: 14px !important; }
+            .employee-header-buttons { width: 100%; justify-content: center; gap: 6px; }
+            .employee-header-buttons button { font-size: 12px !important; padding: 6px 10px !important; flex: 1; }
             .employee-appointment-card { padding: 16px !important; }
             .employee-appointment-actions { flex-direction: column; }
             .employee-appointment-actions button { width: 100%; justify-content: center; }
           }
           @media (max-width: 480px) {
-            .employee-header h1 { font-size: 16px !important; }
-            .employee-header p { font-size: 12px !important; }
-            .employee-logo { width: 40px !important; height: 40px !important; }
+            .employee-business-name { font-size: 15px !important; max-width: 200px; }
+            .employee-employee-name { font-size: 10px !important; }
+            .employee-logo { width: 32px !important; height: 32px !important; }
           }
         `}</style>
         
