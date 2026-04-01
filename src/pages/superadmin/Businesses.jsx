@@ -4,7 +4,7 @@ import api from '../../api/client';
 import {
   Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
   Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  CreditCard, Calendar, User
+  CreditCard, Calendar, User, Trash2
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
@@ -122,6 +122,34 @@ export default function BusinessesResponsive() {
     }
   };
 
+  const handleDelete = async (biz) => {
+    if (!confirm(`¿Estás seguro de eliminar el negocio "${biz.name}"?\n\nEsta acción no se puede deshacer y eliminará todos los datos asociados (citas, servicios, empleados).`)) {
+      return;
+    }
+    try {
+      await api.delete(`/businesses/${biz.id}`);
+      setBusinesses(prev => prev.filter(b => b.id !== biz.id));
+      showToast('Negocio eliminado correctamente');
+    } catch (err) {
+      showToast('Error al eliminar negocio', 'error');
+    }
+  };
+
+  const handleViewScreenshot = async (biz) => {
+    setScreenshot({ url: biz.paymentScreenshot, business: biz });
+    // Marcar como visto si no lo está
+    if (!biz.paymentScreenshotViewed) {
+      try {
+        await api.patch(`/businesses/${biz.id}/screenshot-viewed`);
+        setBusinesses(prev => prev.map(b => 
+          b.id === biz.id ? { ...b, paymentScreenshotViewed: true } : b
+        ));
+      } catch (e) {
+        console.error('Error al marcar como visto:', e);
+      }
+    }
+  };
+
   const BusinessCard = ({ biz }) => {
     const typeInfo = getTypeInfo(biz.type);
     const subInfo  = SUB_LABELS[biz.subscriptionStatus] || SUB_LABELS.pending;
@@ -177,6 +205,16 @@ export default function BusinessesResponsive() {
             {biz.subscriptionStatus === 'overdue' && <AlertTriangle size={12} />}
             {subInfo.label}
           </span>
+          {biz.paymentScreenshot && !biz.paymentScreenshotViewed && (
+            <span className="badge" style={{ 
+              padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+              background: '#dbeafe', color: '#1e40af',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}>
+              <Image size={12} />
+              Nuevo comprobante
+            </span>
+          )}
         </div>
 
         {/* Actions */}
@@ -184,11 +222,26 @@ export default function BusinessesResponsive() {
           {biz.paymentScreenshot && (
             <button 
               className="btn-icon" 
-              onClick={() => setScreenshot({ url: biz.paymentScreenshot, business: biz })}
+              onClick={() => handleViewScreenshot(biz)}
               title="Ver comprobante"
-              style={{ background: '#f3f4f6', color: '#4b5563' }}
+              style={{ 
+                background: !biz.paymentScreenshotViewed ? '#dbeafe' : '#f3f4f6', 
+                color: !biz.paymentScreenshotViewed ? '#1e40af' : '#4b5563',
+                position: 'relative'
+              }}
             >
               <Image size={18} />
+              {!biz.paymentScreenshotViewed && (
+                <span style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: '#ef4444'
+                }} />
+              )}
             </button>
           )}
           <button 
@@ -209,6 +262,17 @@ export default function BusinessesResponsive() {
             }}
           >
             {biz.status === 'active' ? <Lock size={18} /> : <Unlock size={18} />}
+          </button>
+          <button 
+            className="btn-icon" 
+            onClick={() => handleDelete(biz)}
+            title="Eliminar negocio"
+            style={{ 
+              background: '#fef2f2', 
+              color: '#dc2626'
+            }}
+          >
+            <Trash2 size={18} />
           </button>
         </div>
       </div>

@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 
 export default function RegisterVendor() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [businessTypes, setBusinessTypes] = useState([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [form, setForm] = useState({
@@ -95,7 +95,7 @@ export default function RegisterVendor() {
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/register-vendor', {
+      await api.post('/auth/register-vendor', {
         name: form.name,
         email: form.email,
         password: form.password,
@@ -106,9 +106,8 @@ export default function RegisterVendor() {
         address: form.address
       });
 
-      // Guardar token y redirigir
-      login(response.data.token, response.data.business || null);
-      navigate('/admin');
+      // Mostrar pantalla de éxito
+      setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');
     } finally {
@@ -139,7 +138,50 @@ export default function RegisterVendor() {
         width: '100%',
         boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
       }} className="register-vendor-card">
+        {/* Pantalla de Éxito */}
+        {success && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, color: '#2d3748' }}>
+              ¡Negocio Creado Exitosamente!
+            </h1>
+            <p style={{ color: '#718096', fontSize: 16, marginBottom: 24, lineHeight: 1.6 }}>
+              Tu empresa <strong>{form.businessName}</strong> ha sido registrada correctamente.
+              <br /><br />
+              Ahora puedes iniciar sesión con tu email y contraseña para comenzar a gestionar tu negocio.
+            </p>
+            <Link
+              to="/login"
+              style={{
+                display: 'inline-block',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '14px 32px',
+                fontSize: 16,
+                fontWeight: 600,
+                borderRadius: 8,
+                cursor: 'pointer',
+                textDecoration: 'none',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              Ir a Iniciar Sesión →
+            </Link>
+          </div>
+        )}
+
         {/* Header */}
+        {!success && (
+        <>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: '#2d3748' }}>
             Crear mi Negocio
@@ -579,6 +621,8 @@ export default function RegisterVendor() {
             </Link>
           </p>
         </div>
+        </>
+      )}
       </div>
     </div>
   );

@@ -323,6 +323,7 @@ export default function BusinessLanding() {
                 📞 {business.phone}
               </a>
             )}
+            <br/>
             {business.businessHours && (
               <span className="hero-pill">
                 🕐 {business.businessHours}
