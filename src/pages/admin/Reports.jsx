@@ -96,7 +96,7 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
   };
 
   const handleDay = (day) => {
-    if (!day || isPast(day)) return;
+    if (!day) return;
     const dd = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     
     if (!startValue) {
@@ -114,7 +114,7 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
     }
   };
 
-  const canGoPrev = () => !(viewYear === y && viewMonth === m - 1);
+  const canGoPrev = () => true;
 
   return (
     <div style={{
@@ -143,7 +143,6 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 16 }}>
         {days.map((day, i) => {
-          const past = isPast(day);
           const start = isStart(day);
           const end = isEnd(day);
           const inRange = isInRange(day);
@@ -152,9 +151,9 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
               style={{
                 textAlign: 'center', padding: '7px 2px', borderRadius: 6, fontSize: 12,
                 fontWeight: start || end ? 700 : 400,
-                cursor: day && !past ? 'pointer' : 'default',
+                cursor: day ? 'pointer' : 'default',
                 background: start || end ? '#667eea' : inRange ? '#eef2ff' : 'transparent',
-                color: !day ? 'transparent' : past ? '#cbd5e0' : start || end ? 'white' : inRange ? '#667eea' : '#2d3748',
+                color: !day ? 'transparent' : start || end ? 'white' : inRange ? '#667eea' : '#2d3748',
               }}>
               {day || ''}
             </div>

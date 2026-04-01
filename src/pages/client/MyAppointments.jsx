@@ -91,10 +91,12 @@ export default function MyAppointments() {
   const handleCancel = async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas cancelar tu cita?')) return;
     try {
-      await api.patch(`/appointments/${id}/cancel`);
+      // Obtener email del cliente para verificación
+      const clientEmail = localStorage.getItem('clientEmail');
+      await api.patch(`/appointments/${id}/cancel`, { clientEmail });
       loadAppointments();
     } catch (e) {
-      alert('Error al cancelar la cita');
+      alert('Error al cancelar la cita: ' + (e.response?.data?.error || 'Error desconocido'));
     }
   };
 

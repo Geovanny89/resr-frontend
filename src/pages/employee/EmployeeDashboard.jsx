@@ -26,11 +26,11 @@ export default function EmployeeDashboard() {
   const { user, logout } = useAuth();
   const { colors } = useTheme();
   const [employee, setEmployee] = useState(null);
+  const [business, setBusiness] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
-    // Inicializar con la fecha actual en Colombia (YYYY-MM-DD)
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
   });
 
@@ -42,6 +42,11 @@ export default function EmployeeDashboard() {
     try {
       const response = await api.get('/employees/me/info');
       setEmployee(response.data);
+      // También cargar info del negocio
+      if (response.data?.businessId) {
+        const bizRes = await api.get(`/businesses/${response.data.businessId}/public`);
+        setBusiness(bizRes.data);
+      }
     } catch (err) {
       setError('Error al cargar información del empleado');
     }
@@ -124,6 +129,21 @@ export default function EmployeeDashboard() {
     logout();
   };
 
+  const getImgUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const API_BASE_URL = api.defaults.baseURL || '';
+    const BACKEND_URL = API_BASE_URL.replace(/\/api$/, '');
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    return `${BACKEND_URL}${cleanUrl}`;
+  };
+
+  // Obtener iniciales para avatar placeholder
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   if (!employee) {
     return (
       <div style={{
@@ -147,23 +167,51 @@ export default function EmployeeDashboard() {
       <div style={{
         background: colors.gradient,
         color: 'white',
-        padding: '24px 16px'
+        padding: '20px 16px'
       }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12
           }}>
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-                👤 {employee.User.name}
-              </h1>
-              <p style={{ opacity: 0.9 }}>
-                {employee.Business.name} • {employee.Business.type}
-              </p>
+            {/* Logo y nombre del negocio */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+              {business?.logoUrl ? (
+                <img 
+                  src={getImgUrl(business.logoUrl)} 
+                  alt={business?.name}
+                  style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}
+                />
+              ) : (
+                <div style={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: '50%', 
+                  background: 'rgba(255,255,255,0.2)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  flexShrink: 0
+                }}>
+                  {getInitials(business?.name)}
+                </div>
+              )}
+              <div style={{ minWidth: 0 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {business?.name || 'Negocio'}
+                </h1>
+                <p style={{ opacity: 0.9, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {employee?.User?.name} • {business?.type || 'Empleado'}
+                </p>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
               <ThemeToggle />
               <button
                 onClick={() => setShowChangePwModal(true)}
@@ -171,11 +219,12 @@ export default function EmployeeDashboard() {
                   background: 'rgba(255,255,255,0.1)',
                   color: 'white',
                   border: '1px solid rgba(255,255,255,0.2)',
-                  padding: '8px 16px',
+                  padding: '8px 12px',
                   borderRadius: 6,
                   cursor: 'pointer',
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
+                  whiteSpace: 'nowrap'
                 }}
               >
                 Cambiar Clave
@@ -186,15 +235,16 @@ export default function EmployeeDashboard() {
                   background: 'rgba(255,255,255,0.2)',
                   color: 'white',
                   border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '8px 16px',
+                  padding: '8px 12px',
                   borderRadius: 6,
                   cursor: 'pointer',
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                Cerrar sesión
+                Salir
               </button>
             </div>
           </div>
@@ -202,11 +252,26 @@ export default function EmployeeDashboard() {
       </div>
 
       {/* Contenido */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '32px 16px' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
+        <style>{`
+          @media (max-width: 640px) {
+            .employee-header { flex-direction: column !important; align-items: flex-start !important; }
+            .employee-header-buttons { width: 100%; justify-content: space-between; }
+            .employee-appointment-card { padding: 16px !important; }
+            .employee-appointment-actions { flex-direction: column; }
+            .employee-appointment-actions button { width: 100%; justify-content: center; }
+          }
+          @media (max-width: 480px) {
+            .employee-header h1 { font-size: 16px !important; }
+            .employee-header p { font-size: 12px !important; }
+            .employee-logo { width: 40px !important; height: 40px !important; }
+          }
+        `}</style>
+        
         {/* Selector de fecha */}
         <div style={{
           background: colors.cardBg,
-          padding: 24,
+          padding: 20,
           borderRadius: 12,
           marginBottom: 24,
           boxShadow: `0 2px 8px ${colors.shadow}`,
@@ -216,7 +281,7 @@ export default function EmployeeDashboard() {
             display: 'block',
             fontSize: 14,
             fontWeight: 600,
-            marginBottom: 12,
+            marginBottom: 10,
             color: colors.text
           }}>
             Selecciona una fecha para ver tu agenda
@@ -233,7 +298,9 @@ export default function EmployeeDashboard() {
               fontFamily: 'inherit',
               cursor: 'pointer',
               background: colors.inputBg,
-              color: colors.text
+              color: colors.text,
+              width: '100%',
+              maxWidth: 300
             }}
           />
         </div>
@@ -303,7 +370,7 @@ export default function EmployeeDashboard() {
                 const endTimeStr = endTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
                 return (
-                  <div key={apt.id} style={{
+                  <div key={apt.id} className="employee-appointment-card" style={{
                     padding: 20,
                     background: colors.cardBg,
                     border: `2px solid ${STATUS_COLORS[apt.status]}`,
@@ -313,27 +380,27 @@ export default function EmployeeDashboard() {
                     gap: 16,
                     boxShadow: `0 4px 6px ${colors.shadow}`
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: colors.text }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: colors.text }}>
                           {timeStr} - {endTimeStr}
                         </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: colors.text, marginTop: 4 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: colors.text, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {apt.clientName}
                         </div>
-                        <div style={{ fontSize: 14, color: colors.primary, fontWeight: 600, marginTop: 2 }}>
-                          {apt.Service.name}
+                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 600, marginTop: 2 }}>
+                          {apt.Service?.name}
                         </div>
-                        <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>
                           📞 {apt.clientPhone}
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <span style={{
                           display: 'inline-block',
-                          padding: '4px 12px',
+                          padding: '4px 10px',
                           borderRadius: 20,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: 700,
                           background: STATUS_COLORS[apt.status],
                           color: 'white'
@@ -343,24 +410,24 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+                    <div className="employee-appointment-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
                       {apt.status === 'pending' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'confirmed')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                        <button onClick={() => handleStatusUpdate(apt.id, 'confirmed')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, flex: 1, minWidth: 100 }}>
                           Confirmar
                         </button>
                       )}
                       {apt.status === 'confirmed' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13, background: STATUS_COLORS.attention }}>
+                        <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
                           Iniciar Atención
                         </button>
                       )}
                       {apt.status === 'attention' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13, background: STATUS_COLORS.done }}>
+                        <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
                           Terminar
                         </button>
                       )}
                       {(apt.status === 'pending' || apt.status === 'confirmed') && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} className="btn-danger" style={{ padding: '8px 16px', fontSize: 13 }}>
+                        <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
                           Cancelar
                         </button>
                       )}
