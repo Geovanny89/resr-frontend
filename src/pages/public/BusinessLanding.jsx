@@ -94,9 +94,20 @@ export default function BusinessLanding() {
   const [galleryModal, setGalleryModal] = useState(null);
 
   useEffect(() => {
+    console.log('BusinessLanding - slug:', slug);
     api.get(`/businesses/${slug}/public`)
-      .then(r => setBusiness(r.data))
-      .catch(() => setError('Negocio no encontrado'))
+      .then(r => {
+        console.log('BusinessLanding - API response:', r.data);
+        if (!r.data || !r.data.id) {
+          setError('Negocio no encontrado');
+        } else {
+          setBusiness(r.data);
+        }
+      })
+      .catch(e => {
+        console.error('BusinessLanding - API error:', e);
+        setError(e.response?.status === 404 ? 'Negocio no encontrado' : 'Error al cargar el negocio');
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -116,6 +127,22 @@ export default function BusinessLanding() {
         <div style={{ fontSize: 56, marginBottom: 16 }}>🔍</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>Negocio no encontrado</h2>
         <p style={{ color: '#718096' }}>El enlace puede ser incorrecto o el negocio ya no está disponible.</p>
+      </div>
+    </div>
+  );
+
+  if (!business) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f4f8', padding: 20 }}>
+      <div style={{ textAlign: 'center', maxWidth: 400 }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>⚠️</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>Error al cargar</h2>
+        <p style={{ color: '#718096' }}>No se pudo cargar la información del negocio.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          style={{ marginTop: 16, padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+        >
+          Reintentar
+        </button>
       </div>
     </div>
   );
