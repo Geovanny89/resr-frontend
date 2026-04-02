@@ -153,6 +153,7 @@ export default function App() {
       <BrowserRouter>
         <MobileSlugBridge />
         <Routes>
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login"           element={<Login />} />
           <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/register"        element={<RegisterChoice />} />
