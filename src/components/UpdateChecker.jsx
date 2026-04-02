@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { App } from '@capacitor/app';
-import { Preferences } from '@capacitor/preferences';
 import api from '../api/client';
 
 export default function UpdateChecker() {
@@ -14,6 +12,18 @@ export default function UpdateChecker() {
 
   const checkForUpdate = async () => {
     try {
+      // Import dinámico de Capacitor (solo en app nativa)
+      let App, Preferences;
+      try {
+        const appModule = await import('@capacitor/app');
+        const prefsModule = await import('@capacitor/preferences');
+        App = appModule.App;
+        Preferences = prefsModule.Preferences;
+      } catch (e) {
+        console.log('Update check skipped: Not in native app');
+        return;
+      }
+      
       // Verificar si estamos en app nativa (Capacitor)
       const appInfo = await App.getInfo();
       setIsNative(true);
@@ -39,8 +49,7 @@ export default function UpdateChecker() {
       });
 
     } catch (e) {
-      // Si no es Capacitor (web), ignorar
-      console.log('Update check skipped:', e.message);
+      console.log('Update check error:', e.message);
     }
   };
 
