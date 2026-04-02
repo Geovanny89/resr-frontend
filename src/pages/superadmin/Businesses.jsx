@@ -44,6 +44,8 @@ export default function BusinessesResponsive() {
   });
   const [saving, setSaving]             = useState(false);
   const [toast, setToast]               = useState(null);
+  const [currentPage, setCurrentPage]     = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   useEffect(() => { loadAll(); }, []);
 
@@ -93,6 +95,15 @@ export default function BusinessesResponsive() {
     return matchSearch && matchStatus && matchSub;
   });
 
+  // Paginación
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  
+  // Reset a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterSub]);
+
   const handleStatusToggle = async (biz) => {
     try {
       const newStatus = biz.status === 'active' ? 'blocked' : 'active';
@@ -137,15 +148,20 @@ export default function BusinessesResponsive() {
 
   const handleViewScreenshot = async (biz) => {
     setScreenshot({ url: biz.paymentScreenshot, business: biz });
-    // Marcar como visto si no lo está
+    // Marcar como visto inmediatamente en UI
     if (!biz.paymentScreenshotViewed) {
+      setBusinesses(prev => prev.map(b => 
+        b.id === biz.id ? { ...b, paymentScreenshotViewed: true } : b
+      ));
+      // Luego llamar al backend
       try {
         await api.patch(`/businesses/${biz.id}/screenshot-viewed`);
-        setBusinesses(prev => prev.map(b => 
-          b.id === biz.id ? { ...b, paymentScreenshotViewed: true } : b
-        ));
       } catch (e) {
         console.error('Error al marcar como visto:', e);
+        // Revertir si falla
+        setBusinesses(prev => prev.map(b => 
+          b.id === biz.id ? { ...b, paymentScreenshotViewed: false } : b
+        ));
       }
     }
   };
@@ -306,9 +322,79 @@ export default function BusinessesResponsive() {
       {loading ? (
         <p>Cargando empresas...</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-          {filtered.map(biz => <BusinessCard key={biz.id} biz={biz} />)}
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+            {paginatedItems.map(biz => <BusinessCard key={biz.id} biz={biz} />)}
+          </div>
+          
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 8, 
+              marginTop: 32,
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: currentPage === 1 ? '#f3f4f6' : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1
+                }}
+              >
+                ← Anterior
+              </button>
+              
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: currentPage === page ? 'var(--primary)' : 'white',
+                      color: currentPage === page ? 'white' : 'var(--text-main)',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: currentPage === totalPages ? '#f3f4f6' : 'white',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages ? 0.5 : 1
+                }}
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}
+          
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, marginTop: 16 }}>
+            Mostrando {paginatedItems.length} de {filtered.length} empresas
+            {filtered.length > ITEMS_PER_PAGE && ` (Página ${currentPage} de ${totalPages})`}
+          </p>
+        </>
       )}
 
       {detailBiz && (
@@ -431,10 +517,68 @@ export default function BusinessesResponsive() {
       )}
 
       {screenshot && (
-        <div className="modal-overlay" onClick={() => setScreenshot(null)}>
-          <div className="modal-content" style={{ maxWidth: 600, background: 'var(--surface)', padding: 20, borderRadius: 16 }}>
-            <img src={getImgUrl(screenshot.url)} alt="Pago" style={{ width: '100%', borderRadius: 8 }} />
-            <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setScreenshot(null)}>Cerrar</button>
+        <div className="modal-overlay" onClick={() => setScreenshot(null)} style={{ zIndex: 10000 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ 
+            maxWidth: 500, 
+            maxHeight: '90vh',
+            background: 'var(--surface)', 
+            padding: 0, 
+            borderRadius: 16,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #10b981, #059669)', 
+              padding: '16px 20px', 
+              color: 'white', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Image size={20} />
+                <span style={{ fontWeight: 600 }}>Comprobante de Pago</span>
+              </div>
+              <button 
+                onClick={() => setScreenshot(null)} 
+                style={{ 
+                  color: 'white', 
+                  background: 'rgba(255,255,255,0.2)', 
+                  border: 'none', 
+                  borderRadius: 8, 
+                  width: 32, 
+                  height: 32, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: 'pointer' 
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: 20, overflow: 'auto' }}>
+              <img 
+                src={getImgUrl(screenshot.url)} 
+                alt="Comprobante de Pago" 
+                style={{ 
+                  width: '100%', 
+                  maxHeight: '60vh',
+                  borderRadius: 8,
+                  objectFit: 'contain'
+                }} 
+              />
+            </div>
+            <div style={{ padding: '0 20px 20px' }}>
+              <button 
+                className="btn-primary" 
+                style={{ width: '100%' }} 
+                onClick={() => setScreenshot(null)}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
