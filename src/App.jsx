@@ -181,6 +181,10 @@ export default function App() {
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>
             <Route index element={<MyAppointments />} />
           </Route>
+          
+          {/* ===== RUTAS PÚBLICAS DE NEGOCIOS (SLUG) ===== */}
+          <Route path="/:slug" element={<BusinessLanding />} />
+          <Route path="/:slug/book" element={<BookAppointment />} />
         </Routes>
         <UpdateChecker />
       </BrowserRouter>
