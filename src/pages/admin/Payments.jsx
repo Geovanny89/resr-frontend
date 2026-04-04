@@ -17,19 +17,48 @@ const fmt = (n) =>
 const fmtDate = (d) =>
   new Date(d).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 
+// Extraer la URL base del backend desde el cliente API
+const API_BASE_URL = api.defaults.baseURL || '';
+const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
+
 // ─── Helper para cargar logo del negocio ──────────────────────────────────────
 async function loadLogoImage(logoUrl) {
   if (!logoUrl) return null;
   try {
-    const response = await fetch(logoUrl);
-    const blob = await response.blob();
+    let fullUrl = logoUrl;
+    if (logoUrl.startsWith('/')) {
+      fullUrl = `${BACKEND_URL}${logoUrl}`;
+    } else if (!logoUrl.startsWith('http')) {
+      fullUrl = `${BACKEND_URL}/${logoUrl}`;
+    }
+    
     return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
+      const img = new Image();
+      console.log('Loading logo from:', fullUrl);
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        console.log('Logo image loaded successfully');
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        try {
+          const dataURL = canvas.toDataURL('image/png');
+          resolve(dataURL);
+        } catch (e) {
+          console.error('Canvas toDataURL failed (CORS?):', e);
+          resolve(null);
+        }
+      };
+      img.onerror = (e) => {
+        console.error('Error loading image via object:', e);
+        resolve(null);
+      };
+      img.src = fullUrl;
     });
   } catch (e) {
-    console.error('Error loading logo:', e);
+    console.error('Error in loadLogoImage:', e);
     return null;
   }
 }
@@ -383,46 +412,81 @@ export default function Payments() {
   const generateEmployeePDF = async (emp, month, businessName) => {
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    
+    // Colores profesionales y sobrios
+    const colors = {
+      primary: [55, 65, 81],      // Gris oscuro
+      secondary: [107, 114, 128], // Gris medio
+      light: [243, 244, 246],     // Gris claro
+      accent: [16, 185, 129],     // Verde éxito
+      white: [255, 255, 255],
+      black: [31, 41, 55],
+    };
 
-    // Header con nombre del negocio
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(businessName || 'Mi Negocio', 14, 18);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Reporte de Pagos', 14, 28);
-    doc.setFontSize(10);
-    doc.text(monthLabel, 14, 35);
+    let yPos = 20;
 
-    // Agregar logo si existe
+    // Agregar logo si existe - con estilo redondeado
     if (business?.logoUrl) {
       try {
         const logoData = await loadLogoImage(business.logoUrl);
         if (logoData) {
-          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+          // Fondo redondeado sutil
+          doc.setFillColor(245, 245, 245);
+          doc.setDrawColor(220, 220, 220);
+          doc.roundedRect(margin, 10, 26, 26, 4, 4, 'FD');
+          // Logo
+          doc.addImage(logoData, 'PNG', margin + 1, 11, 24, 24);
         }
       } catch (e) {
         console.error('Error adding logo to PDF:', e);
       }
     }
 
-    // Info del empleado
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
+    // Header limpio - nombre del negocio
+    const titleX = business?.logoUrl ? margin + 35 : margin;
     doc.setFont('helvetica', 'bold');
-    doc.text(`Empleado: ${emp.name}`, 14, 55);
+    doc.setFontSize(20);
+    doc.setTextColor(...colors.black);
+    doc.text(businessName || 'Mi Negocio', titleX, 25);
     
-    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total a recibir: ${fmt(emp.employeeEarns)}`, 14, 65);
-    doc.text(`Citas completadas: ${emp.appointments.length}`, 14, 73);
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.secondary);
+    doc.text('Reporte de Pagos', titleX, 32);
+    doc.setFontSize(9);
+    doc.text(monthLabel, titleX, 38);
 
-    // Detalle de citas
+    // Fecha de emisión (alineada derecha)
+    doc.setFontSize(9);
+    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - margin, 20, { align: 'right' });
+
+    // Línea separadora elegante
+    yPos = 45;
+    doc.setDrawColor(...colors.primary);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+
+    // Info del empleado
+    yPos = 58;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...colors.black);
+    doc.text(`Empleado: ${emp.name}`, margin, yPos);
+    
+    yPos += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.secondary);
+    doc.text(`Total a recibir: ${fmt(emp.employeeEarns)}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Citas completadas: ${emp.appointments.length}`, margin, yPos);
+
+    // Detalle de citas con tabla limpia
+    yPos += 15;
     autoTable(doc, {
-      startY: 85,
+      startY: yPos,
       head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
       body: emp.appointments.map(a => [
         fmtDate(a.date),
@@ -434,10 +498,43 @@ export default function Payments() {
       foot: [[
         '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
       ]],
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [100, 116, 139] },
-      footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+      theme: 'plain',
+      headStyles: {
+        fillColor: colors.light,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: colors.black,
+      },
+      footStyles: {
+        fillColor: [250, 250, 250],
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      styles: {
+        cellPadding: 5,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      margin: { left: margin, right: margin },
+      alternateRowStyles: {
+        fillColor: [252, 252, 252],
+      },
     });
+
+    // Footer
+    const footerY = doc.internal.pageSize.getHeight() - 20;
+    doc.setDrawColor(...colors.light);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY - 8, pageWidth - margin, footerY - 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.secondary);
+    doc.text('Este documento certifica que el pago fue recibido.', pageWidth / 2, footerY, { align: 'center' });
 
     // Retornar como base64
     return doc.output('datauristring').split(',')[1];
@@ -447,58 +544,115 @@ export default function Payments() {
   const downloadPDF = async () => {
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    
+    // Colores profesionales y sobrios
+    const colors = {
+      primary: [55, 65, 81],      // Gris oscuro
+      secondary: [107, 114, 128], // Gris medio
+      light: [243, 244, 246],     // Gris claro
+      accent: [16, 185, 129],     // Verde éxito
+      white: [255, 255, 255],
+      black: [31, 41, 55],
+    };
 
-    // Header con nombre del negocio
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(business?.name || 'Mi Negocio', 14, 18);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Reporte de Pagos', 14, 28);
-    doc.setFontSize(10);
-    doc.text(monthLabel, 14, 35);
+    let yPos = 20;
 
-    // Agregar logo si existe
+    // Agregar logo si existe - con estilo redondeado
     if (business?.logoUrl) {
       try {
         const logoData = await loadLogoImage(business.logoUrl);
         if (logoData) {
-          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+          // Fondo redondeado sutil
+          doc.setFillColor(245, 245, 245);
+          doc.setDrawColor(220, 220, 220);
+          doc.roundedRect(margin, 10, 26, 26, 4, 4, 'FD');
+          // Logo
+          doc.addImage(logoData, 'PNG', margin + 1, 11, 24, 24);
         }
       } catch (e) {
         console.error('Error adding logo to PDF:', e);
       }
     }
 
-    // Resumen
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(13);
+    // Header limpio
+    const titleX = business?.logoUrl ? margin + 35 : margin;
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Financiero', 14, 55);
+    doc.setFontSize(20);
+    doc.setTextColor(...colors.black);
+    doc.text(business?.name || 'Mi Negocio', titleX, 25);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.secondary);
+    doc.text('Reporte de Pagos', titleX, 32);
+    doc.setFontSize(9);
+    doc.text(monthLabel, titleX, 38);
+
+    // Fecha de emisión (alineada derecha)
+    doc.setFontSize(9);
+    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - margin, 20, { align: 'right' });
+
+    // Línea separadora elegante
+    yPos = 45;
+    doc.setDrawColor(...colors.primary);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+
+    // Resumen Financiero
+    yPos = 58;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...colors.black);
+    doc.text('Resumen Financiero', margin, yPos);
 
     const totals = report?.totals || {};
     autoTable(doc, {
-      startY: 60,
+      startY: yPos + 8,
       head: [['Concepto', 'Monto']],
       body: [
         ['Ingresos totales del negocio', fmt(totals.total)],
         ['Ganancia del dueño', fmt(totals.ownerTotal)],
         ['Total a pagar empleados', fmt(totals.employeeTotal)],
       ],
-      styles: { fontSize: 11 },
-      headStyles: { fillColor: [79, 70, 229] },
+      theme: 'plain',
+      headStyles: {
+        fillColor: colors.light,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: {
+        fontSize: 10,
+        textColor: colors.black,
+      },
+      columnStyles: {
+        0: { fontStyle: 'normal' },
+        1: { fontStyle: 'bold', halign: 'right' },
+      },
+      styles: {
+        cellPadding: 5,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      margin: { left: margin, right: margin },
     });
 
     // Por empleado
-    let y = doc.lastAutoTable.finalY + 14;
+    let y = doc.lastAutoTable.finalY + 15;
     employees.forEach(emp => {
+      // Verificar si necesitamos nueva página
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+      
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Empleado: ${emp.name}`, 14, y);
-      y += 4;
+      doc.setTextColor(...colors.black);
+      doc.text(`Empleado: ${emp.name}`, margin, y);
+      y += 6;
 
       autoTable(doc, {
         startY: y,
@@ -513,12 +667,46 @@ export default function Payments() {
         foot: [[
           '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
         ]],
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [100, 116, 139] },
-        footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+        theme: 'plain',
+        headStyles: {
+          fillColor: colors.light,
+          textColor: colors.black,
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: colors.black,
+        },
+        footStyles: {
+          fillColor: [250, 250, 250],
+          textColor: colors.black,
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
+        styles: {
+          cellPadding: 4,
+          lineColor: [220, 220, 220],
+          lineWidth: 0.1,
+          overflow: 'linebreak',
+        },
+        margin: { left: margin, right: margin },
+        alternateRowStyles: {
+          fillColor: [252, 252, 252],
+        },
       });
       y = doc.lastAutoTable.finalY + 12;
     });
+
+    // Footer
+    const footerY = doc.internal.pageSize.getHeight() - 15;
+    doc.setDrawColor(...colors.light);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.secondary);
+    doc.text('Este documento certifica que los pagos fueron calculados correctamente.', pageWidth / 2, footerY, { align: 'center' });
 
     // Usar savePDF para compatibilidad con APK
     await savePDF(doc, `pagos-${month}.pdf`);

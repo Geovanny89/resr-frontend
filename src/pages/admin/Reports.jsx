@@ -26,21 +26,104 @@ const STATUS_LABELS = {
   attention: 'En atención', done: 'Completada', cancelled: 'Cancelada',
 };
 
+// Extraer la URL base del backend desde el cliente API
+const API_BASE_URL = api.defaults.baseURL || '';
+const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
+
 // ─── Helper para cargar logo del negocio ──────────────────────────────────────
-async function loadLogoImage(logoUrl) {
+async function loadLogoImage(logoUrl, makeCircular = false) {
   if (!logoUrl) return null;
-  try {
-    const response = await fetch(logoUrl);
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    console.error('Error loading logo:', e);
-    return null;
+  
+  // Si es URL relativa, convertir a absoluta
+  let fullUrl = logoUrl;
+  if (logoUrl.startsWith('/')) {
+    fullUrl = `${window.location.origin}${logoUrl}`;
   }
+  
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 100; // Tamaño base
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Fondo transparente
+        ctx.clearRect(0, 0, size, size);
+        
+        if (makeCircular) {
+          // Crear máscara circular
+          ctx.beginPath();
+          ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+        } else {
+          // Esquinas redondeadas
+          const r = 15;
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.lineTo(size - r, 0);
+          ctx.quadraticCurveTo(size, 0, size, r);
+          ctx.lineTo(size, size - r);
+          ctx.quadraticCurveTo(size, size, size - r, size);
+          ctx.lineTo(r, size);
+          ctx.quadraticCurveTo(0, size, 0, size - r);
+          ctx.lineTo(0, r);
+          ctx.quadraticCurveTo(0, 0, r, 0);
+          ctx.closePath();
+          ctx.clip();
+        }
+        
+        // Dibujar imagen centrada y cubriendo todo
+        const scale = Math.max(size / img.width, size / img.height);
+        const x = (size - img.width * scale) / 2;
+        const y = (size - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        
+        // Agregar borde sutil
+        ctx.strokeStyle = makeCircular ? '#e0e0e0' : '#d0d0d0';
+        ctx.lineWidth = 2;
+        if (makeCircular) {
+          ctx.beginPath();
+          ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          const r = 15;
+          ctx.beginPath();
+          ctx.moveTo(r, 1);
+          ctx.lineTo(size - r, 1);
+          ctx.quadraticCurveTo(size - 1, 1, size - 1, r);
+          ctx.lineTo(size - 1, size - r);
+          ctx.quadraticCurveTo(size - 1, size - 1, size - r, size - 1);
+          ctx.lineTo(r, size - 1);
+          ctx.quadraticCurveTo(1, size - 1, 1, size - r);
+          ctx.lineTo(1, r);
+          ctx.quadraticCurveTo(1, 1, r, 1);
+          ctx.stroke();
+        }
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        console.log('✅ Logo procesado con estilo');
+        resolve(dataUrl);
+      } catch (err) {
+        console.log('❌ Error canvas:', err.message);
+        resolve(null);
+      }
+    };
+    
+    img.onerror = () => {
+      console.log('❌ Error cargando imagen:', fullUrl);
+      resolve(null);
+    };
+    
+    const separator = fullUrl.includes('?') ? '&' : '?';
+    img.src = `${fullUrl}${separator}_t=${Date.now()}`;
+    setTimeout(() => resolve(null), 5000);
+  });
 }
 
 const MONTHS_ES = [
@@ -234,7 +317,23 @@ export default function Reports() {
   const [activeTab, setActiveTab]       = useState('overview');
   const [isMobile, setIsMobile]         = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 480 : false);
   const [detailPage, setDetailPage]       = useState(1); // PAGINACIÓN
+  const [businessWithLogo, setBusinessWithLogo] = useState(business); // Negocio con logoUrl
   const ITEMS_PER_PAGE = 5; // 5 citas por página
+
+  // Cargar negocio completo con logoUrl
+  useEffect(() => {
+    const loadBusiness = async () => {
+      try {
+        const r = await api.get('/businesses/my/business');
+        setBusinessWithLogo(r.data);
+        console.log('✅ Negocio cargado con logoUrl:', r.data?.logoUrl);
+      } catch (e) {
+        console.log('❌ Error cargando negocio:', e);
+        setBusinessWithLogo(business);
+      }
+    };
+    loadBusiness();
+  }, [business?.id]);
 
   const range = getDateRange(period, customStart, customEnd);
 
@@ -318,58 +417,113 @@ export default function Reports() {
 
   const downloadPDF = async () => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
     
-    // Header con nombre del negocio
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(business?.name || 'Mi Negocio', 14, 18);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Informe de Actividad', 14, 28);
-    doc.setFontSize(10);
-    doc.text(`${range?.label || ''}`, 14, 35);
-
-    // Agregar logo si existe
-    if (business?.logoUrl) {
+    // Color scheme - profesional y sobrio
+    const colors = {
+      primary: [60, 60, 60],      // Gris oscuro
+      secondary: [100, 100, 100], // Gris medio
+      light: [240, 240, 240],     // Gris claro
+      white: [255, 255, 255],
+      black: [30, 30, 30],
+      accent: [79, 70, 229],      // Indigo sutil
+    };
+    
+    let yPos = 20;
+    
+    // Logo (izquierda) + Info del negocio (derecha)
+    console.log('📷 Logo URL:', businessWithLogo?.logoUrl);
+    if (businessWithLogo?.logoUrl) {
       try {
-        const logoData = await loadLogoImage(business.logoUrl);
+        const logoData = await loadLogoImage(businessWithLogo.logoUrl, false); // false = esquinas redondeadas, true = circular
+        console.log('📷 Logo data length:', logoData ? logoData.length : 0);
         if (logoData) {
-          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+          // El logo ya viene procesado con estilo desde el canvas
+          doc.addImage(logoData, 'PNG', margin, 10, 26, 26);
+          console.log('📷 Logo added to PDF with style');
         }
       } catch (e) {
-        console.error('Error adding logo to PDF:', e);
+        console.log('❌ Logo error:', e);
       }
+    } else {
+      console.log('⚠️ No logoUrl found in businessWithLogo');
     }
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(13);
+    
+    // Título del negocio - alineado derecha
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen', 14, 52);
-
+    doc.setFontSize(18);
+    doc.setTextColor(...colors.black);
+    doc.text(businessWithLogo?.name || business?.name || 'Mi Negocio', pageWidth - margin, yPos, { align: 'right' });
+    
+    // Subtítulo
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.secondary);
+    doc.text('Informe de Actividad', pageWidth - margin, yPos + 7, { align: 'right' });
+    
+    // Período
+    doc.setFontSize(9);
+    doc.text(range?.label || '', pageWidth - margin, yPos + 13, { align: 'right' });
+    
+    // Línea separadora elegante
+    yPos = 40;
+    doc.setDrawColor(...colors.primary);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    
+    // Sección: Resumen
+    yPos += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...colors.black);
+    doc.text('Resumen del Período', margin, yPos);
+    
+    // Tabla de resumen con estilo limpio
+    yPos += 8;
     autoTable(doc, {
-      startY: 57,
+      startY: yPos,
       head: [['Métrica', 'Valor']],
       body: [
-        ['Total citas en el período', appointments.length],
-        ['Citas completadas', done.length],
+        ['Total citas', appointments.length.toString()],
+        ['Citas completadas', done.length.toString()],
         ['Ingresos totales', fmt(totalRev)],
         ['Ganancia del negocio', fmt(ownerRev)],
         ['Pago a empleados', fmt(empRev)],
       ],
-      headStyles: { fillColor: [79, 70, 229] },
+      theme: 'plain',
+      headStyles: {
+        fillColor: colors.light,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: {
+        fontSize: 10,
+        textColor: colors.black,
+      },
+      columnStyles: {
+        0: { fontStyle: 'normal', cellWidth: 60 },
+        1: { fontStyle: 'bold', halign: 'right' },
+      },
+      styles: {
+        cellPadding: 5,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      margin: { left: margin, right: margin },
     });
-
-    let y = doc.lastAutoTable.finalY + 12;
-    doc.setFontSize(13);
+    
+    // Sección: Detalle de citas
+    yPos = doc.lastAutoTable.finalY + 15;
     doc.setFont('helvetica', 'bold');
-    doc.text('Detalle de citas', 14, y);
-    y += 4;
-
+    doc.setFontSize(13);
+    doc.setTextColor(...colors.black);
+    doc.text('Detalle de Citas', margin, yPos);
+    
+    yPos += 8;
     autoTable(doc, {
-      startY: y,
+      startY: yPos,
       head: [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']],
       body: appointments.map(a => [
         new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
@@ -379,10 +533,48 @@ export default function Reports() {
         fmt(a.Service?.price),
         STATUS_LABELS[a.status] || a.status,
       ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [100, 116, 139] },
+      theme: 'plain',
+      headStyles: {
+        fillColor: colors.light,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: colors.black,
+      },
+      columnStyles: {
+        0: { cellWidth: 28 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 32 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 25, halign: 'right' },
+        5: { cellWidth: 25, halign: 'center' },
+      },
+      styles: {
+        cellPadding: 4,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+        overflow: 'linebreak',
+      },
+      margin: { left: margin, right: margin },
+      alternateRowStyles: {
+        fillColor: [250, 250, 250],
+      },
     });
-
+    
+    // Footer con línea decorativa
+    const footerY = doc.internal.pageSize.getHeight() - 15;
+    doc.setDrawColor(...colors.light);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.secondary);
+    doc.text(`Generado el ${new Date().toLocaleString('es-CO')} • K-Dice Reservas`, margin, footerY);
+    
     // Usar savePDF para compatibilidad con APK
     await savePDF(doc, `informe-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
