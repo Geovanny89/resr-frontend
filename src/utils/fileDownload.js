@@ -12,6 +12,16 @@ export async function saveFile({ filename, data, contentType, blob }) {
   
   if (isNative) {
     try {
+      // Solicitar permisos de almacenamiento
+      try {
+        const status = await Filesystem.checkPermissions();
+        if (status.publicStorage !== 'granted') {
+          await Filesystem.requestPermissions();
+        }
+      } catch (e) {
+        console.warn('Error checking permissions:', e);
+      }
+
       let base64Data;
       if (blob) {
         base64Data = await blobToBase64(blob);
@@ -21,21 +31,24 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Guardar en la carpeta de la App y luego notificar/compartir
+      // Intentar guardar en Documentos (más permanente que Cache)
       const path = `${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64Data,
-        directory: Directory.Cache, // Usar Cache es más confiable para compartir
+        directory: Directory.Documents,
       });
 
-      // Intentar compartir el archivo (esto permite al usuario guardarlo donde quiera)
+      // Informar al usuario que se guardó
+      alert(`✅ Archivo descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
+
+      // Opcionalmente, permitir compartir/abrir
       try {
         await Share.share({
           title: filename,
-          text: `Archivo generado: ${filename}`,
-          url: result.uri, // Compartir el URI del archivo guardado
-          dialogTitle: 'Abrir o Guardar archivo',
+          text: `Abrir archivo generado: ${filename}`,
+          url: result.uri,
+          dialogTitle: '¿Qué deseas hacer con el archivo?',
         });
       } catch (shareError) {
         console.log('Share cancelled:', shareError);
@@ -95,6 +108,16 @@ export async function savePDF(doc, filename) {
   
   if (isNative) {
     try {
+      // Solicitar permisos
+      try {
+        const status = await Filesystem.checkPermissions();
+        if (status.publicStorage !== 'granted') {
+          await Filesystem.requestPermissions();
+        }
+      } catch (e) {
+        console.warn('Error checking permissions:', e);
+      }
+
       // Obtener PDF como base64
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
@@ -103,15 +126,17 @@ export async function savePDF(doc, filename) {
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.Cache,
+        directory: Directory.Documents,
       });
+
+      alert(`✅ PDF descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
 
       try {
         await Share.share({
           title: filename,
-          text: `PDF generado: ${filename}`,
+          text: `Abrir PDF generado: ${filename}`,
           url: result.uri,
-          dialogTitle: 'Abrir o Guardar PDF',
+          dialogTitle: '¿Qué deseas hacer con el PDF?',
         });
       } catch (shareError) {
         console.log('Share cancelled:', shareError);
@@ -133,6 +158,16 @@ export async function saveExcel(wb, filename) {
   
   if (isNative) {
     try {
+      // Solicitar permisos
+      try {
+        const status = await Filesystem.checkPermissions();
+        if (status.publicStorage !== 'granted') {
+          await Filesystem.requestPermissions();
+        }
+      } catch (e) {
+        console.warn('Error checking permissions:', e);
+      }
+
       // Generar Excel como array
       const excelData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelData], { 
@@ -145,15 +180,17 @@ export async function saveExcel(wb, filename) {
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.Cache,
+        directory: Directory.Documents,
       });
+
+      alert(`✅ Excel descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
 
       try {
         await Share.share({
           title: filename,
-          text: `Excel generado: ${filename}`,
+          text: `Abrir Excel generado: ${filename}`,
           url: result.uri,
-          dialogTitle: 'Abrir o Guardar Excel',
+          dialogTitle: '¿Qué deseas hacer con el Excel?',
         });
       } catch (shareError) {
         console.log('Share cancelled:', shareError);

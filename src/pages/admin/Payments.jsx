@@ -355,9 +355,12 @@ export default function Payments() {
     try {
       const empData = byEmployee[employeeName];
       
-      // Generar PDF individual del empleado
-      const pdfBase64 = generateEmployeePDF(empData, month, business?.name);
+      // Generar PDF individual del empleado - AGREGAR AWAIT
+      const pdfBase64 = await generateEmployeePDF(empData, month, business?.name);
       
+      console.log('PDF Base64 length:', pdfBase64?.length);
+      console.log('PDF Base64 starts with:', pdfBase64?.substring(0, 50));
+
       await api.post('/notifications/payment-summary', {
         businessId: business.id,
         employeeName,
