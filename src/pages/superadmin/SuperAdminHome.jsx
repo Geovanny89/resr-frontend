@@ -33,7 +33,7 @@ export default function SuperAdminHome() {
   const overduePayment    = businesses.filter(b => b.subscriptionStatus === 'overdue').length;
   const activeTypes       = businessTypes.filter(t => t.active).length;
   
-  const pendingScreenshots = businesses.filter(b => b.paymentScreenshot && b.subscriptionStatus === 'pending').length;
+  const pendingScreenshots = businesses.filter(b => b.paymentScreenshot && !b.paymentScreenshotViewed && b.subscriptionStatus === 'pending').length;
 
   // Datos para gráficos
   const subscriptionData = [

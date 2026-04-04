@@ -79,7 +79,7 @@ export default function DownloadAPKPublic() {
             fontSize: '40px',
             overflow: 'hidden'
           }}>
-            <img src="/kdice-logo.svg" alt="KDice" style={{ width: '70px', height: '84px', objectFit: 'contain' }} />
+              
           </div>
           <h1 style={{
             fontSize: '28px',

@@ -2,17 +2,31 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
-import { Mail, Lock, Eye, EyeOff, LogIn, User, ArrowRight, RefreshCw, X } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, User, ArrowRight, RefreshCw, X, ArrowLeft } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
 export default function Login() {
   const { login, loginAsClient: authLoginAsClient } = useAuth();
   const navigate  = useNavigate();
+  const [isNative, setIsNative] = useState(false);
   const [form, setForm]       = useState({ email: '', password: '' });
   const [error, setError]     = useState('');
   const [debugInfo, setDebugInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
+  
+  // Detectar si es app nativa
+  useEffect(() => {
+    const checkNative = async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        setIsNative(Capacitor.isNativePlatform());
+      } catch (e) {
+        setIsNative(false);
+      }
+    };
+    checkNative();
+  }, []);
   
   // Estados para Cliente
   const [isClientMode, setIsClientMode] = useState(false);
@@ -92,6 +106,28 @@ export default function Login() {
   return (
     <div className="auth-page" style={{ position: 'relative' }}>
       <div className="auth-card" style={{ maxWidth: 400, width: '100%', padding: 32 }}>
+        {/* Back Button - solo en web */}
+        {!isNative && (
+          <button 
+            onClick={() => navigate('/')}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              background: 'none', 
+              border: 'none', 
+              color: 'var(--text-muted)', 
+              cursor: 'pointer',
+              fontSize: 14,
+              marginBottom: 16,
+              padding: 0
+            }}
+          >
+            <ArrowLeft size={18} />
+            Volver al inicio
+          </button>
+        )}
+        
         <div className="auth-logo" style={{ textAlign: 'center' }}>
           <div style={{
             width: 90,

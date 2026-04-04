@@ -170,7 +170,7 @@ export default function BusinessLanding() {
   const hasSocials   = !!(business.instagram || business.facebook || business.tiktok || business.twitter || business.website);
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgTertiary, color: colors.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: colors.bgTertiary, color: colors.text, fontFamily: "'Inter', system-ui, sans-serif", paddingBottom: 40 }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         *{box-sizing:border-box}
@@ -186,113 +186,235 @@ export default function BusinessLanding() {
           --brand-primary: ${primary};
           --brand-secondary: ${secondary};
         }
-        .svc-card{transition:transform 0.2s,box-shadow 0.2s}
-        .svc-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.12)!important}
-        .gal-item{transition:transform 0.2s,opacity 0.2s}
-        .gal-item:hover{transform:scale(1.03);opacity:0.92}
-        .cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,0.25)!important}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes pulse-wa{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,0.5)}50%{box-shadow:0 4px 30px rgba(37,211,102,0.8),0 0 0 8px rgba(37,211,102,0.15)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        .fade-up{animation:fadeUp 0.5s ease both}
-        .hero-shell{position:relative;isolation:isolate}
-        .hero-shell:before{
-          content:'';
-          position:absolute;inset:0;
-          background:
-            radial-gradient(circle at 80% 30%, rgba(255,255,255,0.10) 0%, transparent 45%),
-            radial-gradient(circle at 15% 70%, rgba(255,255,255,0.08) 0%, transparent 55%);
-          pointer-events:none;
-          z-index:0;
+        
+        .section-card {
+          background: var(--pub-surface);
+          border-radius: 24px;
+          padding: 32px;
+          margin-bottom: 24px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          border: 1px solid var(--pub-border);
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .hero-shell:after{
-          content:'';
-          position:absolute;left:0;right:0;bottom:-1px;height:64px;
-          background:linear-gradient(to bottom, rgba(0,0,0,0) 0%, var(--pub-bg) 100%);
-          z-index:1;
-          pointer-events:none;
+
+        .svc-card {
+          background: var(--pub-surface-2);
+          border: 1px solid var(--pub-border);
+          border-radius: 20px;
+          padding: 24px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
-        .hero-glass{
-          background:rgba(255,255,255,0.10);
-          border:1px solid rgba(255,255,255,0.18);
-          border-radius:20px;
-          padding:14px 14px 10px;
-          backdrop-filter:blur(10px);
-          -webkit-backdrop-filter:blur(10px);
-          box-shadow:0 18px 45px rgba(0,0,0,0.25);
+        .svc-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          border-color: var(--brand-primary);
         }
-        .brand-ring{
-          width:104px;height:104px;border-radius:50%;
-          padding:4px;
+
+        .gal-item {
+          aspect-ratio: 1;
+          border-radius: 20px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .gal-item::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 1;
+        }
+        .gal-item:hover::before {
+          opacity: 1;
+        }
+        .gal-item::after {
+          content: 'Ver más';
+          position: absolute;
+          bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          color: white;
+          font-size: 14px;
+          font-weight: 600;
+          opacity: 0;
+          transition: all 0.3s ease;
+          z-index: 2;
+        }
+        .gal-item:hover::after {
+          opacity: 1;
+        }
+        .gal-item:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
+          z-index: 2;
+        }
+        .gal-item img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.4s ease;
+        }
+        .gal-item:hover img {
+          transform: scale(1.1);
+        }
+
+        .brand-cta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 18px 48px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+          color: white;
+          font-weight: 800;
+          font-size: 18px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+          width: 100%;
+          max-width: 400px;
+        }
+        .brand-cta:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+          filter: brightness(1.1);
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        .hero-shell {
+          position: relative;
+          min-height: 450px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 20px;
+          background-attachment: fixed;
+        }
+        
+        .hero-glass {
+          background: transparent;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          border: none;
+          border-radius: 0;
+          padding: 48px;
+          width: 100%;
+          max-width: 700px;
+          box-shadow: none;
+          text-align: center;
+          color: white;
+        }
+
+        .team-item {
+          text-align: center;
+          padding: 20px;
+          border-radius: 20px;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+        }
+        .team-item:hover {
+          background: rgba(255, 255, 255, 0.05);
+          transform: translateY(-8px);
+        }
+        .team-photo {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          margin: 0 auto 16px;
+          overflow: hidden;
+          border: 3px solid var(--brand-primary);
+          padding: 4px;
+          background: white;
+          transition: all 0.4s ease;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .team-item:hover .team-photo {
+          transform: scale(1.08);
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+        .team-photo img,
+        .team-photo > div {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+          transition: transform 0.4s ease;
+        }
+        .team-item:hover .team-photo img {
+          transform: scale(1.1);
+        }
+
+        .brand-ring {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
           background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-          box-shadow: 0 18px 45px rgba(0,0,0,0.35);
-          display:inline-flex;align-items:center;justify-content:center;
-          margin: 0 auto 12px;
+          padding: 4px;
+          margin: 0 auto 24px;
+          box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.05);
         }
-        .brand-logo{
-          width:100%;height:100%;border-radius:50%;
-          object-fit:cover;
-          border: 3px solid rgba(255,255,255,0.92);
-          background: rgba(255,255,255,0.12);
+        .brand-logo {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 4px solid white;
         }
-        .hero-meta{
-          display:flex;flex-wrap:wrap;justify-content:center;
-          gap:10px 14px;margin:0;
+
+        .hero-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 18px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 999px;
+          font-size: 14px;
+          color: white;
+          text-decoration: none;
+          backdrop-filter: blur(4px);
+          line-height: 1.5;
         }
-        .hero-pill{
-          display:inline-flex;align-items:center;gap:6px;
-          padding:6px 10px;border-radius:999px;
-          background:rgba(2,6,23,0.28);
-          border:1px solid rgba(255,255,255,0.16);
-          color:rgba(255,255,255,0.92);
-          font-size:12.5px;
+
+        .section-title {
+          font-size: 24px;
+          font-weight: 800;
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          color: var(--pub-text);
         }
-        .brand-cta{
-          display:inline-flex;align-items:center;justify-content:center;gap:10px;
-          padding:14px 42px;
-          border-radius:14px;
-          border: 1px solid rgba(255,255,255,0.25);
-          background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-          color:#fff;
-          font-weight:900;
-          font-size:16px;
-          cursor:pointer;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.28);
-          transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-        }
-        .brand-cta:hover{ transform: translateY(-2px); filter:saturate(1.05); box-shadow:0 22px 55px rgba(0,0,0,0.34); }
-        .brand-cta:active{ transform: translateY(-1px) scale(0.99); }
-        .brand-cta:focus-visible{ outline: 3px solid rgba(255,255,255,0.55); outline-offset: 3px; }
-        .hero-social{
-          display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
-          margin-top:10px;
-        }
-        .section-title{
-          display:flex;align-items:center;gap:10px;
-          font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;
-        }
-        .section-subtle{
-          color:#64748b;font-size:13px;margin:0 0 18px;
-        }
-        /* Dark mode adjustments (scoped to this page via ThemeContext colors) */
-        .section-title{color:var(--pub-text)}
-        .section-subtle{color:var(--pub-subtle)}
-        /* Responsive overrides */
-        @media(max-width:600px){
-          .hero-content{padding:32px 16px 28px!important}
-          .hero-title{font-size:clamp(20px,6vw,32px)!important}
-          .section-card{padding:20px 16px!important}
-          .emp-grid{gap:10px!important}
-          .emp-card{padding:16px 10px!important;min-width:0!important}
-          .cta-section{padding:28px 16px!important}
-          .cta-btn{padding:13px 28px!important;font-size:15px!important}
-          .brand-ring{width:96px;height:96px}
-          .brand-cta{width:100%;max-width:360px}
+
+          @media(max-width:600px){
+          .hero-glass { padding: 32px 20px; }
+          .section-card { padding: 24px 20px; }
+          .svc-card { padding: 16px !important; }
+          .hero-shell { min-height: 400px; }
+          .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .services-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .team-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
+          .team-grid .team-photo { width: 80px !important; height: 80px !important; }
+          .hero-pill { font-size: 13px; padding: 8px 14px; }
         }
       `}</style>
 
       {/* Toggle de tema (público) */}
-      <div style={{ position: 'fixed', top: 14, right: 14, zIndex: 1200 }}>
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1200 }}>
         <ThemeToggle />
       </div>
 
@@ -300,123 +422,101 @@ export default function BusinessLanding() {
       <div
         className="hero-shell"
         style={{
-          position: 'relative',
           ...heroStyle,
-          minHeight: 320,
-          overflow: 'hidden',
           ['--brand-primary']: primary,
           ['--brand-secondary']: secondary,
         }}
       >
-
-        <div
-          className="hero-content fade-up"
-          style={{ position: 'relative', maxWidth: 860, margin: '0 auto', padding: '44px 20px 36px', textAlign: 'center', color: 'white' }}
-        >
-          <div className="hero-glass">
+        <div className="hero-glass fade-up">
           {/* Logo */}
-          {business.logoUrl ? (
-            <div className="brand-ring">
-              <img
-                className="brand-logo"
-                src={getImgUrl(business.logoUrl)}
-                alt={`Logo ${business.name}`}
-              />
-            </div>
-          ) : (
-            <div className="brand-ring" aria-hidden="true">
-              <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
-                🏪
-              </div>
-            </div>
-          )}
+          <div className="brand-ring">
+            {business.logoUrl ? (
+              <img className="brand-logo" src={getImgUrl(business.logoUrl)} alt={business.name} />
+            ) : (
+              <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, background: 'white' }}>🏪</div>
+            )}
+          </div>
 
-          <h1 className="hero-title" style={{ fontSize: 'clamp(22px, 5vw, 38px)', fontWeight: 800, margin: '0 0 8px', textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 6vw, 48px)', fontWeight: 800, marginBottom: 12, letterSpacing: '-1px' }}>
             {business.name}
           </h1>
+          
           {business.tagline && (
-            <p style={{ fontSize: 14.5, opacity: 0.92, margin: '0 0 12px', fontStyle: 'italic' }}>"{business.tagline}"</p>
+            <p style={{ fontSize: 18, opacity: 0.9, marginBottom: 32, fontStyle: 'italic', fontWeight: 500 }}>
+              "{business.tagline}"
+            </p>
           )}
 
-          {/* Info */}
-          <div className="hero-meta" style={{ marginBottom: 6 }}>
-            {business.address && (
-              <span className="hero-pill" style={{ opacity: 1 }}>
-                📍 {business.address}
-              </span>
-            )}
-            {business.phone && (
-              <a href={`tel:${business.phone}`} className="hero-pill" style={{ textDecoration: 'none' }}>
-                📞 {business.phone}
-              </a>
-            )}
-            <br/>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+              {business.address && (
+                <div className="hero-pill">📍 {business.address}</div>
+              )}
+              {business.phone && (
+                <a href={`tel:${business.phone}`} className="hero-pill">📞 {business.phone}</a>
+              )}
+            </div>
             {business.businessHours && (
-              <span className="hero-pill">
-                🕐 {business.businessHours}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', width: '100%' }}>
+                {business.businessHours.split(/Sab|Dom/).map((part, i) => {
+                  if (i === 0 && part.trim()) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 {part.trim()}</div>;
+                  if (i === 1) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 Sab {part.trim()}</div>;
+                  if (i === 2) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 Dom {part.trim()}</div>;
+                  return null;
+                })}
+              </div>
             )}
           </div>
 
           {/* Redes sociales */}
           {hasSocials && (
-            <div className="hero-social">
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
               <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-                <img src="/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
+                <img src="/instagram.png" alt="Instagram" style={{ width: 22, height: 22 }} />
               </SocialLink>
               <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-                <img src="/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
+                <img src="/facebook.png" alt="Facebook" style={{ width: 22, height: 22 }} />
               </SocialLink>
               <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-                <img src="/tik-tok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
+                <img src="/tik-tok.png" alt="TikTok" style={{ width: 22, height: 22, filter: 'invert(1)' }} />
               </SocialLink>
               <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-                <img src="/x.png" alt="Twitter" style={{ width: 20, height: 20 }} />
+                <img src="/x.png" alt="Twitter" style={{ width: 22, height: 22 }} />
               </SocialLink>
               <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-                <img src="/web.png" alt="Web" style={{ width: 20, height: 20 }} />
+                <img src="/web.png" alt="Web" style={{ width: 22, height: 22 }} />
               </SocialLink>
             </div>
           )}
-          </div>
         </div>
       </div>
 
       {/* ── CONTENIDO ── */}
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 16px 100px' }}>
+      <div style={{ maxWidth: 900, margin: '-40px auto 0', padding: '0 20px 100px', position: 'relative', zIndex: 10 }}>
 
         {/* Descripción */}
         {business.description && (
-          <div
-            className="section-card fade-up"
-            style={{
-              background: colors.cardBg,
-              borderRadius: 16,
-              padding: '24px 28px',
-              marginBottom: 20,
-              boxShadow: `0 2px 12px ${colors.shadow}`,
-              border: `1px solid ${colors.borderLight || colors.border}`,
-              borderLeft: `5px solid ${primary}`,
-            }}
-          >
-            <h2 className="section-title">ℹ️ Sobre nosotros</h2>
-            <p style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.8, margin: 0 }}>{business.description}</p>
+          <div className="section-card fade-up" style={{ animationDelay: '0.1s' }}>
+            <h2 className="section-title">✨ Nuestra historia</h2>
+            <p style={{ fontSize: 16, color: colors.textSecondary, lineHeight: 1.8, margin: 0 }}>
+              {business.description}
+            </p>
           </div>
         )}
 
         {/* Galería */}
         {gallery.length > 0 && (
-          <div className="section-card fade-up" style={{ background: colors.cardBg, borderRadius: 16, padding: '24px 28px', marginBottom: 20, boxShadow: `0 2px 12px ${colors.shadow}`, border: `1px solid ${colors.borderLight || colors.border}` }}>
-            <h2 className="section-title">🖼️ Galería</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+          <div className="section-card fade-up" style={{ animationDelay: '0.2s' }}>
+            <h2 className="section-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              Experiencias reales
+            </h2>
+            <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
               {gallery.map((img, i) => (
-                <div
-                  key={i}
-                  className="gal-item"
-                  onClick={() => setGalleryModal(i)}
-                  style={{ aspectRatio: '1', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                >
-                  <img src={getImgUrl(img)} alt={`Galería ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                <div key={i} className="gal-item" onClick={() => setGalleryModal(i)}>
+                  <img src={getImgUrl(img)} alt={`Galería ${i + 1}`} loading="lazy" />
                 </div>
               ))}
             </div>
@@ -425,30 +525,32 @@ export default function BusinessLanding() {
 
         {/* Servicios */}
         {business.Services && business.Services.length > 0 && (
-          <div className="section-card fade-up" style={{ background: colors.cardBg, borderRadius: 16, padding: '24px 28px', marginBottom: 20, boxShadow: `0 2px 12px ${colors.shadow}`, border: `1px solid ${colors.borderLight || colors.border}` }}>
-            <h2 className="section-title">✨ Nuestros servicios</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+          <div className="section-card fade-up" style={{ animationDelay: '0.3s' }}>
+            <h2 className="section-title">💆‍♂️ Servicios destacados</h2>
+            <div className="services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
               {business.Services.filter(s => s.active !== false).map(svc => (
-                <div
-                  key={svc.id}
-                  className="svc-card"
-                  style={{
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: 14,
-                    padding: '16px 18px',
-                    boxShadow: `0 2px 10px ${colors.shadow}`,
-                    background: isDark ? colors.bgSecondary : 'linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)'
-                  }}
-                >
-                  <div style={{ fontWeight: 700, color: colors.text, marginBottom: 6, fontSize: 15 }}>{svc.name}</div>
-                  {svc.description && (
-                    <div style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12, lineHeight: 1.5 }}>{svc.description}</div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 20, fontWeight: 800, color: primary }}>${Number(svc.price).toLocaleString()}</span>
-                    <span style={{ fontSize: 11, color: colors.textSecondary, background: colors.bgTertiary, padding: '3px 8px', borderRadius: 20, border: `1px solid ${colors.border}` }}>
+                <div key={svc.id} className="svc-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ fontWeight: 800, fontSize: 18, color: colors.text }}>{svc.name}</div>
+                    <div style={{ background: `${primary}15`, color: primary, padding: '4px 12px', borderRadius: '12px', fontSize: 12, fontWeight: 700 }}>
                       ⏱ {svc.durationMin} min
+                    </div>
+                  </div>
+                  {svc.description && (
+                    <p style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.5, margin: 0 }}>
+                      {svc.description}
+                    </p>
+                  )}
+                  <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: colors.text }}>
+                      ${Number(svc.price).toLocaleString()}
                     </span>
+                    <button 
+                      onClick={() => navigate(`/${slug}/book`)}
+                      style={{ background: 'transparent', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      Reservar →
+                    </button>
                   </div>
                 </div>
               ))}
@@ -458,91 +560,71 @@ export default function BusinessLanding() {
 
         {/* Equipo */}
         {business.Employees && business.Employees.length > 0 && (
-          <div className="section-card fade-up" style={{ background: colors.cardBg, borderRadius: 16, padding: '24px 28px', marginBottom: 20, boxShadow: `0 2px 12px ${colors.shadow}`, border: `1px solid ${colors.borderLight || colors.border}` }}>
-            <h2 className="section-title">👥 Nuestro equipo</h2>
-            <div
-              className="emp-grid"
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 14 }}
-            >
+          <div className="section-card fade-up" style={{ animationDelay: '0.4s' }}>
+            <h2 className="section-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Nuestro equipo
+            </h2>
+            <div className="team-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 24 }}>
               {business.Employees.map(emp => (
-                <div
-                  key={emp.id}
-                  className="emp-card"
-                  style={{
-                    textAlign: 'center',
-                    padding: '18px 12px',
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: 16,
-                    background: isDark ? colors.bgSecondary : 'linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)'
-                  }}
-                >
-                  <div style={{
-                    width: 56, height: 56, borderRadius: '50%',
-                    background: gradient, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 22, margin: '0 auto 10px',
-                    color: 'white', fontWeight: 700, overflow: 'hidden',
-                  }}>
+                <div key={emp.id} className="team-item">
+                  <div className="team-photo">
                     {emp.photoUrl ? (
-                      <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name || 'Empleado'} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} />
                     ) : (
-                      emp.User?.name?.charAt(0).toUpperCase() || '?'
+                      <div style={{ background: `${primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: primary }}>
+                        {emp.User?.name?.charAt(0)}
+                      </div>
                     )}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: colors.text, wordBreak: 'break-word' }}>
-                    {emp.User?.name || ''}
-                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: colors.text }}>{emp.User?.name}</div>
+                  <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>Experto</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* CTA */}
-        <div
-          className="cta-section fade-up"
-          style={{
-            background: gradient, borderRadius: 20, padding: '36px 28px',
-            textAlign: 'center', color: 'white', position: 'relative',
-            overflow: 'hidden', boxShadow: `0 8px 32px ${primary}40`,
-          }}
-        >
-          <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-          <h2 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, margin: '0 0 10px', position: 'relative' }}>
-            ¿Listo para tu cita?
-          </h2>
-          <p style={{ fontSize: 14, opacity: 0.9, margin: '0 0 24px', position: 'relative' }}>
-            Reserva en segundos, sin llamadas ni esperas
-          </p>
+        {/* CTA FINAL */}
+        <div className="fade-up" style={{ animationDelay: '0.5s', textAlign: 'center', marginTop: 40 }}>
           <button className="brand-cta" onClick={() => navigate(`/${slug}/book`)}>
-            📅 {business.ctaText || 'Reservar cita ahora'}
+            📅 {business.ctaText || 'Reservar mi cita ahora'}
           </button>
         </div>
       </div>
 
       {/* Footer */}
-      <footer style={{ background: colors.cardBg, borderTop: `1px solid ${colors.border}`, padding: '20px 16px', textAlign: 'center' }}>
+      <footer style={{ textAlign: 'center', padding: '80px 20px 60px', background: colors.cardBg, borderTop: `1px solid ${colors.border}` }}>
         {hasSocials && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
             <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-              <img src="/instagram.png" alt="Instagram" style={{ width: 20, height: 20 }} />
+              <img src="/instagram.png" alt="Instagram" style={{ width: 22, height: 22 }} />
             </SocialLink>
             <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-              <img src="/facebook.png" alt="Facebook" style={{ width: 20, height: 20 }} />
+              <img src="/facebook.png" alt="Facebook" style={{ width: 22, height: 22 }} />
             </SocialLink>
             <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-              <img src="/tik-tok.png" alt="TikTok" style={{ width: 20, height: 20, filter: 'invert(1)' }} />
+              <img src="/tik-tok.png" alt="TikTok" style={{ width: 22, height: 22, filter: 'invert(1)' }} />
             </SocialLink>
             <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-              <img src="/x.png" alt="Twitter" style={{ width: 20, height: 20 }} />
+              <img src="/x.png" alt="Twitter" style={{ width: 22, height: 22 }} />
             </SocialLink>
             <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-              <img src="/web.png" alt="Web" style={{ width: 20, height: 20 }} />
+              <img src="/web.png" alt="Web" style={{ width: 22, height: 22 }} />
             </SocialLink>
           </div>
         )}
-        <p style={{ fontSize: 12, color: colors.textTertiary, margin: 0 }}>
-          &copy; {new Date().getFullYear()} {business.name} &middot; Powered by <strong style={{ color: primary }}>K-Dice POS</strong>
+        <p style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 12, fontWeight: 600 }}>
+          &copy; {new Date().getFullYear()} K-Dice 
         </p>
+        <div style={{ fontSize: 13, color: colors.textTertiary }}>
+          Impulsado por <a href="https://k-dice.com" style={{ color: primary, fontWeight: 800, textDecoration: 'none' }}>K-Dice </a>
+        </div>
       </footer>
 
       {/* Botón WhatsApp flotante */}

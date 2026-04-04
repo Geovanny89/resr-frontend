@@ -47,7 +47,18 @@ export default function BusinessesResponsive() {
   const [currentPage, setCurrentPage]     = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  useEffect(() => { loadAll(); }, []);
+  const handleMarkViewed = async (id) => {
+    try {
+      await api.post(`/businesses/${id}/mark-screenshot-viewed`);
+      loadAll();
+    } catch (e) {
+      console.error('Error al marcar como visto:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   const loadAll = async () => {
     setLoading(true);
@@ -236,29 +247,33 @@ export default function BusinessesResponsive() {
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
           {biz.paymentScreenshot && (
-            <button 
-              className="btn-icon" 
-              onClick={() => handleViewScreenshot(biz)}
-              title="Ver comprobante"
-              style={{ 
-                background: !biz.paymentScreenshotViewed ? '#dbeafe' : '#f3f4f6', 
-                color: !biz.paymentScreenshotViewed ? '#1e40af' : '#4b5563',
-                position: 'relative'
-              }}
-            >
-              <Image size={18} />
-              {!biz.paymentScreenshotViewed && (
-                <span style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -4,
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  background: '#ef4444'
-                }} />
-              )}
-            </button>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button 
+                className="btn-icon" 
+                onClick={() => handleViewScreenshot(biz)}
+                title="Ver comprobante"
+                style={{ 
+                  background: !biz.paymentScreenshotViewed ? '#dbeafe' : '#f3f4f6', 
+                  color: !biz.paymentScreenshotViewed ? '#1e40af' : '#4b5563',
+                  border: biz.paymentScreenshotViewed ? '1px solid #dbeafe' : '2px solid #3b82f6',
+                  position: 'relative'
+                }}
+              >
+                <Image size={18} />
+                {!biz.paymentScreenshotViewed && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -5,
+                    right: -5,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    border: '2px solid white'
+                  }} />
+                )}
+              </button>
+            </div>
           )}
           <button 
             className="btn-icon" 

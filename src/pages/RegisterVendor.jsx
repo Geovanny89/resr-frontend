@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 
 export default function RegisterVendor() {
   const navigate = useNavigate();
+  const [isNative, setIsNative] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,16 @@ export default function RegisterVendor() {
 
   useEffect(() => {
     loadBusinessTypes();
+    // Detectar si es app nativa
+    const checkNative = async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        setIsNative(Capacitor.isNativePlatform());
+      } catch (e) {
+        setIsNative(false);
+      }
+    };
+    checkNative();
   }, []);
 
   const loadBusinessTypes = async () => {
@@ -182,6 +194,27 @@ export default function RegisterVendor() {
         {/* Header */}
         {!success && (
         <>
+        {/* Back Button - solo en web */}
+        {!isNative && (
+          <button 
+            onClick={() => navigate('/')}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              background: 'none', 
+              border: 'none', 
+              color: '#718096', 
+              cursor: 'pointer',
+              fontSize: 14,
+              marginBottom: 16,
+              padding: 0
+            }}
+          >
+            <ArrowLeft size={18} />
+            Volver al inicio
+          </button>
+        )}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: '#2d3748' }}>
             Crear mi Negocio

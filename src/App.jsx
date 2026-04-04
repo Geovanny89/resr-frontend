@@ -23,6 +23,7 @@ import Payments     from './pages/admin/Payments';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Landing from './pages/Landing';
 import DownloadAPK from './pages/admin/DownloadAPK';
+import ChangePassword from './pages/admin/ChangePassword';
 import DownloadAPKPublic from './pages/DownloadAPKPublic';
 import APKHome from './pages/APKHome';
 import { useAuth } from './context/AuthContext';
@@ -158,17 +159,17 @@ export default function App() {
           <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/register"        element={<RegisterChoice />} />
           <Route path="/register-client" element={<RegisterClient />} />
-          <Route path="/register-vendor" element={<RegisterVendor />} />
+          <Route path="/download-apk" element={<DownloadAPKPublic />} />
           <Route path="/admin" element={<ProtectedRoute roles={['admin']} />}>
             <Route index               element={<Dashboard />} />
             <Route path="business"     element={<MyBusiness />} />
-            <Route path="download-apk" element={<DownloadAPK />} />
             <Route path="services"     element={<Services />} />
             <Route path="employees"    element={<Employees />} />
             <Route path="schedule"     element={<Schedule />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="reports"      element={<Reports />} />
             <Route path="payments"     element={<Payments />} />
+            <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
             <Route index element={<EmployeeDashboard />} />

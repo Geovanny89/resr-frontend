@@ -5,7 +5,7 @@ import MobileMenu from './MobileMenu';
 import { Capacitor } from '@capacitor/core';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
-  BarChart3, DollarSign, LogOut, Bell, AlertTriangle, Download
+  BarChart3, DollarSign, LogOut, Bell, AlertTriangle, Lock
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -35,8 +35,7 @@ const NAV_ITEMS = [
   {
     section: 'Configuración',
     items: [
-      { to: '/admin/business', icon: Store, label: 'Mi Negocio' },
-      { to: '/admin/download-apk', icon: Download, label: 'Descargar App' },
+      { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
     ]
   }
 ];
