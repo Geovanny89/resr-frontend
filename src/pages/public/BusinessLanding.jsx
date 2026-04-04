@@ -532,7 +532,7 @@ export default function BusinessLanding() {
                 <div key={svc.id} className="svc-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ fontWeight: 800, fontSize: 18, color: colors.text }}>{svc.name}</div>
-                    <div style={{ background: `${primary}15`, color: primary, padding: '4px 12px', borderRadius: '12px', fontSize: 12, fontWeight: 700 }}>
+                    <div style={{ background: `${primary}15`, color: colors.text, padding: '4px 12px', borderRadius: '12px', fontSize: 12, fontWeight: 700 }}>
                       ⏱ {svc.durationMin} min
                     </div>
                   </div>
@@ -547,7 +547,7 @@ export default function BusinessLanding() {
                     </span>
                     <button 
                       onClick={() => navigate(`/${slug}/book`)}
-                      style={{ background: 'transparent', border: 'none', color: primary, fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
+                      style={{ background: 'transparent', border: 'none', color: colors.text, fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       Reservar →
                     </button>
