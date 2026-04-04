@@ -20,6 +20,12 @@ const possiblePaths = [
   path.join(__dirname, '../android/app/build/outputs/apk/release/app-universal-release-unsigned.apk'),
   path.join(__dirname, '../android/app/build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk'),
   path.join(__dirname, '../android/app/build/outputs/apk/release/app-release-unsigned.apk'),
+  
+  // APK firmada desde Android Studio (Build → Generate Signed APK)
+  path.join(__dirname, '../android/app/release/app-arm64-v8a-release.apk'),
+  path.join(__dirname, '../android/app/release/app-armeabi-v7a-release.apk'),
+  path.join(__dirname, '../android/app/release/app-x86_64-release.apk'),
+  path.join(__dirname, '../android/app/release/app-release.apk'),
 ];
 
 const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
