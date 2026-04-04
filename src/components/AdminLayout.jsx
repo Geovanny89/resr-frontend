@@ -3,9 +3,10 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { Capacitor } from '@capacitor/core';
+import ThemeToggle from './ThemeToggle';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
-  BarChart3, DollarSign, LogOut, Bell, AlertTriangle, Lock
+  BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
     items: [
       { to: '/admin/reports',  icon: BarChart3,  label: 'Informes' },
       { to: '/admin/payments', icon: DollarSign, label: 'Pagos' },
+      { to: '/admin/submit-payment', icon: CreditCard, label: 'Enviar Pago' },
     ]
   },
   {
@@ -156,6 +158,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                 🔗 Página pública
               </a>
             )}
+            <ThemeToggle />
             <button className="btn-ghost btn-icon" title="Notificaciones">
               <Bell size={18} />
             </button>
@@ -163,33 +166,6 @@ export default function AdminLayout({ children, title, subtitle }) {
         </header>
 
         <div className="page-content fade-in">
-          {/* Banner de advertencia de suscripción */}
-          {showSubscriptionWarning && (
-            <div style={{
-              background: '#fef3c7',
-              border: '1px solid #fbbf24',
-              borderRadius: 8,
-              padding: '12px 16px',
-              marginBottom: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              color: '#92400e'
-            }}>
-              <AlertTriangle size={20} />
-              <div style={{ flex: 1 }}>
-                <strong>⚠️ Tu suscripción vence en {subscriptionDaysLeft} {subscriptionDaysLeft === 1 ? 'día' : 'días'}</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: 14 }}>
-                  Renueva tu plan de $60,000 COP mensual para seguir usando todas las funciones. 
-                  <a href="https://wa.me/573001234567?text=Hola%20quiero%20renovar%20mi%20suscripción%20KDice" 
-                     target="_blank" rel="noreferrer"
-                     style={{ color: '#92400e', fontWeight: 600, textDecoration: 'underline' }}>
-                    Contactar soporte →
-                  </a>
-                </p>
-              </div>
-            </div>
-          )}
           {children}
         </div>
       </main>

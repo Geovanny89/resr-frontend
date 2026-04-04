@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import { Plus, Trash2, Calendar, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, X, Info } from 'lucide-react';
@@ -13,6 +14,7 @@ const SCHEDULE_TYPES = [
 
 export default function Schedule() {
   const { business } = useAuth();
+  const { colors } = useTheme();
   const [employees, setEmployees]       = useState([]);
   const [schedules, setSchedules]       = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -190,7 +192,7 @@ export default function Schedule() {
                   {/* Cabecera empleado */}
                   <div
                     style={{
-                      padding: '12px 16px', background: 'var(--gray-50)',
+                      padding: '12px 16px', background: colors.bgSecondary,
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'space-between', cursor: 'pointer',
                       gap: 12,
@@ -202,10 +204,10 @@ export default function Schedule() {
                         {emp.User?.name?.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: colors.text }}>
                           {emp.User?.name}
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: 11, color: colors.textSecondary }}>
                           {totalScheds} horario{totalScheds !== 1 ? 's' : ''} configurado{totalScheds !== 1 ? 's' : ''}
                         </div>
                       </div>
@@ -229,7 +231,7 @@ export default function Schedule() {
 
                   {/* Días del empleado */}
                   {isExpanded && (
-                    <div style={{ padding: '8px 12px 12px', background: '#fff' }}>
+                    <div style={{ padding: '8px 12px 12px', background: colors.cardBg }}>
                       {totalScheds === 0 ? (
                         <p style={{ fontSize: 13, textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)' }}>
                           Sin horarios asignados
@@ -251,17 +253,17 @@ export default function Schedule() {
                                 {/* Cabecera día */}
                                 <div
                                   style={{
-                                    padding: '10px 14px', background: 'var(--gray-50)',
+                                    padding: '10px 14px', background: colors.bgTertiary,
                                     display: 'flex', alignItems: 'center',
                                     justifyContent: 'space-between', cursor: 'pointer',
                                   }}
                                   onClick={() => setExpandedDay(isDayExpanded ? null : dayKey)}
                                 >
-                                  <div style={{ fontWeight: 600, fontSize: 13 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 13, color: colors.text }}>
                                     {dayName}
                                     <span style={{
                                       marginLeft: 8, fontSize: 11, fontWeight: 400,
-                                      color: 'var(--text-muted)',
+                                      color: colors.textSecondary,
                                     }}>
                                       ({daySchedules.length} bloque{daySchedules.length !== 1 ? 's' : ''})
                                     </span>
@@ -271,7 +273,7 @@ export default function Schedule() {
 
                                 {/* Horarios del día */}
                                 {isDayExpanded && (
-                                  <div style={{ padding: '8px 10px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  <div style={{ padding: '8px 10px', background: colors.cardBg, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     {daySchedules.map(s => {
                                       const typeInfo = getTypeInfo(s.type);
                                       return (
@@ -279,7 +281,7 @@ export default function Schedule() {
                                           display: 'flex', alignItems: 'center',
                                           justifyContent: 'space-between',
                                           padding: '10px 12px', borderRadius: 8,
-                                          background: typeInfo.bg,
+                                          background: colors.bgSecondary,
                                           borderLeft: `4px solid ${typeInfo.color}`,
                                           gap: 8, flexWrap: 'wrap',
                                         }}>
@@ -472,7 +474,7 @@ export default function Schedule() {
 
                 {/* Resumen */}
                 <div style={{
-                  background: 'var(--gray-50)', borderRadius: 8,
+                  background: colors.bgSecondary, borderRadius: 8,
                   padding: '12px 14px', fontSize: 13,
                   borderLeft: `4px solid ${getTypeInfo(form.type).color}`,
                 }}>

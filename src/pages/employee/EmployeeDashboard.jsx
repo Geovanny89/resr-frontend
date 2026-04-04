@@ -5,6 +5,7 @@ import ThemeToggle from '../../components/ThemeToggle';
 import api from '../../api/client';
 import { Capacitor } from '@capacitor/core';
 import notificationService from '../../services/notificationService';
+import { Eye, EyeOff } from 'lucide-react';
 
 const STATUS_LABELS = { 
   pending: 'Pendiente', 
@@ -102,6 +103,8 @@ export default function EmployeeDashboard() {
   const [showChangePwModal, setShowChangePwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwLoading, setPwLoading] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({ old: false, new: false, confirm: false });
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -115,9 +118,10 @@ export default function EmployeeDashboard() {
         oldPassword: pwForm.oldPassword,
         newPassword: pwForm.newPassword
       });
-      alert('Contraseña actualizada correctamente');
+      setPwSuccess(true);
       setShowChangePwModal(false);
       setPwForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setPwSuccess(false), 4000);
     } catch (err) {
       alert(err.response?.data?.error || 'Error al cambiar la contraseña');
     } finally {
@@ -274,6 +278,29 @@ export default function EmployeeDashboard() {
             .employee-logo { width: 32px !important; height: 32px !important; }
           }
         `}</style>
+        
+        {/* Mensaje sutil de éxito */}
+        {pwSuccess && (
+          <div style={{
+            background: colors.isDark ? '#064e3b' : '#d1fae5',
+            border: `1px solid ${colors.isDark ? '#10b981' : '#10b981'}`,
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10
+          }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <span style={{ 
+              fontSize: 14, 
+              color: colors.isDark ? '#6ee7b7' : '#065f46',
+              fontWeight: 500 
+            }}>
+              Su contraseña ha sido cambiada exitosamente
+            </span>
+          </div>
+        )}
         
         {/* Selector de fecha */}
         <div style={{
@@ -461,33 +488,90 @@ export default function EmployeeDashboard() {
             <form onSubmit={handlePasswordChange}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Contraseña Actual</label>
-                <input 
-                  type="password" 
-                  value={pwForm.oldPassword}
-                  onChange={e => setPwForm({ ...pwForm, oldPassword: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPasswords.old ? 'text' : 'password'}
+                    value={pwForm.oldPassword}
+                    onChange={e => setPwForm({ ...pwForm, oldPassword: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, old: !showPasswords.old })}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: colors.textSecondary
+                    }}
+                  >
+                    {showPasswords.old ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Nueva Contraseña</label>
-                <input 
-                  type="password" 
-                  value={pwForm.newPassword}
-                  onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPasswords.new ? 'text' : 'password'}
+                    value={pwForm.newPassword}
+                    onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: colors.textSecondary
+                    }}
+                  >
+                    {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Confirmar Nueva Contraseña</label>
-                <input 
-                  type="password" 
-                  value={pwForm.confirmPassword}
-                  onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPasswords.confirm ? 'text' : 'password'}
+                    value={pwForm.confirmPassword}
+                    onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: colors.textSecondary
+                    }}
+                  >
+                    {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               
               <div style={{ display: 'flex', gap: 12 }}>

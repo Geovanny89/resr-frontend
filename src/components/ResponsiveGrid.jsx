@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * Componente ResponsiveGrid
  * 
  * Grilla que se adapta automáticamente:
  * - Desktop (1024px+): 4 columnas
- * - Tablet (768px-1024px): 2 columnas
- * - Móvil (<768px): 1 columna
+ * - Tablet (768px-1024px): 2 columnas  
+ * - Móvil (<768px): 1-2 columnas según minWidth
  * 
  * Props:
  * - children: Elementos a mostrar en la grilla
@@ -18,21 +18,24 @@ export default function ResponsiveGrid({
   gap = 16,
   minWidth = 200
 }) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [isTablet, setIsTablet] = useState(window.innerWidth <= 1024);
+  const [columns, setColumns] = useState(4);
 
-  useState(() => {
+  useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-      setIsTablet(window.innerWidth <= 1024);
+      const width = window.innerWidth;
+      if (width <= 640) {
+        setColumns(1);
+      } else if (width <= 1024) {
+        setColumns(2);
+      } else {
+        setColumns(4);
+      }
     };
+    
+    handleResize(); // Initial check
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  let columns = 4;
-  if (isMobile) columns = 1;
-  else if (isTablet) columns = 2;
 
   return (
     <div

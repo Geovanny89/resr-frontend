@@ -72,10 +72,15 @@ export default function Services() {
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar este servicio?')) return;
     try {
+      setError('');
       await api.delete(`/services/${id}`);
+      setSuccess('Servicio eliminado correctamente');
       loadServices();
+      setTimeout(() => setSuccess(''), 3000);
     } catch (e) {
-      setError('Error al eliminar');
+      const errorMsg = e.response?.data?.error || e.message || 'Error al eliminar el servicio';
+      setError(errorMsg);
+      console.error('Error eliminando servicio:', e);
     }
   };
 
@@ -167,8 +172,8 @@ export default function Services() {
             ]}
             data={paginatedServices}
             actions={[
-              { label: '✏️ Editar', onClick: handleEdit, color: 'var(--primary)' },
-              { label: '🗑️ Eliminar', onClick: handleDelete, color: 'var(--danger)' }
+              { label: '✏️ Editar', onClick: (row) => handleEdit(row), color: 'var(--primary)' },
+              { label: '🗑️ Eliminar', onClick: (row) => handleDelete(row.id), color: 'var(--danger)' }
             ]}
             loading={loading}
             emptyMessage="No hay servicios creados. ¡Crea uno para empezar!"

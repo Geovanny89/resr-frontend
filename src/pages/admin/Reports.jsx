@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
@@ -24,6 +25,23 @@ const STATUS_LABELS = {
   pending: 'Pendiente', confirmed: 'Confirmada',
   attention: 'En atención', done: 'Completada', cancelled: 'Cancelada',
 };
+
+// ─── Helper para cargar logo del negocio ──────────────────────────────────────
+async function loadLogoImage(logoUrl) {
+  if (!logoUrl) return null;
+  try {
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error('Error loading logo:', e);
+    return null;
+  }
+}
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -55,6 +73,7 @@ function formatDateES(dateStr) {
 // ─── Mini Calendario para Rango ──────────────────────────────────────────────
 
 function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange, onClose }) {
+  const { colors } = useTheme();
   const today = todayColombia();
   const [y, m] = today.split('-').map(Number);
   const [viewYear, setViewYear] = useState(startValue ? parseInt(startValue.split('-')[0]) : y);
@@ -118,26 +137,26 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
 
   return (
     <div style={{
-      background: 'white', borderRadius: 14, padding: 20, userSelect: 'none',
-      maxWidth: 340, width: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+      background: colors.cardBg, borderRadius: 14, padding: 20, userSelect: 'none',
+      maxWidth: 340, width: '100%', boxShadow: `0 4px 12px ${colors.shadow}`, border: `1px solid ${colors.border}`
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button type="button" onClick={prevMonth} disabled={!canGoPrev()}
-          style={{ background: 'none', border: 'none', cursor: canGoPrev() ? 'pointer' : 'not-allowed', color: canGoPrev() ? '#667eea' : '#cbd5e0', padding: 4 }}>
+          style={{ background: 'none', border: 'none', cursor: canGoPrev() ? 'pointer' : 'not-allowed', color: canGoPrev() ? 'var(--primary)' : colors.border, padding: 4 }}>
           <ChevronLeft size={16} />
         </button>
-        <span style={{ fontWeight: 700, fontSize: 15, color: '#2d3748' }}>
+        <span style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>
           {MONTHS_ES[viewMonth]} {viewYear}
         </span>
         <button type="button" onClick={nextMonth}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#667eea', padding: 4 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 4 }}>
           <ChevronRight size={16} />
         </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
         {DAYS_ES.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#a0aec0', padding: '2px 0' }}>{d}</div>
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: colors.textSecondary, padding: '2px 0' }}>{d}</div>
         ))}
       </div>
 
@@ -152,8 +171,8 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
                 textAlign: 'center', padding: '7px 2px', borderRadius: 6, fontSize: 12,
                 fontWeight: start || end ? 700 : 400,
                 cursor: day ? 'pointer' : 'default',
-                background: start || end ? '#667eea' : inRange ? '#eef2ff' : 'transparent',
-                color: !day ? 'transparent' : start || end ? 'white' : inRange ? '#667eea' : '#2d3748',
+                background: start || end ? 'var(--primary)' : inRange ? 'var(--primary-bg)' : 'transparent',
+                color: !day ? 'transparent' : start || end ? 'white' : inRange ? 'var(--primary)' : colors.text,
               }}>
               {day || ''}
             </div>
@@ -161,11 +180,11 @@ function RangeCalendarPicker({ startValue, endValue, onStartChange, onEndChange,
         })}
       </div>
 
-      <div style={{ fontSize: 12, color: '#718096', textAlign: 'center' }}>
+      <div style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>
         {startValue && endValue ? (
-          <span style={{ color: '#667eea', fontWeight: 600 }}>✓ {formatDateES(startValue)} a {formatDateES(endValue)}</span>
+          <span style={{ color: 'var(--primary)', fontWeight: 600 }}>✓ {formatDateES(startValue)} a {formatDateES(endValue)}</span>
         ) : startValue ? (
-          <span style={{ color: '#f59e0b' }}>Selecciona fecha final</span>
+          <span style={{ color: 'var(--warning)' }}>Selecciona fecha final</span>
         ) : (
           <span>Selecciona fecha inicial</span>
         )}
@@ -297,17 +316,33 @@ export default function Reports() {
     }, {})
   ).map(([, v]) => v).sort((a, b) => b.revenue - a.revenue);
 
-  const downloadPDF = async () => { // async para usar savePDF
+  const downloadPDF = async () => {
     const doc = new jsPDF();
+    
+    // Header con nombre del negocio
     doc.setFillColor(79, 70, 229);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('KDice POS — Informe de Actividad', 14, 18);
-    doc.setFontSize(11);
+    doc.text(business?.name || 'Mi Negocio', 14, 18);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${business?.name || ''} · ${range?.label || ''}`, 14, 30);
+    doc.text('Informe de Actividad', 14, 28);
+    doc.setFontSize(10);
+    doc.text(`${range?.label || ''}`, 14, 35);
+
+    // Agregar logo si existe
+    if (business?.logoUrl) {
+      try {
+        const logoData = await loadLogoImage(business.logoUrl);
+        if (logoData) {
+          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+        }
+      } catch (e) {
+        console.error('Error adding logo to PDF:', e);
+      }
+    }
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(13);
@@ -542,7 +577,7 @@ export default function Reports() {
         </div>
 
         {showRangeCalendar && period === 'custom' && (
-        <div style={{ marginBottom: 20, padding: 16, background: 'white', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ marginBottom: 20, padding: 16, background: 'var(--card-bg)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'center' }}>
           <RangeCalendarPicker
             startValue={customStart}
             endValue={customEnd}
@@ -723,10 +758,10 @@ export default function Reports() {
                     {byService.map((svc, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--bg-secondary)', borderRadius: 8 }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, color: '#2d3748' }}>{svc.name}</div>
-                          <div style={{ fontSize: 12, color: '#718096' }}>{svc.count} cita(s)</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text)' }}>{svc.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{svc.count} cita(s)</div>
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#667eea' }}>{fmt(svc.revenue)}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{fmt(svc.revenue)}</div>
                       </div>
                     ))}
                   </div>

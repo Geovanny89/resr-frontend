@@ -20,7 +20,6 @@ export default function UpdateChecker() {
         App = appModule.App;
         Preferences = prefsModule.Preferences;
       } catch (e) {
-        console.log('Update check skipped: Not in native app');
         return;
       }
       
@@ -49,7 +48,6 @@ export default function UpdateChecker() {
       });
 
     } catch (e) {
-      console.log('Update check error:', e.message);
     }
   };
 

@@ -43,7 +43,6 @@ export async function saveFile({ filename, data, contentType, blob }) {
 
       return { success: true, uri: result.uri };
     } catch (error) {
-      console.error('Error guardando archivo:', error);
       alert('❌ Error: ' + error.message);
       throw error;
     }
@@ -118,7 +117,6 @@ export async function savePDF(doc, filename) {
         console.log('Share cancelled:', shareError);
       }
     } catch (error) {
-      console.error('[savePDF] Error:', error);
       alert('❌ Error al generar PDF: ' + error.message);
       throw error;
     }
@@ -161,7 +159,6 @@ export async function saveExcel(wb, filename) {
         console.log('Share cancelled:', shareError);
       }
     } catch (error) {
-      console.error('[saveExcel] Error:', error);
       alert('❌ Error al generar Excel: ' + error.message);
       throw error;
     }

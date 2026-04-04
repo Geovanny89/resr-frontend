@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import { Store, Globe, Image, Palette, Share2, Clock, Eye, Upload, Trash2, Plus } from 'lucide-react';
@@ -31,6 +32,7 @@ const TABS = [
 
 export default function MyBusiness() {
   const { business: ctxBiz, refreshBusiness } = useAuth();
+  const { colors } = useTheme();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

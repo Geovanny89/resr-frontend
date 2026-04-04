@@ -20,6 +20,7 @@ import Schedule     from './pages/admin/Schedule';
 import Appointments from './pages/admin/Appointments';
 import Reports      from './pages/admin/Reports';
 import Payments     from './pages/admin/Payments';
+import SubmitPayment from './pages/admin/SubmitPayment';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Landing from './pages/Landing';
 import DownloadAPK from './pages/admin/DownloadAPK';
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/register"        element={<RegisterChoice />} />
           <Route path="/register-client" element={<RegisterClient />} />
+          <Route path="/register-vendor" element={<RegisterVendor />} />
           <Route path="/download-apk" element={<DownloadAPKPublic />} />
           <Route path="/admin" element={<ProtectedRoute roles={['admin']} />}>
             <Route index               element={<Dashboard />} />
@@ -169,6 +171,7 @@ export default function App() {
             <Route path="appointments" element={<Appointments />} />
             <Route path="reports"      element={<Reports />} />
             <Route path="payments"     element={<Payments />} />
+            <Route path="submit-payment" element={<SubmitPayment />} />
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>

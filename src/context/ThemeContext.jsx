@@ -12,10 +12,12 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    // Aplicar tema al documento
+    // Aplicar tema al documento para que CSS lo use
     if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
       document.documentElement.style.colorScheme = 'dark';
     } else {
+      document.documentElement.setAttribute('data-theme', 'light');
       document.documentElement.style.colorScheme = 'light';
     }
   }, [isDark]);

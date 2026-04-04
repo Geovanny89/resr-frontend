@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
@@ -23,6 +24,7 @@ function getImgUrl(url) {
 
 export default function Employees() {
   const { business } = useAuth();
+  const { colors } = useTheme();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -315,7 +317,7 @@ export default function Employees() {
                       width: 100,
                       height: 100,
                       borderRadius: '50%',
-                      background: 'var(--gray-100)',
+                      background: colors.bgTertiary,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

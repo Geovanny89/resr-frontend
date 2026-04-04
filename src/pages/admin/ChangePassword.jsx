@@ -38,13 +38,13 @@ export default function ChangePassword() {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/change-password`, {
-        method: 'POST',
+        method: 'PATCH', // Backend expects PATCH not POST
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          currentPassword: form.currentPassword,
+          oldPassword: form.currentPassword, // Backend expects oldPassword
           newPassword: form.newPassword
         })
       });

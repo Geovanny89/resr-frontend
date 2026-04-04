@@ -4,7 +4,7 @@ import api from '../../api/client';
 import {
   Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
   Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  CreditCard, Calendar, User, Trash2
+  CreditCard, Calendar, User, Trash2, Check
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
@@ -47,12 +47,16 @@ export default function BusinessesResponsive() {
   const [currentPage, setCurrentPage]     = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  const handleMarkViewed = async (id) => {
+  const handleApprovePayment = async (bizId) => {
     try {
-      await api.post(`/businesses/${id}/mark-screenshot-viewed`);
-      loadAll();
-    } catch (e) {
-      console.error('Error al marcar como visto:', e);
+      const response = await api.post(`/businesses/${bizId}/approve-payment`);
+      setBusinesses(prev => prev.map(b => 
+        b.id === bizId ? { ...b, ...response.data.business, subscriptionStatus: 'paid' } : b
+      ));
+      setScreenshot(null);
+      showToast('Pago aprobado correctamente. Suscripción activada por 30 días.');
+    } catch (err) {
+      showToast('Error al aprobar el pago', 'error');
     }
   };
 
@@ -585,10 +589,27 @@ export default function BusinessesResponsive() {
                 }} 
               />
             </div>
-            <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ padding: '0 20px 20px', display: 'flex', gap: 12 }}>
               <button 
                 className="btn-primary" 
-                style={{ width: '100%' }} 
+                style={{ 
+                  flex: 1, 
+                  background: '#10b981', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  gap: 8,
+                  fontSize: 15,
+                  fontWeight: 700
+                }} 
+                onClick={() => handleApprovePayment(screenshot.business.id)}
+              >
+                <Check size={20} />
+                Aprobar Pago (+30 días)
+              </button>
+              <button 
+                className="btn-secondary" 
+                style={{ flex: 1, padding: '12px', borderRadius: 8, fontWeight: 600 }} 
                 onClick={() => setScreenshot(null)}
               >
                 Cerrar

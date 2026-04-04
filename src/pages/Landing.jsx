@@ -522,7 +522,7 @@ export default function Landing() {
               Crear mi cuenta gratis
             </button>
             <a
-              href="https://wa.me/573507918591?text=Hola%20KDice%2C%20tengo%20preguntas%20sobre%20el%20sistema"
+              href="https://wa.me/573125205513?text=Hola%20KDice%2C%20tengo%20preguntas%20sobre%20el%20sistema"
               target="_blank" rel="noreferrer"
               className="btn-secondary"
               style={{ padding: '20px 48px', fontSize: 18, background: 'transparent', color: 'white', borderColor: 'rgba(255,255,255,0.2)' }}
@@ -618,7 +618,7 @@ export default function Landing() {
           <div>
             <h4 style={{ fontWeight: 700, marginBottom: 16, color: colors.text, fontSize: 15 }}>Contacto</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <a href="https://wa.me/573507918591" target="_blank" rel="noreferrer" style={{ color: '#25d366', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>WhatsApp</a>
+              <a href="https://wa.me/573125205513" target="_blank" rel="noreferrer" style={{ color: '#25d366', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>WhatsApp</a>
               <span style={{ color: colors.textSecondary, fontSize: 14 }}>soporte@k-dice.com</span>
             </div>
           </div>
@@ -706,7 +706,7 @@ export default function Landing() {
       )}
       {/* ── FLOATING WHATSAPP BUTTON ── */}
       <a
-        href="https://wa.me/573507918591?text=Hola%20KDice%2C%20me%20interesa%20el%20sistema"
+        href="https://wa.me/573125205513?text=Hola%20KDice%2C%20me%20interesa%20el%20sistema"
         target="_blank"
         rel="noreferrer"
         style={{

@@ -23,8 +23,6 @@ class NotificationService {
       const { display } = await LocalNotifications.requestPermissions();
       
       if (display === 'granted') {
-        console.log('✅ Permisos de notificación concedidos');
-        
         // Crear canal de notificaciones para Android
         await LocalNotifications.createChannel({
           id: 'appointment_reminders',
@@ -38,20 +36,16 @@ class NotificationService {
 
         // Configurar listener para cuando se hace clic en notificación
         LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
-          console.log('🔔 Notificación clickeada:', notification);
         });
 
         // Configurar listener para cuando llega una notificación
         LocalNotifications.addListener('localNotificationReceived', (notification) => {
-          console.log('🔔 Notificación recibida:', notification);
           this.updateBadge();
         });
 
       } else {
-        console.log('❌ Permisos de notificación denegados');
       }
     } catch (error) {
-      console.error('Error inicializando notificaciones:', error);
     }
   }
 
@@ -115,12 +109,9 @@ class NotificationService {
             },
           ],
         });
-
-        console.log(`✅ Notificación (${timeInfo.label}) programada para:`, appointment.id, 'a las:', notificationTime);
       }
 
     } catch (error) {
-      console.error('Error programando notificación:', error);
     }
   }
 
@@ -142,8 +133,6 @@ class NotificationService {
       const isConfirmed = ['pending', 'confirmed', 'attention'].includes(apt.status);
       return isFuture && isConfirmed;
     });
-
-    console.log(`📅 Programando ${futureAppointments.length} notificaciones para rol: ${role}`);
 
     // Programar notificación para cada cita
     for (const appointment of futureAppointments) {
@@ -173,7 +162,6 @@ class NotificationService {
         });
       }
     } catch (error) {
-      console.error('Error cancelando notificaciones:', error);
     }
   }
 
@@ -190,7 +178,6 @@ class NotificationService {
         notifications: [{ id: notificationId }],
       });
       this.scheduledNotifications.delete(appointmentId);
-      console.log('🗑️ Notificación cancelada:', appointmentId);
     }
   }
 
@@ -210,9 +197,7 @@ class NotificationService {
 
       // Actualizar badge
       await App.setBadgeCount({ count });
-      console.log('🔢 Badge actualizado:', count);
     } catch (error) {
-      console.error('Error actualizando badge:', error);
     }
   }
 
@@ -226,9 +211,7 @@ class NotificationService {
       await LocalNotifications.cancel({ notifications: [] });
       await App.setBadgeCount({ count: 0 });
       this.scheduledNotifications.clear();
-      console.log('🧹 Todas las notificaciones limpiadas');
     } catch (error) {
-      console.error('Error limpiando notificaciones:', error);
     }
   }
 
@@ -242,7 +225,6 @@ class NotificationService {
       const pending = await LocalNotifications.getPending();
       return pending.notifications;
     } catch (error) {
-      console.error('Error obteniendo notificaciones pendientes:', error);
       return [];
     }
   }

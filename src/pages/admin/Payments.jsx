@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
@@ -16,6 +17,23 @@ const fmt = (n) =>
 const fmtDate = (d) =>
   new Date(d).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 
+// ─── Helper para cargar logo del negocio ──────────────────────────────────────
+async function loadLogoImage(logoUrl) {
+  if (!logoUrl) return null;
+  try {
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error('Error loading logo:', e);
+    return null;
+  }
+}
+
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -23,6 +41,7 @@ const MONTHS_ES = [
 
 // ─── Componente para detalle de empleado con paginación ────────────────
 function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) {
+  const { colors } = useTheme();
   const itemsPerPage = 5;
   const currentPage = paginationPages[emp.name] || 1;
   const totalPages = Math.ceil(emp.appointments.length / itemsPerPage);
@@ -63,8 +82,8 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
-                <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700 }}>TOTALES</td>
+              <tr style={{ background: colors.bgSecondary, fontWeight: 700 }}>
+                <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700, color: colors.text }}>TOTALES</td>
                 <td style={{ padding: '12px 16px' }}><span className="money">{fmt(emp.total)}</span></td>
                 <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.employeeEarns)}</span></td>
                 <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.ownerEarns)}</span></td>
@@ -77,27 +96,27 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
         <div style={{ display: 'grid', gap: 12 }}>
           {paginatedAppointments.map((a, i) => (
             <div key={i} style={{ 
-              background: 'var(--gray-50)', 
+              background: colors.bgSecondary, 
               borderRadius: 12, 
               padding: 12, 
-              border: '1px solid var(--border)',
+              border: `1px solid ${colors.border}`,
               fontSize: '13px'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
-                <span style={{ fontWeight: 700, color: 'var(--gray-600)' }}>{fmtDate(a.date)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, borderBottom: `1px solid ${colors.border}`, paddingBottom: 6 }}>
+                <span style={{ fontWeight: 700, color: colors.text }}>{fmtDate(a.date)}</span>
                 <span style={{ fontWeight: 800, color: 'var(--primary)' }}>{a.service}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Precio total:</div>
-                  <div style={{ fontWeight: 700 }}>{fmt(a.price)}</div>
+                  <div style={{ fontSize: '11px', color: colors.textSecondary }}>Precio total:</div>
+                  <div style={{ fontWeight: 700, color: colors.text }}>{fmt(a.price)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Comisión Emp:</div>
+                  <div style={{ fontSize: '11px', color: colors.textSecondary }}>Comisión Emp:</div>
                   <div style={{ fontWeight: 700, color: 'var(--success)' }}>{fmt(a.employeeEarns)}</div>
                 </div>
-                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--gray-500)' }}>GANANCIA NEGOCIO:</span>
+                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: `1px dashed ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: colors.textSecondary }}>GANANCIA NEGOCIO:</span>
                   <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--success)' }}>{fmt(a.ownerEarns)}</span>
                 </div>
               </div>
@@ -178,6 +197,7 @@ function getMonthLabel(monthStr) {
 // ─── Selector de Mes/Año ────────────────────────────────────────────────────
 
 function MonthYearPicker({ value, onChange, onClose }) {
+  const { colors } = useTheme();
   // Obtener fecha actual en zona horaria de Colombia (UTC-5)
   const today = new Date();
   const colombiaDateStr = today.toLocaleString('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -207,20 +227,20 @@ function MonthYearPicker({ value, onChange, onClose }) {
 
   return (
     <div style={{
-      background: 'white', borderRadius: 14, padding: 24, userSelect: 'none',
-      maxWidth: 360, width: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+      background: colors.cardBg, borderRadius: 14, padding: 24, userSelect: 'none',
+      maxWidth: 360, width: '100%', boxShadow: `0 4px 12px ${colors.shadow}`, border: `1px solid ${colors.border}`
     }}>
       {/* Selector de año */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <button type="button" onClick={prevYear}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#667eea', padding: 4 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 4 }}>
           <ChevronLeft size={18} />
         </button>
-        <span style={{ fontWeight: 700, fontSize: 18, color: '#2d3748', minWidth: 80, textAlign: 'center' }}>
+        <span style={{ fontWeight: 700, fontSize: 18, color: colors.text, minWidth: 80, textAlign: 'center' }}>
           {viewYear}
         </span>
         <button type="button" onClick={nextYear}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#667eea', padding: 4 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 4 }}>
           <ChevronRight size={18} />
         </button>
       </div>
@@ -237,9 +257,9 @@ function MonthYearPicker({ value, onChange, onClose }) {
               onClick={() => handleMonth(monthNumber)}
               style={{
                 padding: '12px 8px', borderRadius: 8, fontSize: 13, fontWeight: sel ? 700 : 600,
-                border: `2px solid ${sel ? '#667eea' : 'var(--border-color, #e2e8f0)'}`,
-                background: sel ? '#667eea' : 'var(--bg-secondary, #f7fafc)',
-                color: sel ? 'white' : '#2d3748',
+                border: `2px solid ${sel ? 'var(--primary)' : colors.border}`,
+                background: sel ? 'var(--primary)' : colors.bgSecondary,
+                color: sel ? 'white' : colors.text,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}>
@@ -250,7 +270,7 @@ function MonthYearPicker({ value, onChange, onClose }) {
       </div>
 
       {value && (
-        <div style={{ marginTop: 16, padding: 12, background: '#eef2ff', borderRadius: 8, textAlign: 'center', fontSize: 13, color: '#667eea', fontWeight: 600 }}>
+        <div style={{ marginTop: 16, padding: 12, background: colors.bgSecondary, borderRadius: 8, textAlign: 'center', fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
           ✓ {getMonthLabel(value)}
         </div>
       )}
@@ -357,20 +377,34 @@ export default function Payments() {
   };
 
   // Generar PDF individual para un empleado (retorna base64)
-  const generateEmployeePDF = (emp, month, businessName) => {
+  const generateEmployeePDF = async (emp, month, businessName) => {
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
 
-    // Header
+    // Header con nombre del negocio
     doc.setFillColor(79, 70, 229);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('KDice POS — Reporte de Pagos', 14, 18);
-    doc.setFontSize(11);
+    doc.text(businessName || 'Mi Negocio', 14, 18);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${businessName || ''} · ${monthLabel}`, 14, 30);
+    doc.text('Reporte de Pagos', 14, 28);
+    doc.setFontSize(10);
+    doc.text(monthLabel, 14, 35);
+
+    // Agregar logo si existe
+    if (business?.logoUrl) {
+      try {
+        const logoData = await loadLogoImage(business.logoUrl);
+        if (logoData) {
+          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+        }
+      } catch (e) {
+        console.error('Error adding logo to PDF:', e);
+      }
+    }
 
     // Info del empleado
     doc.setTextColor(0, 0, 0);
@@ -407,20 +441,34 @@ export default function Payments() {
   };
 
   // Descargar PDF completo con todos los empleados
-  const downloadPDF = async () => { // async para usar savePDF
+  const downloadPDF = async () => {
     const doc = new jsPDF();
     const monthLabel = getMonthLabel(month);
 
-    // Header
+    // Header con nombre del negocio
     doc.setFillColor(79, 70, 229);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('KDice POS — Reporte de Pagos', 14, 18);
-    doc.setFontSize(11);
+    doc.text(business?.name || 'Mi Negocio', 14, 18);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${business?.name || ''} · ${monthLabel}`, 14, 30);
+    doc.text('Reporte de Pagos', 14, 28);
+    doc.setFontSize(10);
+    doc.text(monthLabel, 14, 35);
+
+    // Agregar logo si existe
+    if (business?.logoUrl) {
+      try {
+        const logoData = await loadLogoImage(business.logoUrl);
+        if (logoData) {
+          doc.addImage(logoData, 'PNG', 160, 8, 30, 30);
+        }
+      } catch (e) {
+        console.error('Error adding logo to PDF:', e);
+      }
+    }
 
     // Resumen
     doc.setTextColor(0, 0, 0);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
@@ -19,6 +20,7 @@ const fmt = (n) =>
 
 export default function Appointments() {
   const { business } = useAuth();
+  const { colors } = useTheme();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +47,7 @@ export default function Appointments() {
   const [creating, setCreating] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedDateModal, setSelectedDateModal] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (business?.id) {
@@ -97,7 +100,6 @@ export default function Appointments() {
   };
 
   const loadAvailableSlots = async (date, employeeId, serviceId) => {
-    console.log('Cargando disponibilidad:', { date, employeeId, serviceId });
     
     if (!date || !employeeId || !serviceId) {
       setAvailableSlots([]);
@@ -106,7 +108,6 @@ export default function Appointments() {
 
     try {
       const res = await api.get(`/appointments/availability?date=${date}&employeeId=${employeeId}&serviceId=${serviceId}&businessId=${business.id}`);
-      console.log('Respuesta de disponibilidad:', res.data);
       
       const now = new Date();
       const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
@@ -126,7 +127,6 @@ export default function Appointments() {
       
       setAvailableSlots(slots);
     } catch (e) {
-      console.error('Error al cargar disponibilidad:', e);
       setAvailableSlots([]);
     }
   };
@@ -205,7 +205,8 @@ export default function Appointments() {
       await loadAppointments();
       resetCreateForm();
       setShowCreateModal(false);
-      alert('✅ Cita creada exitosamente');
+      setSuccessMessage('Cita creada exitosamente');
+      setTimeout(() => setSuccessMessage(''), 4000);
     } catch (e) {
       console.error('Error al crear cita:', e);
       alert('❌ Error al crear cita: ' + (e.response?.data?.error || e.message));
@@ -250,6 +251,26 @@ export default function Appointments() {
           }
         }
       `}</style>
+      
+      {/* Mensaje de éxito sutil */}
+      {successMessage && (
+        <div style={{
+          background: '#d1fae5',
+          border: '1px solid #10b981',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10
+        }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <span style={{ fontSize: 14, color: '#065f46', fontWeight: 500 }}>
+            {successMessage}
+          </span>
+        </div>
+      )}
+      
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
@@ -431,16 +452,17 @@ export default function Appointments() {
           zIndex: 1000
         }}>
           <div style={{
-            background: 'white',
+            background: colors.cardBg,
             borderRadius: '12px',
             padding: '24px',
             maxWidth: '500px',
             width: '90%',
             maxHeight: '80vh',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            border: `1px solid ${colors.border}`
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Crear Nueva Cita</h2>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: colors.text }}>Crear Nueva Cita</h2>
               <button
                 onClick={() => {
                   resetCreateForm();
@@ -451,7 +473,7 @@ export default function Appointments() {
                   border: 'none',
                   fontSize: '24px',
                   cursor: 'pointer',
-                  color: '#666'
+                  color: colors.textSecondary
                 }}
               >
                 ×
@@ -459,16 +481,18 @@ export default function Appointments() {
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Servicio *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Servicio *</label>
               <select
                 value={createForm.serviceId}
                 onChange={(e) => setCreateForm({...createForm, serviceId: e.target.value})}
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text
                 }}
               >
                 <option value="">Selecciona un servicio</option>
@@ -481,16 +505,18 @@ export default function Appointments() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Empleado *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Empleado *</label>
               <select
                 value={createForm.employeeId}
                 onChange={(e) => setCreateForm({...createForm, employeeId: e.target.value})}
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text
                 }}
               >
                 <option value="">Selecciona un empleado</option>
@@ -503,7 +529,7 @@ export default function Appointments() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
                 📅 Fecha de la cita *
               </label>
               <div style={{ position: 'relative' }}>
@@ -512,7 +538,6 @@ export default function Appointments() {
                   value={selectedDateModal}
                   onChange={(e) => {
                     const newDate = e.target.value;
-                    console.log('Fecha seleccionada:', newDate);
                     setSelectedDateModal(newDate);
                     setCreateForm({...createForm, startTime: ''});
                     setAvailableSlots([]);
@@ -521,22 +546,21 @@ export default function Appointments() {
                   style={{
                     width: '100%',
                     padding: '15px 12px',
-                    border: '2px solid #e5e7eb',
+                    border: `2px solid ${colors.border}`,
                     borderRadius: '10px',
                     fontSize: '16px',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: colors.inputBg,
+                    color: colors.text,
                     cursor: 'pointer',
                     appearance: 'none',
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    boxShadow: `0 2px 8px ${colors.shadow}`
                   }}
                   onClick={(e) => {
-                    console.log('Input clickeado');
                     try {
                       e.target.showPicker?.();
                     } catch (err) {
-                      console.error('showPicker error:', err);
                     }
                   }}
                 />
@@ -546,7 +570,7 @@ export default function Appointments() {
                   top: '50%',
                   transform: 'translateY(-50%)',
                   pointerEvents: 'none',
-                  color: '#6b7280',
+                  color: colors.textSecondary,
                   fontSize: '20px'
                 }}>
                   📅
@@ -556,7 +580,7 @@ export default function Appointments() {
 
             {selectedDateModal && createForm.employeeId && createForm.serviceId && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
                   ⏰ Horarios disponibles ({availableSlots.length})
                 </label>
                 <div style={{ 
@@ -565,10 +589,10 @@ export default function Appointments() {
                   gap: '8px',
                   maxHeight: '180px',
                   overflowY: 'auto',
-                  border: '2px solid #e5e7eb',
+                  border: `2px solid ${colors.border}`,
                   borderRadius: '10px',
                   padding: '16px',
-                  backgroundColor: '#f8fafc'
+                  backgroundColor: colors.bgSecondary
                 }}>
                   {availableSlots.length > 0 ? (
                     availableSlots.map((slot, index) => (
@@ -576,22 +600,21 @@ export default function Appointments() {
                         key={index}
                         type="button"
                         onClick={() => {
-                          console.log('Hora seleccionada:', slot);
                           setCreateForm({...createForm, startTime: `${selectedDateModal}T${slot}`});
                         }}
                         style={{
                           padding: '14px 10px',
-                          border: '2px solid #e5e7eb',
+                          border: `2px solid ${colors.border}`,
                           borderRadius: '8px',
-                          background: createForm.startTime === `${selectedDateModal}T${slot}` ? '#10b981' : '#ffffff',
-                          color: createForm.startTime === `${selectedDateModal}T${slot}` ? '#ffffff' : '#374151',
+                          background: createForm.startTime === `${selectedDateModal}T${slot}` ? '#10b981' : colors.inputBg,
+                          color: createForm.startTime === `${selectedDateModal}T${slot}` ? '#ffffff' : colors.text,
                           cursor: 'pointer',
                           fontSize: '14px',
                           fontWeight: '600',
                           transition: 'all 0.2s ease',
                           boxShadow: createForm.startTime === `${selectedDateModal}T${slot}` 
                             ? '0 4px 6px rgba(16, 185, 129, 0.3)' 
-                            : '0 2px 4px rgba(0,0,0,0.1)',
+                            : `0 2px 4px ${colors.shadow}`,
                           transform: createForm.startTime === `${selectedDateModal}T${slot}` ? 'scale(1.05)' : 'scale(1)'
                         }}
                       >
@@ -602,12 +625,12 @@ export default function Appointments() {
                     <div style={{ 
                       gridColumn: '1 / -1', 
                       textAlign: 'center', 
-                      color: '#6b7280',
+                      color: colors.textSecondary,
                       padding: '30px 20px',
                       fontSize: '16px',
-                      backgroundColor: '#fef3c7',
+                      backgroundColor: colors.warning,
                       borderRadius: '8px',
-                      border: '2px dashed #f59e0b'
+                      border: `2px dashed ${colors.warning}`
                     }}>
                       {selectedDateModal && createForm.employeeId && createForm.serviceId 
                         ? '🔄 Cargando horarios...' 
@@ -620,7 +643,7 @@ export default function Appointments() {
             )}
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Cliente *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Cliente *</label>
               <input
                 type="text"
                 value={createForm.clientName}
@@ -629,15 +652,17 @@ export default function Appointments() {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Email</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Email</label>
               <input
                 type="email"
                 value={createForm.clientEmail}
@@ -646,15 +671,17 @@ export default function Appointments() {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Teléfono</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Teléfono</label>
               <input
                 type="tel"
                 value={createForm.clientPhone}
@@ -663,15 +690,17 @@ export default function Appointments() {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Notas</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600, color: colors.text }}>Notas</label>
               <textarea
                 value={createForm.notes}
                 onChange={(e) => setCreateForm({...createForm, notes: e.target.value})}
@@ -680,9 +709,11 @@ export default function Appointments() {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
                   fontSize: '14px',
+                  background: colors.inputBg,
+                  color: colors.text,
                   resize: 'vertical'
                 }}
               />
@@ -695,9 +726,9 @@ export default function Appointments() {
                   setShowCreateModal(false);
                 }}
                 style={{
-                  background: '#6b7280',
-                  color: 'white',
-                  border: 'none',
+                  background: colors.bgTertiary,
+                  color: colors.text,
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
                   padding: '10px 20px',
                   fontSize: '14px',
@@ -711,8 +742,8 @@ export default function Appointments() {
                 onClick={handleCreateAppointment}
                 disabled={creating}
                 style={{
-                  background: creating ? '#9ca3af' : '#10b981',
-                  color: 'white',
+                  background: creating ? colors.bgTertiary : '#10b981',
+                  color: creating ? colors.text : 'white',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '10px 20px',

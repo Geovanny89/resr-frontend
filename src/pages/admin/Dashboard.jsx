@@ -92,7 +92,7 @@ export default function Dashboard() {
             <div style={{ fontWeight: 700, color: '#9c4221', fontSize: 15 }}>Tu suscripción está por vencer</div>
             <div style={{ fontSize: 13, color: '#c05621' }}>Faltan <strong>{daysLeft} días</strong> para que tu cuenta sea bloqueada. Por favor realiza el pago pronto.</div>
           </div>
-          <Link to="/admin/my-business" className="btn-primary" style={{ padding: '8px 16px', fontSize: 12 }}>
+          <Link to="/admin/submit-payment" className="btn-primary" style={{ padding: '8px 16px', fontSize: 12 }}>
             Ir a pagar
           </Link>
         </div>
@@ -112,11 +112,11 @@ export default function Dashboard() {
       )}
 
       {/* STATS CITAS */}
-      <ResponsiveGrid gap={16} minWidth={150}>
+      <ResponsiveGrid gap={16} minWidth={140}>
         {statCards.map(c => {
           const Icon = c.icon;
           return (
-            <div key={c.label} className="stat-card">
+            <div key={c.label} className="stat-card" style={{ height: '100%' }}>
               <div className={`stat-icon ${c.color}`}><Icon size={22} /></div>
               <div className="stat-body">
                 <div className="stat-value">{c.value}</div>
@@ -128,32 +128,32 @@ export default function Dashboard() {
       </ResponsiveGrid>
 
       {/* FINANZAS DEL MES */}
-      <ResponsiveGrid gap={16} minWidth={200}>
-        <div className="stat-card">
+      <ResponsiveGrid gap={16} minWidth={140}>
+        <div className="stat-card" style={{ height: '100%' }}>
           <div className="stat-icon teal"><DollarSign size={22} /></div>
           <div className="stat-body">
-            <div className="stat-value" style={{ fontSize: 20 }}>{fmt(finance.totalRevenue)}</div>
+            <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.totalRevenue)}</div>
             <div className="stat-label">Ingresos totales (mes)</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ height: '100%' }}>
           <div className="stat-icon green"><TrendingUp size={22} /></div>
           <div className="stat-body">
-            <div className="stat-value" style={{ fontSize: 20 }}>{fmt(finance.ownerRevenue)}</div>
+            <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.ownerRevenue)}</div>
             <div className="stat-label">Ganancia del negocio</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ height: '100%' }}>
           <div className="stat-icon blue"><Users size={22} /></div>
           <div className="stat-body">
-            <div className="stat-value" style={{ fontSize: 20 }}>{fmt(finance.employeeRevenue)}</div>
+            <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.employeeRevenue)}</div>
             <div className="stat-label">Pago a empleados</div>
           </div>
         </div>
       </ResponsiveGrid>
 
       {/* ACCESOS RÁPIDOS */}
-      <ResponsiveGrid gap={16} minWidth={200}>
+      <ResponsiveGrid gap={16} minWidth={180}>
         {[
           { to: '/admin/appointments', icon: '📋', label: 'Gestionar Citas',  sub: 'Ver y actualizar estados', color: '#4f46e5' },
           { to: '/admin/reports',      icon: '📊', label: 'Ver Informes',     sub: 'Día, semana y mes',        color: '#10b981' },
