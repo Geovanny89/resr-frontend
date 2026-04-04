@@ -31,12 +31,13 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Intentar guardar en Documentos (más permanente que Cache)
+      // Android 10+ usa External (Downloads) en lugar de Documents
       const path = `${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64Data,
-        directory: Directory.Documents,
+        directory: Directory.External,
+        recursive: true,
       });
 
       // Informar al usuario que se guardó
@@ -122,11 +123,13 @@ export async function savePDF(doc, filename) {
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
       
+      // Android 10+ usa External (Downloads)
       const path = `${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.Documents,
+        directory: Directory.External,
+        recursive: true,
       });
 
       alert(`✅ PDF descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
@@ -176,11 +179,13 @@ export async function saveExcel(wb, filename) {
       
       const base64 = await blobToBase64(blob);
       
+      // Android 10+ usa External (Downloads)
       const path = `${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.Documents,
+        directory: Directory.External,
+        recursive: true,
       });
 
       alert(`✅ Excel descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
