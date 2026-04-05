@@ -40,22 +40,10 @@ export async function saveFile({ filename, data, contentType, blob }) {
         recursive: true,
       });
 
-      // Informar al usuario que se guardó
-      alert(`✅ Archivo descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
+      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
+      alert(`✅ Archivo descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
 
-      // Opcionalmente, permitir compartir/abrir
-      try {
-        await Share.share({
-          title: filename,
-          text: `Abrir archivo generado: ${filename}`,
-          url: result.uri,
-          dialogTitle: '¿Qué deseas hacer con el archivo?',
-        });
-      } catch (shareError) {
-        console.log('Share cancelled:', shareError);
-      }
-
-      return { success: true, uri: result.uri };
+      return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
       alert('❌ Error: ' + error.message);
       throw error;
@@ -132,18 +120,12 @@ export async function savePDF(doc, filename) {
         recursive: true,
       });
 
-      alert(`✅ PDF descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
+      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
+      alert(`✅ PDF descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
 
-      try {
-        await Share.share({
-          title: filename,
-          text: `Abrir PDF generado: ${filename}`,
-          url: result.uri,
-          dialogTitle: '¿Qué deseas hacer con el PDF?',
-        });
-      } catch (shareError) {
-        console.log('Share cancelled:', shareError);
-      }
+      // Opcional: permitir compartir manualmente mediante un segundo botón/acción
+      // El usuario puede compartir el archivo desde la app de archivos del teléfono
+      return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
       alert('❌ Error al generar PDF: ' + error.message);
       throw error;
@@ -188,18 +170,10 @@ export async function saveExcel(wb, filename) {
         recursive: true,
       });
 
-      alert(`✅ Excel descargado: ${filename}\nGuardado en tu carpeta de documentos.`);
+      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
+      alert(`✅ Excel descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
 
-      try {
-        await Share.share({
-          title: filename,
-          text: `Abrir Excel generado: ${filename}`,
-          url: result.uri,
-          dialogTitle: '¿Qué deseas hacer con el Excel?',
-        });
-      } catch (shareError) {
-        console.log('Share cancelled:', shareError);
-      }
+      return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
       alert('❌ Error al generar Excel: ' + error.message);
       throw error;

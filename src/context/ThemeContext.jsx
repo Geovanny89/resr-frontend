@@ -4,10 +4,23 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    // Obtener preferencia guardada o usar preferencia del sistema
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    try {
+      // Obtener preferencia guardada
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      
+      // Detectar preferencia del sistema (con fallback para WebView)
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq && mq.matches) return true;
+      }
+      
+      // Por defecto en APK: usar dark mode (mejor para la app)
+      return true;
+    } catch (e) {
+      // Fallback: dark mode por defecto
+      return true;
+    }
   });
 
   useEffect(() => {
