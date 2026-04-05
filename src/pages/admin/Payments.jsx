@@ -460,7 +460,12 @@ export default function Payments() {
 
     // Fecha de emisión (alineada derecha)
     doc.setFontSize(9);
-    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - 80, 20, { align: 'left' });
+    doc.text(
+  `Emitido: ${new Date().toLocaleString('es-CO')}`,
+  pageWidth - 20, // margen derecho
+  20,
+  { align: 'right' }
+);
 
     // Línea separadora elegante
     yPos = 45;
@@ -590,8 +595,12 @@ export default function Payments() {
 
     // Fecha de emisión (alineada derecha)
     doc.setFontSize(9);
-    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - 80, 20, { align: 'left' });
-
+   doc.text(
+  `Emitido: ${new Date().toLocaleString('es-CO')}`,
+  pageWidth - 20, // margen derecho
+  20,
+  { align: 'right' }
+);
     // Línea separadora elegante
     yPos = 45;
     doc.setDrawColor(...colors.primary);
