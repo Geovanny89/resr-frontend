@@ -852,7 +852,7 @@ export default function Reports() {
 
             {activeTab === 'overview' && (
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Estado de citas</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Estado de citas</h3>
                 {byStatus.length > 0 ? (
                   <div className="reports-chart" style={{ height: isMobile ? 220 : 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -892,7 +892,7 @@ export default function Reports() {
                             gap: 10,
                             padding: '10px 12px',
                             borderRadius: 10,
-                            background: 'var(--gray-50)',
+                            background: 'var(--bg-secondary)',
                             border: '1px solid var(--border)',
                             minWidth: 0,
                           }}
@@ -914,7 +914,7 @@ export default function Reports() {
 
             {activeTab === 'employees' && (
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Desempeño por empleado</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Desempeño por empleado</h3>
                 {byEmployee.length > 0 ? (
                   <div className="reports-chart" style={{ height: isMobile ? 220 : 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -944,7 +944,7 @@ export default function Reports() {
 
             {activeTab === 'services' && (
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Servicios más populares</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Servicios más populares</h3>
                 {byService.length > 0 ? (
                   <div style={{ display: 'grid', gap: 12 }}>
                     {byService.map((svc, i) => (
@@ -1019,15 +1019,15 @@ export default function Reports() {
                 <div style={{ display: 'grid', gap: 10 }}>
                   {paginatedAppointments.map(a => (
                     <div
-                      key={a.id}
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 12,
-                        padding: 12,
-                        background: 'white',
-                        minWidth: 0,
-                      }}
-                    >
+                          key={a.id}
+                          style={{
+                            border: '1px solid var(--border)',
+                            borderRadius: 12,
+                            padding: 12,
+                            background: 'var(--card-bg, white)',
+                            minWidth: 0,
+                          }}
+                        >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
