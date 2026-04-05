@@ -4,6 +4,32 @@ import { Share } from '@capacitor/share';
 import * as XLSX from 'xlsx';
 
 /**
+ * Obtiene el directorio apropiado según la plataforma y versión de Android
+ */
+function getSaveDirectory() {
+  // En Android 11+ (API 30+), ExternalStorage tiene restricciones
+  // Usamos Documents que funciona mejor en versiones recientes
+  return Directory.Documents;
+}
+
+/**
+ * Comparte el archivo después de guardarlo (mejor UX en móvil)
+ */
+async function shareFile(uri, filename) {
+  try {
+    await Share.share({
+      title: filename,
+      text: `Archivo: ${filename}`,
+      url: uri,
+      dialogTitle: 'Compartir archivo',
+    });
+  } catch (e) {
+    // El usuario puede haber cancelado, no es error grave
+    console.log('Share cancelled or failed:', e);
+  }
+}
+
+/**
  * Guarda archivo en dispositivo (para APK)
  * o descarga normal (para web)
  */
@@ -31,21 +57,38 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Guardar en carpeta Downloads del usuario
-      const path = `Download/${filename}`;
+      // Usar directorio Documents que funciona en Android 11+
+      const saveDir = getSaveDirectory();
+      const path = `kdice-reports/${filename}`;
+      
+      // Crear directorio si no existe
+      try {
+        await Filesystem.mkdir({
+          path: 'kdice-reports',
+          directory: saveDir,
+          recursive: true,
+        });
+      } catch (e) {
+        // Directorio puede ya existir
+        console.log('Directory may exist:', e);
+      }
+      
       const result = await Filesystem.writeFile({
         path,
         data: base64Data,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
         recursive: true,
       });
 
       const fileUri = await Filesystem.getUri({
         path,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
       });
 
-      alert(`✅ Archivo guardado: ${filename}\nRuta: ${fileUri.uri}`);
+      alert(`✅ Archivo guardado: ${filename}`);
+      
+      // Opcional: compartir el archivo
+      await shareFile(fileUri.uri, filename);
 
       return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
@@ -115,26 +158,38 @@ export async function savePDF(doc, filename) {
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
       
-      // Guardar en carpeta Downloads del usuario
-      const path = `Download/${filename}`;
+      // Usar directorio Documents que funciona en Android 11+
+      const saveDir = getSaveDirectory();
+      const path = `kdice-reports/${filename}`;
+      
+      // Crear directorio si no existe
+      try {
+        await Filesystem.mkdir({
+          path: 'kdice-reports',
+          directory: saveDir,
+          recursive: true,
+        });
+      } catch (e) {
+        // Directorio puede ya existir
+        console.log('Directory may exist:', e);
+      }
+      
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
         recursive: true,
       });
 
-      // Obtener la ruta real para mostrar al usuario
       const fileUri = await Filesystem.getUri({
         path,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
       });
 
-      alert(`✅ PDF guardado: ${filename}\nRuta: ${fileUri.uri}`);
-
-      // Opcional: permitir compartir manualmente mediante un segundo botón/acción
-      // El usuario puede compartir el archivo desde la app de archivos del teléfono
-      return { success: true, uri: result.uri, path: result.path };
+      alert(`✅ PDF guardado: ${filename}`);
+      
+      // Opcional: compartir el archivo
+      await shareFile(fileUri.uri, filename);
     } catch (error) {
       alert('❌ Error al generar PDF: ' + error.message);
       throw error;
@@ -170,21 +225,38 @@ export async function saveExcel(wb, filename) {
       
       const base64 = await blobToBase64(blob);
       
-      // Guardar en carpeta Downloads del usuario
-      const path = `Download/${filename}`;
+      // Usar directorio Documents que funciona en Android 11+
+      const saveDir = getSaveDirectory();
+      const path = `kdice-reports/${filename}`;
+      
+      // Crear directorio si no existe
+      try {
+        await Filesystem.mkdir({
+          path: 'kdice-reports',
+          directory: saveDir,
+          recursive: true,
+        });
+      } catch (e) {
+        // Directorio puede ya existir
+        console.log('Directory may exist:', e);
+      }
+      
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
         recursive: true,
       });
 
       const fileUri = await Filesystem.getUri({
         path,
-        directory: Directory.ExternalStorage,
+        directory: saveDir,
       });
 
-      alert(`✅ Excel guardado: ${filename}\nRuta: ${fileUri.uri}`);
+      alert(`✅ Excel guardado: ${filename}`);
+      
+      // Opcional: compartir el archivo
+      await shareFile(fileUri.uri, filename);
 
       return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
