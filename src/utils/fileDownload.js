@@ -4,12 +4,12 @@ import { Share } from '@capacitor/share';
 import * as XLSX from 'xlsx';
 
 /**
- * Obtiene el directorio apropiado según la plataforma y versión de Android
+ * Obtiene el directorio apropiado según la plataforma
+ * Usamos Cache que es el directorio más seguro y compatible para generar 
+ * archivos que luego se van a compartir o abrir sin problemas de permisos.
  */
 function getSaveDirectory() {
-  // En Android 11+ (API 30+), ExternalStorage tiene restricciones
-  // Usamos Documents que funciona mejor en versiones recientes
-  return Directory.Documents;
+  return Directory.Cache;
 }
 
 /**
@@ -38,16 +38,6 @@ export async function saveFile({ filename, data, contentType, blob }) {
   
   if (isNative) {
     try {
-      // Solicitar permisos de almacenamiento
-      try {
-        const status = await Filesystem.checkPermissions();
-        if (status.publicStorage !== 'granted') {
-          await Filesystem.requestPermissions();
-        }
-      } catch (e) {
-        console.warn('Error checking permissions:', e);
-      }
-
       let base64Data;
       if (blob) {
         base64Data = await blobToBase64(blob);
@@ -57,27 +47,15 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Usar directorio Documents que funciona en Android 11+
+      // Usar directorio Cache que NO requiere permisos y es compatible con Share
       const saveDir = getSaveDirectory();
-      const path = `kdice-reports/${filename}`;
-      
-      // Crear directorio si no existe
-      try {
-        await Filesystem.mkdir({
-          path: 'kdice-reports',
-          directory: saveDir,
-          recursive: true,
-        });
-      } catch (e) {
-        // Directorio puede ya existir
-        console.log('Directory may exist:', e);
-      }
+      const path = filename; // Guardar directo en la raíz de Cache para evitar mkdir
       
       const result = await Filesystem.writeFile({
         path,
         data: base64Data,
         directory: saveDir,
-        recursive: true,
+        encoding: Encoding.Base64, // IMPORTANTE: Especificar encoding
       });
 
       const fileUri = await Filesystem.getUri({
@@ -85,9 +63,7 @@ export async function saveFile({ filename, data, contentType, blob }) {
         directory: saveDir,
       });
 
-      alert(`✅ Archivo guardado: ${filename}`);
-      
-      // Opcional: compartir el archivo
+      // El archivo ya está listo para ser compartido o guardado por el usuario
       await shareFile(fileUri.uri, filename);
 
       return { success: true, uri: result.uri, path: result.path };
@@ -144,41 +120,19 @@ export async function savePDF(doc, filename) {
   
   if (isNative) {
     try {
-      // Solicitar permisos
-      try {
-        const status = await Filesystem.checkPermissions();
-        if (status.publicStorage !== 'granted') {
-          await Filesystem.requestPermissions();
-        }
-      } catch (e) {
-        console.warn('Error checking permissions:', e);
-      }
-
       // Obtener PDF como base64
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
       
-      // Usar directorio Documents que funciona en Android 11+
+      // Usar directorio Cache que NO requiere permisos y es compatible con Share
       const saveDir = getSaveDirectory();
-      const path = `kdice-reports/${filename}`;
-      
-      // Crear directorio si no existe
-      try {
-        await Filesystem.mkdir({
-          path: 'kdice-reports',
-          directory: saveDir,
-          recursive: true,
-        });
-      } catch (e) {
-        // Directorio puede ya existir
-        console.log('Directory may exist:', e);
-      }
+      const path = filename; // Guardar directo en la raíz de Cache para evitar mkdir
       
       const result = await Filesystem.writeFile({
         path,
         data: base64,
         directory: saveDir,
-        recursive: true,
+        encoding: Encoding.Base64,
       });
 
       const fileUri = await Filesystem.getUri({
@@ -186,9 +140,7 @@ export async function savePDF(doc, filename) {
         directory: saveDir,
       });
 
-      alert(`✅ PDF guardado: ${filename}`);
-      
-      // Opcional: compartir el archivo
+      // El archivo ya está listo para ser compartido o guardado por el usuario
       await shareFile(fileUri.uri, filename);
     } catch (error) {
       alert('❌ Error al generar PDF: ' + error.message);
@@ -207,16 +159,6 @@ export async function saveExcel(wb, filename) {
   
   if (isNative) {
     try {
-      // Solicitar permisos
-      try {
-        const status = await Filesystem.checkPermissions();
-        if (status.publicStorage !== 'granted') {
-          await Filesystem.requestPermissions();
-        }
-      } catch (e) {
-        console.warn('Error checking permissions:', e);
-      }
-
       // Generar Excel como array
       const excelData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelData], { 
@@ -225,27 +167,15 @@ export async function saveExcel(wb, filename) {
       
       const base64 = await blobToBase64(blob);
       
-      // Usar directorio Documents que funciona en Android 11+
+      // Usar directorio Cache que NO requiere permisos y es compatible con Share
       const saveDir = getSaveDirectory();
-      const path = `kdice-reports/${filename}`;
-      
-      // Crear directorio si no existe
-      try {
-        await Filesystem.mkdir({
-          path: 'kdice-reports',
-          directory: saveDir,
-          recursive: true,
-        });
-      } catch (e) {
-        // Directorio puede ya existir
-        console.log('Directory may exist:', e);
-      }
+      const path = filename; // Guardar directo en la raíz de Cache para evitar mkdir
       
       const result = await Filesystem.writeFile({
         path,
         data: base64,
         directory: saveDir,
-        recursive: true,
+        encoding: Encoding.Base64,
       });
 
       const fileUri = await Filesystem.getUri({
@@ -253,9 +183,7 @@ export async function saveExcel(wb, filename) {
         directory: saveDir,
       });
 
-      alert(`✅ Excel guardado: ${filename}`);
-      
-      // Opcional: compartir el archivo
+      // El archivo ya está listo para ser compartido o guardado por el usuario
       await shareFile(fileUri.uri, filename);
 
       return { success: true, uri: result.uri, path: result.path };
