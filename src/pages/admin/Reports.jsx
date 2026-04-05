@@ -462,9 +462,12 @@ export default function Reports() {
     doc.setTextColor(...colors.secondary);
     doc.text('Informe de Actividad', pageWidth - margin, yPos + 7, { align: 'right' });
     
-    // Período
+    // Período - formato corto para evitar desbordamiento
     doc.setFontSize(9);
-    doc.text(range?.label || '', pageWidth - margin, yPos + 13, { align: 'right' });
+    const periodLabel = range?.start && range?.end 
+      ? `${range.start.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} - ${range.end.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}`
+      : (range?.label || '');
+    doc.text(periodLabel, pageWidth - margin, yPos + 13, { align: 'right' });
     
     // Línea separadora elegante
     yPos = 40;
@@ -514,6 +517,72 @@ export default function Reports() {
       margin: { left: margin, right: margin },
     });
     
+    // === SECCIÓN: RESUMEN DE PAGOS A EMPLEADOS ===
+    // Calcular cuánto se le debe pagar a cada empleado
+    const employeePayments = done.reduce((acc, a) => {
+      const name = a.Employee?.User?.name || 'Sin asignar';
+      const price = parseFloat(a.Service?.price || 0);
+      const commPct = parseFloat(a.Employee?.commissionPct || 0);
+      const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (price * commPct / 100);
+      
+      if (!acc[name]) {
+        acc[name] = { name, citas: 0, total: 0 };
+      }
+      acc[name].citas++;
+      acc[name].total += isNaN(earned) ? 0 : earned;
+      return acc;
+    }, {});
+
+    const employeeList = Object.values(employeePayments);
+    
+    if (employeeList.length > 0) {
+      yPos = doc.lastAutoTable.finalY + 15;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(...colors.black);
+      doc.text('Resumen de Pagos a Empleados', margin, yPos);
+      
+      yPos += 8;
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Empleado', 'Citas completadas', 'Total a pagar']],
+        body: employeeList.map(emp => [
+          emp.name,
+          emp.citas.toString(),
+          fmt(emp.total),
+        ]),
+        foot: [['TOTAL', done.length.toString(), fmt(empRev)]],
+        theme: 'plain',
+        headStyles: {
+          fillColor: colors.light,
+          textColor: colors.black,
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 10,
+          textColor: colors.black,
+        },
+        footStyles: {
+          fillColor: [220, 220, 220],
+          textColor: colors.black,
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 50, halign: 'center' },
+          2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' },
+        },
+        styles: {
+          cellPadding: 5,
+          lineColor: [220, 220, 220],
+          lineWidth: 0.1,
+        },
+        margin: { left: margin, right: margin },
+      });
+    }
+
     // Sección: Detalle de citas
     yPos = doc.lastAutoTable.finalY + 15;
     doc.setFont('helvetica', 'bold');

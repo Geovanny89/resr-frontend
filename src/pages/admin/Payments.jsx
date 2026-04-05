@@ -487,16 +487,14 @@ export default function Payments() {
     yPos += 15;
     autoTable(doc, {
       startY: yPos,
-      head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
+      head: [['Fecha', 'Servicio', 'Empleado gana']],
       body: emp.appointments.map(a => [
         fmtDate(a.date),
         a.service,
-        fmt(a.price),
         fmt(a.employeeEarns),
-        fmt(a.ownerEarns),
       ]),
       foot: [[
-        '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
+        '', 'TOTAL', fmt(emp.employeeEarns)
       ]],
       theme: 'plain',
       headStyles: {
@@ -656,16 +654,14 @@ export default function Payments() {
 
       autoTable(doc, {
         startY: y,
-        head: [['Fecha', 'Servicio', 'Precio', 'Empleado gana', 'Negocio gana']],
+        head: [['Fecha', 'Servicio', 'Empleado gana']],
         body: emp.appointments.map(a => [
           fmtDate(a.date),
           a.service,
-          fmt(a.price),
           fmt(a.employeeEarns),
-          fmt(a.ownerEarns),
         ]),
         foot: [[
-          '', 'TOTAL', fmt(emp.total), fmt(emp.employeeEarns), fmt(emp.ownerEarns)
+          '', 'TOTAL', fmt(emp.employeeEarns)
         ]],
         theme: 'plain',
         headStyles: {

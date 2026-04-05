@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api/client';
 import { Mail, Lock, Eye, EyeOff, LogIn, User, ArrowRight, RefreshCw, X, ArrowLeft } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -285,7 +286,7 @@ export default function Login() {
       {/* Modal Olvidé mi contraseña */}
       {showForgotModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: 16, maxWidth: 400, width: '100%', padding: 24, position: 'relative' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, maxWidth: 400, width: '100%', padding: 24, position: 'relative', border: '1px solid var(--border)' }}>
             <button 
               onClick={() => { setShowForgotModal(false); setForgotSuccess(false); }}
               style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}

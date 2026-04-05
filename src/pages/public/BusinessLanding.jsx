@@ -497,7 +497,7 @@ export default function BusinessLanding() {
         {/* Descripción */}
         {business.description && (
           <div className="section-card fade-up" style={{ animationDelay: '0.1s' }}>
-            <h2 className="section-title">✨ Nuestra historia</h2>
+            <h2 className="section-title">✨ Nosotros</h2>
             <p style={{ fontSize: 16, color: colors.textSecondary, lineHeight: 1.8, margin: 0 }}>
               {business.description}
             </p>

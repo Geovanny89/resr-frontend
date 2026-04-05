@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import notificationService from '../../services/notificationService';
 import { Capacitor } from '@capacitor/core';
 import { 
@@ -19,7 +20,7 @@ import {
   parseISO
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, User as UserIcon, XCircle, LogOut, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, User as UserIcon, XCircle, LogOut, RefreshCw, Sun, Moon } from 'lucide-react';
 
 const STATUS_LABELS = { 
   pending: 'Pendiente', 
@@ -39,6 +40,7 @@ const STATUS_COLORS = {
 
 export default function MyAppointments() {
   const { logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,26 +104,26 @@ export default function MyAppointments() {
 
   const renderHeader = () => {
     return (
-      <div className="my-appointments-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, background: 'white', padding: '15px 20px', borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+      <div className="my-appointments-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, background: 'var(--surface)', padding: '15px 20px', borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
         <div className="my-appointments-month-controls" style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-          <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} style={{ background: '#edf2f7', border: 'none', padding: 8, borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
-            <ChevronLeft size={20} color="#4a5568" />
+          <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} style={{ background: 'var(--bg-secondary)', border: 'none', padding: 8, borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+            <ChevronLeft size={20} color="var(--text)" />
           </button>
-          <h2 className="my-appointments-month-title" style={{ fontSize: 18, fontWeight: 700, color: '#2d3748', minWidth: 150, textAlign: 'center', textTransform: 'capitalize' }}>
+          <h2 className="my-appointments-month-title" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', minWidth: 150, textAlign: 'center', textTransform: 'capitalize' }}>
             {format(currentMonth, 'MMMM yyyy', { locale: es })}
           </h2>
-          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} style={{ background: '#edf2f7', border: 'none', padding: 8, borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
-            <ChevronRight size={20} color="#4a5568" />
+          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} style={{ background: 'var(--bg-secondary)', border: 'none', padding: 8, borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+            <ChevronRight size={20} color="var(--text)" />
           </button>
         </div>
-        <div style={{ display: 'flex', background: '#edf2f7', padding: 4, borderRadius: 8 }}>
+        <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: 4, borderRadius: 8 }}>
           <button 
             onClick={() => setView('calendar')}
             style={{ 
               padding: '6px 16px', borderRadius: 6, border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              background: view === 'calendar' ? 'white' : 'transparent',
+              background: view === 'calendar' ? 'var(--surface)' : 'transparent',
               boxShadow: view === 'calendar' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-              color: view === 'calendar' ? '#667eea' : '#718096'
+              color: view === 'calendar' ? 'var(--primary)' : 'var(--text-muted)'
             }}
           >
             Calendario
@@ -130,9 +132,9 @@ export default function MyAppointments() {
             onClick={() => setView('list')}
             style={{ 
               padding: '6px 16px', borderRadius: 6, border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              background: view === 'list' ? 'white' : 'transparent',
+              background: view === 'list' ? 'var(--surface)' : 'transparent',
               boxShadow: view === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-              color: view === 'list' ? '#667eea' : '#718096'
+              color: view === 'list' ? 'var(--primary)' : 'var(--text-muted)'
             }}
           >
             Lista
@@ -147,7 +149,7 @@ export default function MyAppointments() {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10 }}>
         {days.map(day => (
-          <div key={day} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase' }}>
+          <div key={day} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             {day}
           </div>
         ))}
@@ -176,13 +178,13 @@ export default function MyAppointments() {
               onClick={() => setSelectedDate(day)}
               style={{ 
                 minHeight: 80, padding: 8, borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
-                background: isSelected ? '#ebf4ff' : 'white',
-                border: isSelected ? '2px solid #667eea' : '2px solid transparent',
+                background: isSelected ? 'var(--primary-bg, #ebf4ff)' : 'var(--surface)',
+                border: isSelected ? '2px solid var(--primary)' : '2px solid var(--border)',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                 opacity: isCurrentMonth ? 1 : 0.4
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: isSelected ? '#667eea' : '#4a5568', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)', marginBottom: 4 }}>
                 {format(day, 'd')}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -193,7 +195,7 @@ export default function MyAppointments() {
                   }} />
                 ))}
                 {dayAppointments.length > 2 && (
-                  <div style={{ fontSize: 10, color: '#718096', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>
                     +{dayAppointments.length - 2} más
                   </div>
                 )}
@@ -210,13 +212,13 @@ export default function MyAppointments() {
     
     return (
       <div style={{ marginTop: 30 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#2d3748', marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CalendarIcon size={18} />
           Citas para el {format(selectedDate, "d 'de' MMMM", { locale: es })}
         </h3>
         
         {dayAppointments.length === 0 ? (
-          <div style={{ background: 'white', padding: 30, borderRadius: 12, textAlign: 'center', color: '#718096', border: '1px dashed #cbd5e0' }}>
+          <div style={{ background: 'var(--surface)', padding: 30, borderRadius: 12, textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)' }}>
             No tienes citas para este día
           </div>
         ) : (
@@ -328,7 +330,7 @@ export default function MyAppointments() {
     }}>
       <div className="calendar-container">
         {renderHeader()}
-        <div style={{ background: 'white', padding: 12, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
           {renderDays()}
           {renderCells()}
         </div>
@@ -340,7 +342,7 @@ export default function MyAppointments() {
   );
 
   return (
-    <div className="my-appointments-page" style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 80 }}>
+    <div className="my-appointments-page" style={{ background: 'var(--bg)', minHeight: '100vh', paddingBottom: 80 }}>
       <style>{`
         @media (max-width: 640px) {
           .my-appointments-header {
@@ -375,9 +377,14 @@ export default function MyAppointments() {
       <div className="my-appointments-topbar" style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)', padding: '24px 16px', color: 'white', borderBottomRightRadius: 24, borderBottomLeftRadius: 24, boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Mis Citas</h1>
-          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}>
-            <LogOut size={20} />
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={toggleTheme} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}>
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}>
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
         
         <div style={{ display: 'flex', gap: 12, background: 'rgba(255,255,255,0.1)', padding: 4, borderRadius: 12 }}>
@@ -400,8 +407,8 @@ export default function MyAppointments() {
         {/* Sección de Negocios Frecuentes para re-agendar */}
         {appointments.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#2d3748', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <RefreshCw size={18} color="#4f46e5" /> Agendar nueva cita en:
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RefreshCw size={18} color="var(--primary)" /> Agendar nueva cita en:
             </h3>
             <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
               {[...new Map(appointments.map(a => [a.Business.slug, a.Business])).values()].map(biz => (
@@ -410,10 +417,10 @@ export default function MyAppointments() {
                   onClick={() => handleRebook(biz.slug)}
                   style={{ 
                     flex: '0 0 auto',
-                    background: 'white',
+                    background: 'var(--surface)',
                     padding: '12px 20px',
                     borderRadius: 16,
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -422,8 +429,8 @@ export default function MyAppointments() {
                     cursor: 'pointer'
                   }}
                 >
-                  <span style={{ fontWeight: 700, color: '#4f46e5', fontSize: 14 }}>{biz.name}</span>
-                  <span style={{ fontSize: 11, color: '#718096' }}>Agendar →</span>
+                  <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>{biz.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Agendar →</span>
                 </button>
               ))}
             </div>
@@ -436,13 +443,13 @@ export default function MyAppointments() {
             <p style={{ color: '#718096' }}>Cargando tus citas...</p>
           </div>
         ) : appointments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--surface)', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>No tienes citas aún</h3>
-            <p style={{ fontSize: 14, color: '#718096', lineHeight: 1.5, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>No tienes citas aún</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 24 }}>
               Cuando agendes una cita en cualquiera de nuestros negocios aliados, aparecerá aquí automáticamente.
             </p>
-            <Link to="/" style={{ background: '#4f46e5', color: 'white', padding: '12px 24px', borderRadius: 12, textDecoration: 'none', fontWeight: 600, display: 'inline-flex' }}>
+            <Link to="/" style={{ background: 'var(--primary)', color: 'white', padding: '12px 24px', borderRadius: 12, textDecoration: 'none', fontWeight: 600, display: 'inline-flex' }}>
               Explorar Negocios
             </Link>
           </div>
@@ -459,7 +466,7 @@ function AppointmentCard({ apt, onCancel }) {
   
   return (
     <div className="my-appointment-card" style={{ 
-      background: 'white', padding: 20, borderRadius: 16, boxShadow: '0 2px 4px rgba(0,0,0,0.04)', 
+      background: 'var(--surface)', padding: 20, borderRadius: 16, boxShadow: '0 2px 4px rgba(0,0,0,0.04)', 
       borderLeft: `6px solid ${STATUS_COLORS[apt.status]}`,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       transition: 'transform 0.2s',
@@ -473,22 +480,22 @@ function AppointmentCard({ apt, onCancel }) {
           }}>
             {STATUS_LABELS[apt.status]}
           </span>
-          <span style={{ color: '#a0aec0', fontSize: 12 }}>•</span>
-          <span style={{ color: '#718096', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>•</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
             <Clock size={14} />
             {format(startTime, 'HH:mm')}
           </span>
         </div>
         
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: '#2d3748', marginBottom: 6 }}>{apt.Service?.name}</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{apt.Service?.name}</h3>
         
         <div className="my-appointment-card-meta" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4a5568', fontSize: 13 }}>
-            <MapPin size={14} color="#718096" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+            <MapPin size={14} color="var(--text-muted)" />
             <span style={{ fontWeight: 500 }}>{apt.Business?.name}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4a5568', fontSize: 13 }}>
-            <UserIcon size={14} color="#718096" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+            <UserIcon size={14} color="var(--text-muted)" />
             <span>{apt.Employee?.User?.name}</span>
           </div>
         </div>
