@@ -8,7 +8,7 @@ import { DollarSign, Upload, Smartphone, CreditCard, CheckCircle, AlertCircle, C
 // DATOS DE PAGO DEL ADMIN - Aquí configuras tus datos
 const ADMIN_PAYMENT_INFO = {
   nequi: {
-    number: '3125205513',
+    number: '3507918591',
     label: 'Nequi',
     color: '#7B1FA2',
     icon: Smartphone
