@@ -455,16 +455,21 @@ export default function EmployeeDashboard() {
                         </button>
                       )}
                       {apt.status === 'confirmed' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
-                          Iniciar Atención
-                        </button>
+                        <>
+                          <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
+                            Iniciar Atención
+                          </button>
+                          <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
+                            Completar
+                          </button>
+                        </>
                       )}
                       {apt.status === 'attention' && (
                         <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
                           Terminar
                         </button>
                       )}
-                      {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                      {(apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'attention') && (
                         <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
                           Cancelar
                         </button>
