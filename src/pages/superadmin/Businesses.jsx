@@ -497,8 +497,8 @@ export default function BusinessesResponsive() {
 
       {subModal && (
         <div className="modal-overlay" onClick={() => setSubModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, width: '90%', maxHeight: '90vh', padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Actualizar Suscripción</h2>
                 <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{subModal.name}</p>
@@ -507,10 +507,10 @@ export default function BusinessesResponsive() {
                 <X size={20} />
               </button>
             </div>
-            <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de suscripción</label>
-                <select value={subForm.subscriptionStatus} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de suscripción</label>
+                <select value={subForm.subscriptionStatus} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 15, background: 'var(--surface)', color: 'var(--text)' }}>
                   <option value="pending">⏳ Pendiente</option>
                   <option value="paid">✅ Al día</option>
                   <option value="overdue">❌ Vencido</option>
@@ -518,12 +518,12 @@ export default function BusinessesResponsive() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inicio</label>
-                  <input type="date" value={subForm.subscriptionStartDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStartDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inicio</label>
+                  <input type="date" value={subForm.subscriptionStartDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStartDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 15, background: 'var(--surface)', color: 'var(--text)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vencimiento</label>
-                  <input type="date" value={subForm.subscriptionEndDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionEndDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 15 }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vencimiento</label>
+                  <input type="date" value={subForm.subscriptionEndDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionEndDate: e.target.value }))} style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 15, background: 'var(--surface)', color: 'var(--text)' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>

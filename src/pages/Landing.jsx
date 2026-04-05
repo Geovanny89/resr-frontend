@@ -519,7 +519,7 @@ export default function Landing() {
           </p>
           <div className="hero-btns" style={{ display: 'flex', gap: 20, justifyContent: 'center', position: 'relative' }}>
             <button onClick={() => navigate('/register-vendor')} className="btn-primary" style={{ padding: '20px 48px', fontSize: 18 }}>
-              Crear mi cuenta gratis
+              Crear mi cuenta 
             </button>
             <a
               href="https://wa.me/573125205513?text=Hola%20KDice%2C%20tengo%20preguntas%20sobre%20el%20sistema"
