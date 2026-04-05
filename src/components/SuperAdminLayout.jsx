@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
 import {
   LayoutDashboard, Building2, Tag, LogOut, Bell, ShieldCheck, Menu, X,
 } from 'lucide-react';
@@ -166,6 +167,7 @@ export default function SuperAdminLayout({ children, title, subtitle }) {
             </div>
           </div>
           <div className="topbar-actions">
+            <ThemeToggle />
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '5px 12px', borderRadius: 20,

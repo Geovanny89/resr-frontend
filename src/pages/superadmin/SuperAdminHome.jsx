@@ -68,7 +68,7 @@ export default function SuperAdminHome() {
       <SuperAdminLayout title="Dashboard">
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, border: '3px solid #ede9fe', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+            <div style={{ width: 48, height: 48, border: '3px solid var(--gray-100)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
             <p style={{ color: 'var(--text-muted)' }}>Cargando estadísticas...</p>
           </div>
         </div>
@@ -88,13 +88,13 @@ export default function SuperAdminHome() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12,
           padding: '14px 18px', borderRadius: 12, marginBottom: 24,
-          background: 'linear-gradient(135deg, #fef3c7, #fffbeb)',
-          border: '1px solid #fcd34d', color: '#92400e'
+          background: 'var(--warning-bg)',
+          border: '1px solid var(--warning-border)', color: 'var(--warning-text)'
         }}>
-          <AlertTriangle size={18} color="#f59e0b" />
+          <AlertTriangle size={18} color="var(--warning)" />
           <div>
             <strong>{pendingScreenshots} comprobante{pendingScreenshots > 1 ? 's' : ''} de pago</strong> pendiente{pendingScreenshots > 1 ? 's' : ''} de revisión.
-            <a href="/superadmin/businesses" style={{ marginLeft: 8, color: '#d97706', fontWeight: 700, textDecoration: 'underline' }}>
+            <a href="/superadmin/businesses" style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700, textDecoration: 'underline' }}>
               Revisar ahora →
             </a>
           </div>
@@ -286,7 +286,7 @@ export default function SuperAdminHome() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 34, height: 34, borderRadius: 8,
-                      background: b.status === 'active' ? '#ede9fe' : '#fee2e2',
+                      background: b.status === 'active' ? 'var(--success-bg)' : 'var(--danger-bg)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 16
                     }}>
@@ -299,8 +299,8 @@ export default function SuperAdminHome() {
                   </div>
                   <span style={{
                     fontSize: 11, padding: '3px 8px', borderRadius: 20, fontWeight: 600,
-                    background: b.status === 'active' ? '#d1fae5' : '#fee2e2',
-                    color: b.status === 'active' ? '#065f46' : '#991b1b'
+                    background: b.status === 'active' ? 'var(--success-bg)' : 'var(--danger-bg)',
+                    color: b.status === 'active' ? 'var(--success-text)' : 'var(--danger-text)'
                   }}>
                     {b.status === 'active' ? 'Activo' : 'Bloqueado'}
                   </span>

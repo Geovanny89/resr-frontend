@@ -137,9 +137,9 @@ export default function BusinessTypes() {
         <div style={{
           position: 'fixed', top: 20, right: 20, zIndex: 9999,
           padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
-          background: toast.type === 'error' ? '#fee2e2' : '#d1fae5',
-          color: toast.type === 'error' ? '#991b1b' : '#065f46',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#6ee7b7'}`,
+          background: toast.type === 'error' ? 'var(--danger-bg)' : 'var(--success-bg)',
+          color: toast.type === 'error' ? 'var(--danger-text)' : 'var(--success-text)',
+          border: `1px solid ${toast.type === 'error' ? 'var(--danger-border)' : 'var(--success-border)'}`,
           boxShadow: '0 4px 15px rgba(0,0,0,.15)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
@@ -222,13 +222,13 @@ export default function BusinessTypes() {
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #ede9fe', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+            <div style={{ width: 40, height: 40, border: '3px solid var(--gray-100)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Cargando tipos de empresa...</p>
           </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Tag size={48} color="#d1d5db" style={{ margin: '0 auto 16px' }} />
+          <Tag size={48} color="var(--text-muted)" style={{ margin: '0 auto 16px' }} />
           <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>No se encontraron tipos de empresa</p>
           <button
             onClick={() => handleOpen()}
@@ -255,9 +255,9 @@ export default function BusinessTypes() {
                 <div style={{
                   width: 48, height: 48, borderRadius: 12, flexShrink: 0,
                   background: type.active
-                    ? 'linear-gradient(135deg, #ede9fe, #f5f3ff)'
+                    ? 'linear-gradient(135deg, var(--primary-light), var(--primary-lighter))'
                     : 'var(--gray-100)',
-                  border: type.active ? '1px solid #ddd6fe' : '1px solid var(--border)',
+                  border: type.active ? '1px solid var(--primary-border)' : '1px solid var(--border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
                 }}>
                   {type.icon}
@@ -272,8 +272,8 @@ export default function BusinessTypes() {
                 </div>
                 <span style={{
                   fontSize: 11, padding: '3px 8px', borderRadius: 20, fontWeight: 600, flexShrink: 0,
-                  background: type.active ? '#d1fae5' : '#f3f4f6',
-                  color: type.active ? '#065f46' : '#6b7280'
+                  background: type.active ? 'var(--success-bg)' : 'var(--gray-100)',
+                  color: type.active ? 'var(--success-text)' : 'var(--text-muted)'
                 }}>
                   {type.active ? 'Activo' : 'Inactivo'}
                 </span>
@@ -301,9 +301,9 @@ export default function BusinessTypes() {
                   title={type.active ? 'Desactivar' : 'Activar'}
                   style={{
                     padding: '7px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    background: type.active ? '#fef3c7' : '#d1fae5',
-                    border: type.active ? '1px solid #fcd34d' : '1px solid #6ee7b7',
-                    color: type.active ? '#92400e' : '#065f46',
+                    background: type.active ? 'var(--warning-bg)' : 'var(--success-bg)',
+                    border: type.active ? '1px solid var(--warning-border)' : '1px solid var(--success-border)',
+                    color: type.active ? 'var(--warning-text)' : 'var(--success-text)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center'
                   }}
                 >
@@ -314,7 +314,7 @@ export default function BusinessTypes() {
                   title="Eliminar"
                   style={{
                     padding: '7px 10px', borderRadius: 8, fontSize: 12,
-                    background: '#fee2e2', border: '1px solid #fca5a5', color: '#dc2626',
+                    background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center'
                   }}
                 >
@@ -377,7 +377,7 @@ export default function BusinessTypes() {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', borderRadius: 8, marginBottom: 16,
-                    background: '#fee2e2', border: '1px solid #fca5a5', color: '#991b1b', fontSize: 13
+                    background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)', fontSize: 13
                   }}>
                     <AlertTriangle size={15} /> {error}
                   </div>
@@ -420,8 +420,8 @@ export default function BusinessTypes() {
                         onClick={() => setForm({ ...form, icon: ic })}
                         style={{
                           width: 38, height: 38, borderRadius: 8, fontSize: 18,
-                          border: form.icon === ic ? '2px solid #7c3aed' : '2px solid var(--border)',
-                          background: form.icon === ic ? '#ede9fe' : 'var(--surface)',
+                          border: form.icon === ic ? '2px solid var(--primary)' : '2px solid var(--border)',
+                          background: form.icon === ic ? 'var(--primary-light)' : 'var(--surface)',
                           cursor: 'pointer', transition: 'all .15s'
                         }}
                       >
@@ -508,9 +508,9 @@ export default function BusinessTypes() {
             <div style={{ padding: '24px 24px 20px', textAlign: 'center' }}>
               <div style={{
                 width: 56, height: 56, borderRadius: 14, margin: '0 auto 16px',
-                background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                background: 'var(--danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                <Trash2 size={24} color="#dc2626" />
+                <Trash2 size={24} color="var(--danger-text)" />
               </div>
               <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>¿Eliminar tipo de empresa?</div>
               <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -528,7 +528,7 @@ export default function BusinessTypes() {
                 onClick={confirmDeleteAction}
                 style={{
                   minWidth: 100, padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer',
+                  background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 6
                 }}
               >
