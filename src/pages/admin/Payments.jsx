@@ -460,7 +460,7 @@ export default function Payments() {
 
     // Fecha de emisión (alineada derecha)
     doc.setFontSize(9);
-    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - margin, 20, { align: 'right' });
+    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - 80, 20, { align: 'left' });
 
     // Línea separadora elegante
     yPos = 45;
@@ -590,7 +590,7 @@ export default function Payments() {
 
     // Fecha de emisión (alineada derecha)
     doc.setFontSize(9);
-    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - margin, 20, { align: 'right' });
+    doc.text(`Emitido: ${new Date().toLocaleString('es-CO')}`, pageWidth - 80, 20, { align: 'left' });
 
     // Línea separadora elegante
     yPos = 45;
