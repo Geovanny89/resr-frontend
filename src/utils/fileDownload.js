@@ -31,17 +31,21 @@ export async function saveFile({ filename, data, contentType, blob }) {
         base64Data = data;
       }
 
-      // Android 10+ usa External (Downloads) en lugar de Documents
-      const path = `${filename}`;
+      // Guardar en carpeta Downloads del usuario
+      const path = `Download/${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64Data,
-        directory: Directory.External,
+        directory: Directory.ExternalStorage,
         recursive: true,
       });
 
-      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
-      alert(`✅ Archivo descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
+      const fileUri = await Filesystem.getUri({
+        path,
+        directory: Directory.ExternalStorage,
+      });
+
+      alert(`✅ Archivo guardado: ${filename}\nRuta: ${fileUri.uri}`);
 
       return { success: true, uri: result.uri, path: result.path };
     } catch (error) {
@@ -111,17 +115,22 @@ export async function savePDF(doc, filename) {
       const pdfData = doc.output('datauristring');
       const base64 = pdfData.split(',')[1];
       
-      // Android 10+ usa External (Downloads)
-      const path = `${filename}`;
+      // Guardar en carpeta Downloads del usuario
+      const path = `Download/${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.External,
+        directory: Directory.ExternalStorage,
         recursive: true,
       });
 
-      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
-      alert(`✅ PDF descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
+      // Obtener la ruta real para mostrar al usuario
+      const fileUri = await Filesystem.getUri({
+        path,
+        directory: Directory.ExternalStorage,
+      });
+
+      alert(`✅ PDF guardado: ${filename}\nRuta: ${fileUri.uri}`);
 
       // Opcional: permitir compartir manualmente mediante un segundo botón/acción
       // El usuario puede compartir el archivo desde la app de archivos del teléfono
@@ -161,17 +170,21 @@ export async function saveExcel(wb, filename) {
       
       const base64 = await blobToBase64(blob);
       
-      // Android 10+ usa External (Downloads)
-      const path = `${filename}`;
+      // Guardar en carpeta Downloads del usuario
+      const path = `Download/${filename}`;
       const result = await Filesystem.writeFile({
         path,
         data: base64,
-        directory: Directory.External,
+        directory: Directory.ExternalStorage,
         recursive: true,
       });
 
-      // Solo mostrar alerta de éxito, NO abrir diálogo de compartir automáticamente
-      alert(`✅ Excel descargado: ${filename}\nGuardado en tu carpeta de Descargas/Downloads.`);
+      const fileUri = await Filesystem.getUri({
+        path,
+        directory: Directory.ExternalStorage,
+      });
+
+      alert(`✅ Excel guardado: ${filename}\nRuta: ${fileUri.uri}`);
 
       return { success: true, uri: result.uri, path: result.path };
     } catch (error) {

@@ -1024,7 +1024,7 @@ export default function Reports() {
                             border: '1px solid var(--border)',
                             borderRadius: 12,
                             padding: 12,
-                            background: 'var(--card-bg, white)',
+                            background: 'var(--surface)',
                             minWidth: 0,
                           }}
                         >
