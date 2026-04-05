@@ -17,14 +17,14 @@ function getSaveDirectory() {
  */
 async function shareFile(uri, filename) {
   try {
+    // Para que en Android 10+ aparezca la opción de "Guardar en archivos"
+    // es más confiable usar el arreglo 'files' en lugar de solo 'url'.
     await Share.share({
       title: filename,
-      text: `Archivo: ${filename}`,
-      url: uri,
-      dialogTitle: 'Compartir archivo',
+      files: [uri], // Usar arreglo de archivos para activar opciones de guardado
+      dialogTitle: '¿Qué deseas hacer con el archivo?',
     });
   } catch (e) {
-    // El usuario puede haber cancelado, no es error grave
     console.log('Share cancelled or failed:', e);
   }
 }
