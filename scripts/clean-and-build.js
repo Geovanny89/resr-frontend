@@ -31,6 +31,13 @@ try {
     console.log('✅ Carpeta dist eliminada');
   }
 
+  // LIMPIAR ASSETS DE CAPACITOR (IMPORTANTE para forzar sync fresco)
+  const capacitorAssets = path.join(__dirname, '../android/app/src/main/assets/public');
+  if (fs.existsSync(capacitorAssets)) {
+    fs.rmSync(capacitorAssets, { recursive: true });
+    console.log('✅ Assets de Capacitor eliminados (forzar sync fresco)');
+  }
+
   if (fs.existsSync(path.join(__dirname, '../android/app/build'))) {
     fs.rmSync(path.join(__dirname, '../android/app/build'), { recursive: true });
     console.log('✅ Build de Android eliminado');
