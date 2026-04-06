@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../api/client';
+import { useTheme } from '../context/ThemeContext';
+import api from '../api/client';
 
 export default function Register() {
+  const { isDark, colors } = useTheme();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -40,13 +42,19 @@ export default function Register() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', background: '#f5f6fa',
+      alignItems: 'center', justifyContent: 'center', 
+      background: isDark ? colors.bg : '#f5f6fa',
+      transition: 'background 0.3s ease'
     }}>
-      <div className="card" style={{ width: '100%', maxWidth: 380, margin: '0 12px' }}>
+      <div className="card" style={{ 
+        width: '100%', maxWidth: 380, margin: '0 12px',
+        background: isDark ? colors.cardBg : 'white',
+        border: isDark ? `1px solid ${colors.border}` : 'none'
+      }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>📱</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#667eea' }}>k-dice</h1>
-          <p style={{ fontSize: 13, color: '#718096', marginTop: 4 }}>Crear cuenta</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: colors.primary }}>k-dice</h1>
+          <p style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>Crear cuenta</p>
         </div>
 
         {error   && <div className="alert alert-error">{error}</div>}
@@ -95,9 +103,9 @@ export default function Register() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#718096', marginTop: 18 }}>
+        <p style={{ textAlign: 'center', fontSize: 13, color: colors.textSecondary, marginTop: 18 }}>
           ¿Ya tienes cuenta?{' '}
-          <Link to="/login" style={{ color: '#667eea', fontWeight: 600 }}>Inicia sesión</Link>
+          <Link to="/login" style={{ color: colors.primary, fontWeight: 600 }}>Inicia sesión</Link>
         </p>
       </div>
     </div>

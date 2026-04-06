@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft } from 'lucide-react';
 
 export default function RegisterVendor() {
   const navigate = useNavigate();
+  const { isDark, colors } = useTheme();
   const [isNative, setIsNative] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
@@ -130,7 +132,7 @@ export default function RegisterVendor() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: isDark ? colors.bg : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -143,7 +145,7 @@ export default function RegisterVendor() {
         }
       `}</style>
       <div style={{
-        background: 'white',
+        background: isDark ? colors.cardBg : 'white',
         borderRadius: 12,
         padding: 40,
         maxWidth: 500,
@@ -154,10 +156,10 @@ export default function RegisterVendor() {
         {success && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, color: '#2d3748' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, color: colors.text }}>
               ¡Negocio Creado Exitosamente!
             </h1>
-            <p style={{ color: '#718096', fontSize: 16, marginBottom: 24, lineHeight: 1.6 }}>
+            <p style={{ color: colors.textSecondary, fontSize: 16, marginBottom: 24, lineHeight: 1.6 }}>
               Tu empresa <strong>{form.businessName}</strong> ha sido registrada correctamente.
               <br /><br />
               Ahora puedes iniciar sesión con tu email y contraseña para comenzar a gestionar tu negocio.
@@ -204,7 +206,7 @@ export default function RegisterVendor() {
               gap: 8, 
               background: 'none', 
               border: 'none', 
-              color: '#718096', 
+              color: colors.textSecondary, 
               cursor: 'pointer',
               fontSize: 14,
               marginBottom: 16,
@@ -216,17 +218,17 @@ export default function RegisterVendor() {
           </button>
         )}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: '#2d3748' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: colors.text }}>
             Crear mi Negocio
           </h1>
-          <p style={{ color: '#718096', fontSize: 14 }}>
+          <p style={{ color: colors.textSecondary, fontSize: 14 }}>
             Paso {step} de 2
           </p>
           {/* Progress bar */}
           <div style={{
             marginTop: 16,
             height: 4,
-            background: '#e2e8f0',
+            background: isDark ? colors.border : '#e2e8f0',
             borderRadius: 2,
             overflow: 'hidden'
           }}>
@@ -244,7 +246,7 @@ export default function RegisterVendor() {
           {error && (
             <div style={{
               background: '#fed7d7',
-              color: '#c53030',
+              color: colors.text,
               padding: 12,
               borderRadius: 6,
               fontSize: 14,
@@ -263,7 +265,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Tu nombre completo
                 </label>
@@ -276,15 +278,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -294,7 +298,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Email
                 </label>
@@ -307,15 +311,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -325,7 +331,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Contraseña
                 </label>
@@ -338,15 +344,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -356,7 +364,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Confirmar contraseña
                 </label>
@@ -369,15 +377,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -419,7 +429,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Nombre del negocio *
                 </label>
@@ -432,15 +442,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -450,7 +462,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Tipo de negocio *
                 </label>
@@ -462,7 +474,9 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
@@ -471,8 +485,8 @@ export default function RegisterVendor() {
                     cursor: loadingTypes ? 'not-allowed' : 'pointer',
                     opacity: loadingTypes ? 0.6 : 1
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 >
                   {loadingTypes ? (
                     <option>Cargando tipos...</option>
@@ -492,7 +506,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Descripción
                 </label>
@@ -504,7 +518,9 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
@@ -513,8 +529,8 @@ export default function RegisterVendor() {
                     minHeight: 80,
                     resize: 'vertical'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -524,7 +540,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Teléfono
                 </label>
@@ -537,15 +553,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -555,7 +573,7 @@ export default function RegisterVendor() {
                   fontSize: 13,
                   fontWeight: 600,
                   marginBottom: 6,
-                  color: '#4a5568'
+                  color: colors.text
                 }}>
                   Dirección
                 </label>
@@ -568,15 +586,17 @@ export default function RegisterVendor() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#667eea'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
 
@@ -587,9 +607,9 @@ export default function RegisterVendor() {
                   type="button"
                   onClick={() => setStep(1)}
                   style={{
-                    background: '#e2e8f0',
-                    color: '#4a5568',
-                    border: 'none',
+                    background: isDark ? colors.bgSecondary : '#e2e8f0',
+                    color: colors.text,
+                    border: `1px solid ${isDark ? colors.border : 'transparent'}`,
                     padding: '12px',
                     fontSize: 16,
                     fontWeight: 600,
@@ -597,8 +617,8 @@ export default function RegisterVendor() {
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => e.target.style.background = '#cbd5e0'}
-                  onMouseLeave={e => e.target.style.background = '#e2e8f0'}
+                  onMouseEnter={e => e.target.style.background = isDark ? colors.border : '#cbd5e0'}
+                  onMouseLeave={e => e.target.style.background = isDark ? colors.bgSecondary : '#e2e8f0'}
                 >
                   ← Atrás
                 </button>
@@ -641,12 +661,12 @@ export default function RegisterVendor() {
           textAlign: 'center',
           marginTop: 24,
           paddingTop: 24,
-          borderTop: '1px solid #e2e8f0'
+          borderTop: `1px solid ${isDark ? colors.border : '#e2e8f0'}`
         }}>
-          <p style={{ color: '#718096', fontSize: 14 }}>
+          <p style={{ color: colors.textSecondary, fontSize: 14 }}>
             ¿Ya tienes cuenta?{' '}
             <Link to="/login" style={{
-              color: '#667eea',
+              color: colors.primary,
               fontWeight: 600,
               textDecoration: 'none'
             }}>

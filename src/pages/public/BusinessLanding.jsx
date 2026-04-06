@@ -95,6 +95,26 @@ export default function BusinessLanding() {
 
   useEffect(() => {
     console.log('BusinessLanding - slug:', slug);
+    
+    // Demo mode - don't fetch from API, show demo content
+    if (slug === 'demo-kdice') {
+      setBusiness({
+        id: 'demo',
+        name: 'KDice Demo',
+        slug: 'demo-kdice',
+        description: 'Descubre todas las funcionalidades de KDice POS. Gestiona citas, empleados, servicios y mucho más con nuestra plataforma completa para negocios de servicios.',
+        primaryColor: '#4f46e5',
+        secondaryColor: '#6366f1',
+        logoUrl: '/kdice.png',
+        address: 'Colombia',
+        phone: '+57 312 520 5513',
+        email: 'demo@k-dice.com',
+        gallery: ['/citas.png', '/empleados.png', '/horarios.png', '/negocio.png', '/pagos.png', '/servicios.png', '/reporte.png']
+      });
+      setLoading(false);
+      return;
+    }
+    
     api.get(`/businesses/${slug}/public`)
       .then(r => {
         console.log('BusinessLanding - API response:', r.data);
@@ -503,6 +523,35 @@ export default function BusinessLanding() {
             </p>
           </div>
         )}
+
+        {/* Video Demo */}
+        <div className="section-card fade-up" style={{ animationDelay: '0.15s' }}>
+          <h2 className="section-title">🎥 Demo del Sistema</h2>
+          <div style={{
+            position: 'relative',
+            paddingBottom: '56.25%',
+            height: 0,
+            overflow: 'hidden',
+            borderRadius: 16,
+            background: isDark ? '#1a1a2e' : '#f1f5f9'
+          }}>
+            <video
+              controls
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                borderRadius: 16
+              }}
+              poster="/reporte1.png"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              Tu navegador no soporta videos.
+            </video>
+          </div>
+        </div>
 
         {/* Galería */}
         {gallery.length > 0 && (

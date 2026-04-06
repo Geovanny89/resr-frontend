@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
+import citasImg from '../assets/citas.png';
+import empleadosImg from '../assets/empleados.png';
+import horariosImg from '../assets/horarios.png';
+import negocioImg from '../assets/negocio.png';
+import pagosImg from '../assets/pagos.png';
+import serviciosImg from '../assets/servicios.png';
+import reporteImg from '../assets/reporte.png';
+import reporte1Img from '../assets/reporte1.png';
+import notificacionImg from '../assets/notificacion.jpg';
 
 export default function Landing() {
   const navigate   = useNavigate();
@@ -9,8 +18,29 @@ export default function Landing() {
   const [demoSlug] = useState('demo-kdice');
   const [navOpen, setNavOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(null);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const carouselImages = [
+    { src: citasImg, title: 'Gestión de Citas', desc: 'Organiza tus citas fácilmente' },
+    { src: empleadosImg, title: 'Control de Empleados', desc: 'Gestiona tu equipo de trabajo' },
+    { src: horariosImg, title: 'Configura Horarios', desc: 'Define tu disponibilidad' },
+    { src: negocioImg, title: 'Tu Negocio', desc: 'Personaliza tu perfil' },
+    { src: pagosImg, title: 'Reportes de Pagos', desc: 'Controla tus ingresos' },
+    { src: serviciosImg, title: 'Tus Servicios', desc: 'Administra tus servicios' },
+    { src: reporteImg, title: 'Reportes Detallados', desc: 'Analiza tu negocio' },
+    { src: reporte1Img, title: 'Dashboard de Métricas', desc: 'Visualiza el rendimiento de tu negocio' },
+    { src: notificacionImg, title: 'Recordatorios Automáticos', desc: 'Notificaciones por email y app 1 hora antes de cada cita' },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,8 +63,8 @@ export default function Landing() {
 
   const features = [
     { icon: '📅', title: 'Gestión de Citas',          desc: 'Sistema completo de reservas online con confirmación automática' },
-    { icon: '📱', title: 'App Móvil Personalizada',    desc: 'APK única para tu negocio, descargable directamente' },
-    { icon: '💬', title: 'Recordatorios Automáticos',  desc: 'Notificaciones por email 1 hora antes de cada cita' },
+    { icon: '📱', title: 'App Móvil ',    desc: 'APK para tu negocio, descargable directamente' },
+    { icon: '💬', title: 'Recordatorios Automáticos',  desc: 'Notificaciones por email y APK 1 hora antes de cada cita' },
     { icon: '👥', title: 'Gestión de Empleados',       desc: 'Horarios, comisiones y disponibilidad en tiempo real' },
     { icon: '💰', title: 'Reportes y Pagos',           desc: 'Seguimiento de ingresos y comisiones por empleado' },
     { icon: '🎨', title: 'Branding Personalizado',     desc: 'Colores, logo y diseño según tu marca' },
@@ -376,12 +406,12 @@ export default function Landing() {
               Registrar mi Negocio
               <span style={{ fontSize: 20 }}>→</span>
             </button>
-            <button onClick={() => navigate(`/${demoSlug}`)} className="btn-secondary" style={{ fontSize: 18, padding: '18px 40px' }}>
-              Ver Demo Interactiva
+            <button onClick={() => setVideoModalOpen(true)} className="btn-secondary" style={{ fontSize: 18, padding: '18px 40px' }}>
+              🎥 Ver Demo
             </button>
           </div>
 
-          {/* Abstract visual element */}
+          {/* Carousel de imágenes */}
           <div className="floating-anim" style={{ 
             marginTop: 80, maxWidth: 900, margin: '80px auto 0', 
             background: colors.cardBg, borderRadius: '24px 24px 0 0', 
@@ -389,16 +419,112 @@ export default function Landing() {
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, borderBottom: 'none',
             overflow: 'hidden'
           }}>
-            <img 
-              src="/reporte1.png" 
-              alt="Dashboard de Reportes" 
-              style={{ 
-                width: '100%', 
-                height: 'auto', 
-                borderRadius: '16px 16px 0 0',
-                display: 'block'
-              }} 
-            />
+            <div style={{ position: 'relative', width: '100%', borderRadius: '16px 16px 0 0', overflow: 'hidden', background: isDark ? '#1a1a2e' : '#f1f5f9' }}>
+              <img 
+                src={carouselImages[currentSlide].src}
+                alt={carouselImages[currentSlide].title}
+                style={{ 
+                  width: '100%', 
+                  height: 'auto',
+                  maxHeight: 500,
+                  objectFit: 'contain',
+                  objectPosition: 'center center',
+                  display: 'block',
+                  transition: 'opacity 0.5s ease-in-out'
+                }} 
+              />
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.9) 40%, rgba(0,0,0,0.95))',
+                padding: '60px 20px 25px',
+                color: 'white',
+                textAlign: 'center'
+              }}>
+                <h3 style={{ fontSize: 26, fontWeight: 800, marginBottom: 10, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                  {carouselImages[currentSlide].title}
+                </h3>
+                <p style={{ fontSize: 18, opacity: 0.95, fontWeight: 500, textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  {carouselImages[currentSlide].desc}
+                </p>
+              </div>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: 10,
+                transform: 'translateY(-50%)',
+                background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)',
+                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: isDark ? '#1a1a2e' : 'white',
+                fontSize: 20,
+                userSelect: 'none',
+                backdropFilter: 'blur(4px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)'}`,
+                zIndex: 10
+              }} onClick={() => setCurrentSlide((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)}>
+                ←
+              </div>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                right: 10,
+                transform: 'translateY(-50%)',
+                background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)',
+                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: isDark ? '#1a1a2e' : 'white',
+                fontSize: 20,
+                userSelect: 'none',
+                backdropFilter: 'blur(4px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)'}`,
+                zIndex: 10
+              }} onClick={() => setCurrentSlide((prev) => (prev + 1) % carouselImages.length)}>
+                →
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: 12,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                gap: 10,
+                background: 'rgba(0,0,0,0.4)',
+                padding: '6px 12px',
+                borderRadius: 20,
+                backdropFilter: 'blur(4px)'
+              }}>
+                {carouselImages.map((_, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: idx === currentSlide ? 'white' : 'rgba(255,255,255,0.4)',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      transform: idx === currentSlide ? 'scale(1.2)' : 'scale(1)'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -495,6 +621,42 @@ export default function Landing() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── DEMO VIDEO ── */}
+      <section id="demo" style={{ padding: '120px 24px', background: isDark ? colors.bgSecondary : '#f8fafc' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, marginBottom: 20, color: colors.text }}>
+            🎥 Mira KDice en acción
+          </h2>
+          <p style={{ color: colors.textSecondary, fontSize: 18, maxWidth: 600, margin: '0 auto 40px' }}>
+            Conoce todas las funcionalidades de nuestro sistema en este video demo.
+          </p>
+          <div style={{
+            position: 'relative',
+            paddingBottom: '56.25%',
+            height: 0,
+            overflow: 'hidden',
+            borderRadius: 24,
+            boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.15)'
+          }}>
+            <video
+              controls
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                borderRadius: 24
+              }}
+              poster="/reporte1.png"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              Tu navegador no soporta videos.
+            </video>
+          </div>
         </div>
       </section>
 
@@ -704,6 +866,50 @@ export default function Landing() {
           </div>
         </div>
       )}
+      {/* ── VIDEO DEMO MODAL ── */}
+      {videoModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: 20
+        }} onClick={() => setVideoModalOpen(false)}>
+          <div style={{
+            background: colors.cardBg, borderRadius: 24, padding: 0,
+            maxWidth: 1000, width: '100%', maxHeight: '90vh',
+            overflow: 'hidden', position: 'relative',
+            border: `1px solid ${colors.border}`
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '16px 24px', borderBottom: `1px solid ${colors.border}`
+            }}>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: colors.text, margin: 0 }}>
+                🎥 Demo de KDice
+              </h3>
+              <button 
+                onClick={() => setVideoModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: 28, cursor: 'pointer', color: colors.textSecondary }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: 0, position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+              <video
+                controls
+                autoPlay
+                style={{
+                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'
+                }}
+                poster="/reporte1.png"
+              >
+                <source src="/demo.mp4" type="video/mp4" />
+                Tu navegador no soporta videos.
+              </video>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── FLOATING WHATSAPP BUTTON ── */}
       <a
         href="https://wa.me/573125205513?text=Hola%20KDice%2C%20me%20interesa%20el%20sistema"
