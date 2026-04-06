@@ -340,6 +340,11 @@ export default function Appointments() {
                 render: (v, row) => row.Service?.name || '—'
               },
               {
+                key: 'employee',
+                label: 'Profesional',
+                render: (v, row) => row.Employee?.User?.name || row.Employee?.name || '—'
+              },
+              {
                 key: 'status',
                 label: 'Estado',
                 render: (v) => (
