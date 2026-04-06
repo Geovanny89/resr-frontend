@@ -11,7 +11,7 @@ import serviciosImg from '../assets/servicios.png';
 import reporteImg from '../assets/reporte.png';
 import reporte1Img from '../assets/reporte1.png';
 import notificacionImg from '../assets/notificacion.jpg';
-import demoVideo from '../assets/demo.mp4';
+
 
 export default function Landing() {
   const navigate   = useNavigate();
@@ -896,17 +896,17 @@ export default function Landing() {
               </button>
             </div>
             <div style={{ padding: 0, position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-              <video
-                controls
-                autoPlay
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/52c3yUGOnDs?autoplay=1&rel=0"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
                 style={{
-                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'
+                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none'
                 }}
-                poster="/reporte1.png"
-              >
-                <source src={demoVideo}type="video/mp4" />
-                Tu navegador no soporta videos.
-              </video>
+              ></iframe>
             </div>
           </div>
         </div>
