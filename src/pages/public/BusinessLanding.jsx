@@ -420,12 +420,24 @@ export default function BusinessLanding() {
           color: var(--pub-text);
         }
 
-          @media(max-width:600px){
+        .gallery-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 20px;
+        }
+
+        @media(max-width:600px){
           .hero-glass { padding: 32px 20px; }
           .section-card { padding: 24px 20px; }
           .svc-card { padding: 16px !important; }
-          .hero-shell { min-height: 400px; }
-          .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .hero-shell { min-height: 350px; }
+          .gallery-grid { 
+            grid-template-columns: repeat(2, 1fr) !important; 
+            gap: 12px !important; 
+          }
+          .gal-item {
+            border-radius: 12px;
+          }
           .services-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
           .team-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
           .team-grid .team-photo { width: 80px !important; height: 80px !important; }
@@ -537,13 +549,16 @@ export default function BusinessLanding() {
           }}>
             <video
               controls
+              playsInline
+              preload="metadata"
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: '100%',
                 height: '100%',
-                borderRadius: 16
+                borderRadius: 16,
+                objectFit: 'cover'
               }}
               poster="/reporte1.png"
             >
@@ -562,7 +577,7 @@ export default function BusinessLanding() {
               </svg>
               Experiencias reales
             </h2>
-            <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
+            <div className="gallery-grid">
               {gallery.map((img, i) => (
                 <div key={i} className="gal-item" onClick={() => setGalleryModal(i)}>
                   <img src={getImgUrl(img)} alt={`Galería ${i + 1}`} loading="lazy" />

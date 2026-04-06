@@ -11,6 +11,7 @@ import serviciosImg from '../assets/servicios.png';
 import reporteImg from '../assets/reporte.png';
 import reporte1Img from '../assets/reporte1.png';
 import notificacionImg from '../assets/notificacion.jpg';
+import demoVideo from '../assets/demo.mp4';
 
 export default function Landing() {
   const navigate   = useNavigate();
@@ -426,7 +427,8 @@ export default function Landing() {
                 style={{ 
                   width: '100%', 
                   height: 'auto',
-                  maxHeight: 500,
+                  maxHeight: '70vh',
+                  minHeight: 400,
                   objectFit: 'contain',
                   objectPosition: 'center center',
                   display: 'block',
@@ -902,7 +904,7 @@ export default function Landing() {
                 }}
                 poster="/reporte1.png"
               >
-                <source src="/demo.mp4" type="video/mp4" />
+                <source src={demoVideo}type="video/mp4" />
                 Tu navegador no soporta videos.
               </video>
             </div>
