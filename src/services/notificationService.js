@@ -79,11 +79,12 @@ class NotificationService {
 
         const businessName = appointment.Business?.name || 'Negocio';
         const serviceName = appointment.Service?.name || 'Servicio';
+        const employeeName = appointment.Employee?.User?.name || appointment.Employee?.name || 'Profesional';
 
-        const title = role === 'client' ? `🔔 Recordatorio de Cita` : `📅 Nueva Cita Pendiente`;
+        const title = role === 'client' ? `🔔 Recordatorio de Cita` : `📅 Recordatorio de Cita`;
         const body = role === 'client' 
-          ? `Tu cita en "${businessName}" es en ${timeInfo.label} (${serviceName})`
-          : `Tienes una cita con ${appointment.clientName || 'un cliente'} en ${timeInfo.label} (${serviceName})`;
+          ? `Tienes una cita en ${businessName} con ${employeeName} en ${timeInfo.label}`
+          : `Tienes una cita en ${businessName} con ${appointment.clientName || 'un cliente'} en ${timeInfo.label} (${serviceName})`;
 
         await LocalNotifications.schedule({
           notifications: [
