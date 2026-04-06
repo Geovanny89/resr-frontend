@@ -65,7 +65,7 @@ export default function EmployeeDashboard() {
       notificationService.scheduleMultipleNotifications(
         appointments,
         employee.id,
-        employee.User?.name || 'Empleado'
+        'employee'
       );
     }
   }, [appointments, employee]);
