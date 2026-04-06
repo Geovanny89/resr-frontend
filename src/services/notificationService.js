@@ -81,10 +81,17 @@ class NotificationService {
         const serviceName = appointment.Service?.name || 'Servicio';
         const employeeName = appointment.Employee?.User?.name || appointment.Employee?.name || 'Profesional';
 
+        // Formatear la hora de la cita
+        const appointmentTime = new Date(appointment.startTime).toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+
         const title = role === 'client' ? `🔔 Recordatorio de Cita` : `📅 Recordatorio de Cita`;
         const body = role === 'client' 
           ? `Tienes una cita en ${businessName} con ${employeeName} en ${timeInfo.label}`
-          : `Tienes una cita en ${businessName} con ${appointment.clientName || 'un cliente'} en ${timeInfo.label} (${serviceName})`;
+          : `Tienes una cita con ${appointment.clientName || 'un cliente'} a las ${appointmentTime}`;
 
         await LocalNotifications.schedule({
           notifications: [

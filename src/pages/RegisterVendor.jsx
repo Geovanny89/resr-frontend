@@ -76,6 +76,12 @@ export default function RegisterVendor() {
       setError('Todos los campos son requeridos');
       return false;
     }
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      setError('Ingresa un correo electrónico válido (ejemplo: tu@email.com)');
+      return false;
+    }
     if (form.password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres');
       return false;
