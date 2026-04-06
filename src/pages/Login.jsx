@@ -78,12 +78,23 @@ export default function Login() {
     setClientLoading(true);
     setError('');
     try {
-      // Usar la nueva función del AuthContext para que el sistema reconozca al cliente
+      // Verificar que el correo tenga citas registradas
+      const checkRes = await api.get('/appointments/my-client-appointments', {
+        params: { email: clientEmail }
+      });
+      
+      if (!checkRes.data || checkRes.data.length === 0) {
+        setError('No se encontraron citas con este correo. Agenda una cita primero o verifica el correo ingresado.');
+        setClientLoading(false);
+        return;
+      }
+      
+      // Usar la función del AuthContext para que el sistema reconozca al cliente
       authLoginAsClient(clientEmail);
       // Redirigir a mis citas
       navigate('/my-appointments');
     } catch (err) {
-      setError('Error al ingresar como cliente');
+      setError('Error al ingresar como cliente: ' + (err.response?.data?.error || err.message));
     } finally {
       setClientLoading(false);
     }
@@ -248,7 +259,7 @@ export default function Login() {
                 />
               </div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.4 }}>
-                Ingresa el mismo correo que usaste al agendar tu cita para ver tu agenda y activar las notificaciones.
+                Ingresa el correo que usaste al agendar tu cita. Solo podrás ingresar si ya tienes citas registradas.
               </p>
             </div>
             <button 
