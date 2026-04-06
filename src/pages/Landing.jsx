@@ -626,42 +626,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── DEMO VIDEO ── */}
-      <section id="demo" style={{ padding: '120px 24px', background: isDark ? colors.bgSecondary : '#f8fafc' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, marginBottom: 20, color: colors.text }}>
-            🎥 Mira KDice en acción
-          </h2>
-          <p style={{ color: colors.textSecondary, fontSize: 18, maxWidth: 600, margin: '0 auto 40px' }}>
-            Conoce todas las funcionalidades de nuestro sistema en este video demo.
-          </p>
-          <div style={{
-            position: 'relative',
-            paddingBottom: '56.25%',
-            height: 0,
-            overflow: 'hidden',
-            borderRadius: 24,
-            boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.15)'
-          }}>
-            <video
-              controls
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                borderRadius: 24
-              }}
-              poster="/reporte1.png"
-            >
-              <source src="/demo.mp4" type="video/mp4" />
-              Tu navegador no soporta videos.
-            </video>
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA FINAL ── */}
       <section style={{ padding: '80px 24px 120px' }}>
         <div style={{ 
