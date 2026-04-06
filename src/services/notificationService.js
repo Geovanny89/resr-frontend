@@ -55,11 +55,17 @@ class NotificationService {
    * @param {string} role - Rol del usuario ('employee' o 'client')
    */
   async scheduleAppointmentNotification(appointment, role = 'employee') {
-    if (!this.isNative) return;
+    if (!this.isNative) {
+      console.log('[Notifications] No es plataforma nativa, saltando programación');
+      return;
+    }
 
     try {
       const startTime = new Date(appointment.startTime);
       const now = new Date();
+      
+      console.log(`[Notifications] Programando notificación para cita ${appointment.id} - ${role}`);
+      console.log(`[Notifications] Hora cita: ${startTime}, Ahora: ${now}`);
 
       // Tiempos de notificación: 1 hora antes y 30 minutos antes
       const times = [
@@ -70,8 +76,13 @@ class NotificationService {
       for (const timeInfo of times) {
         const notificationTime = new Date(startTime.getTime() - timeInfo.offset);
         
+        console.log(`[Notifications] ${timeInfo.label} antes: ${notificationTime}`);
+        
         // No programar si la hora ya pasó
-        if (notificationTime < now) continue;
+        if (notificationTime < now) {
+          console.log(`[Notifications] Hora ya pasó, saltando`);
+          continue;
+        }
 
         // Generar ID único basado en el ID de la cita y el offset
         const baseId = parseInt(appointment.id.toString().replace(/\D/g, '').slice(-7)) || Math.floor(Math.random() * 1000000);
@@ -117,9 +128,12 @@ class NotificationService {
             },
           ],
         });
+        
+        console.log(`[Notifications] ✅ Programada: "${title}" - "${body}"`);
       }
 
     } catch (error) {
+      console.error('[Notifications] ❌ Error programando notificación:', error);
     }
   }
 
@@ -130,7 +144,12 @@ class NotificationService {
    * @param {string} role - 'employee' o 'client'
    */
   async scheduleMultipleNotifications(appointments, identifier, role = 'employee') {
-    if (!this.isNative) return;
+    if (!this.isNative) {
+      console.log('[Notifications] No es plataforma nativa');
+      return;
+    }
+    
+    console.log(`[Notifications] Programando ${appointments.length} citas para ${role}`);
 
     // Cancelar notificaciones anteriores
     await this.cancelRoleNotifications(identifier, role);
@@ -141,6 +160,8 @@ class NotificationService {
       const isConfirmed = ['pending', 'confirmed', 'attention'].includes(apt.status);
       return isFuture && isConfirmed;
     });
+    
+    console.log(`[Notifications] Citas futuras válidas: ${futureAppointments.length}`);
 
     // Programar notificación para cada cita
     for (const appointment of futureAppointments) {

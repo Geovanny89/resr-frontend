@@ -73,8 +73,8 @@ export default function MyAppointments() {
       if (Capacitor.isNativePlatform() && response.data.length > 0) {
         notificationService.scheduleMultipleNotifications(
           response.data,
-          'client', // ID genérico para clientes
-          'Cliente'
+          'client',
+          'client'
         );
       }
     } catch (e) {
