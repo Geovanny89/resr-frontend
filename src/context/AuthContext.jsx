@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import api from '../api/client';
+import fcmService from '../services/fcmService';
 
 const AuthContext = createContext(null);
 
@@ -30,7 +31,14 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
-  const login = (newToken, userData, biz = null) => {
+  // Inicializar FCM cuando hay sesión activa al cargar
+  useEffect(() => {
+    if (token) {
+      fcmService.initialize();
+    }
+  }, [token]);
+
+  const login = async (newToken, userData, biz = null) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.removeItem('clientEmail'); // Limpiar modo cliente si inicia sesión real
@@ -39,6 +47,13 @@ export function AuthProvider({ children }) {
     if (biz) {
       setBusiness(biz);
       localStorage.setItem('business', JSON.stringify(biz));
+    }
+    
+    // Inicializar FCM para notificaciones push
+    try {
+      await fcmService.initialize();
+    } catch (e) {
+      console.log('[Auth] FCM no disponible:', e.message);
     }
   };
 
@@ -49,7 +64,14 @@ export function AuthProvider({ children }) {
     setUser({ role: 'client', email: normalizedEmail }); // Usuario virtual para el contexto
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Eliminar token FCM al cerrar sesión
+    try {
+      await fcmService.deleteToken();
+    } catch (e) {
+      console.log('[Auth] Error eliminando FCM token:', e.message);
+    }
+    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('business');

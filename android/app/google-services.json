@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "399450737686",
+    "project_id": "reservas-kdice",
+    "storage_bucket": "reservas-kdice.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399450737686:android:eff5e1dc1162c830267937",
+        "android_client_info": {
+          "package_name": "com.kdice.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGEHx8aAVrju8iy4xSgUkatVYo20puB9Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

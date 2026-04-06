@@ -21,6 +21,7 @@
     "convert-svg": "node scripts/convert-svg-to-png.js"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^7.5.0",
     "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^7.6.1",
@@ -31,6 +32,7 @@
     "@capacitor/share": "^8.0.1",
     "axios": "^1.7.2",
     "date-fns": "^4.1.0",
+    "firebase": "^11.6.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "jwt-decode": "^4.0.0",

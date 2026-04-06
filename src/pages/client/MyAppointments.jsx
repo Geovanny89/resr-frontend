@@ -48,6 +48,7 @@ export default function MyAppointments() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState('calendar'); // 'calendar' or 'list'
   const [listPage, setListPage] = useState(1);
+  const [toast, setToast] = useState(null);
   const listItemsPerPage = 5;
 
   // Recargar citas cada vez que se monta el componente
@@ -93,12 +94,15 @@ export default function MyAppointments() {
   const handleCancel = async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas cancelar tu cita?')) return;
     try {
-      // Obtener email del cliente para verificación
       const clientEmail = localStorage.getItem('clientEmail');
       await api.patch(`/appointments/${id}/cancel`, { clientEmail });
+      setToast({ type: 'success', message: 'Cita cancelada exitosamente' });
+      setTimeout(() => setToast(null), 4000);
       loadAppointments();
     } catch (e) {
-      alert('Error al cancelar la cita: ' + (e.response?.data?.error || 'Error desconocido'));
+      const errorMsg = e.response?.data?.error || 'Error al cancelar la cita';
+      setToast({ type: 'error', message: errorMsg });
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
@@ -344,6 +348,10 @@ export default function MyAppointments() {
   return (
     <div className="my-appointments-page" style={{ background: 'var(--bg)', minHeight: '100vh', paddingBottom: 80 }}>
       <style>{`
+        @keyframes slideDown {
+          from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
         @media (max-width: 640px) {
           .my-appointments-header {
             flex-direction: column;
@@ -404,6 +412,30 @@ export default function MyAppointments() {
       </div>
 
       <div className="my-appointments-content" style={{ padding: 16 }}>
+        {/* Toast Notification */}
+        {toast && (
+          <div style={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            padding: '12px 24px',
+            borderRadius: 12,
+            fontSize: 14,
+            fontWeight: 500,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            animation: 'slideDown 0.3s ease',
+            background: toast.type === 'success' ? '#10b981' : '#ef4444',
+            color: 'white',
+            maxWidth: 400,
+            textAlign: 'center'
+          }}>
+            {toast.type === 'success' ? '✓ ' : '⚠️ '}
+            {toast.message}
+          </div>
+        )}
+
         {/* Sección de Negocios Frecuentes para re-agendar */}
         {appointments.length > 0 && (
           <div style={{ marginBottom: 24 }}>

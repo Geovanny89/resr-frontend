@@ -103,7 +103,7 @@ export default function Landing() {
   const navLinks = [
     { href: '#features', label: 'Características' },
     { href: '#pricing',  label: 'Planes' },
-    { href: '#demo',     label: 'Demo' },
+    { onClick: () => setVideoModalOpen(true), label: 'Demo' },
   ];
 
   return (
@@ -334,7 +334,13 @@ export default function Landing() {
         {/* Desktop links */}
         <div className="nav-links-desktop" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {navLinks.map(l => (
-            <a key={l.href} href={l.href} className="land-nav-link">{l.label}</a>
+            l.onClick ? (
+              <button key={l.label} onClick={l.onClick} className="land-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                {l.label}
+              </button>
+            ) : (
+              <a key={l.href} href={l.href} className="land-nav-link">{l.label}</a>
+            )
           ))}
           <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', margin: '0 12px' }}></div>
           
@@ -363,9 +369,15 @@ export default function Landing() {
           {navOpen && (
             <div className="nav-mobile-menu">
               {navLinks.map(l => (
-                <a key={l.href} href={l.href} className="land-nav-link" onClick={() => setNavOpen(false)} style={{ fontSize: 18, padding: '12px' }}>
-                  {l.label}
-                </a>
+                l.onClick ? (
+                  <button key={l.label} onClick={() => { l.onClick(); setNavOpen(false); }} className="land-nav-link" style={{ fontSize: 18, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    {l.label}
+                  </button>
+                ) : (
+                  <a key={l.href} href={l.href} className="land-nav-link" onClick={() => setNavOpen(false)} style={{ fontSize: 18, padding: '12px' }}>
+                    {l.label}
+                  </a>
+                )
               ))}
               <hr style={{ border: 'none', borderTop: `1px solid ${colors.border}`, margin: '12px 0' }} />
               
