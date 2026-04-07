@@ -40,7 +40,9 @@ class NotificationService {
 
         // Configurar listener para cuando llega una notificación
         LocalNotifications.addListener('localNotificationReceived', (notification) => {
-          this.updateBadge();
+          if (typeof this.updateBadge === 'function') {
+            this.updateBadge();
+          }
         });
 
       } else {

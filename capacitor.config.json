@@ -4,6 +4,7 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
+    "hostname": "kdice.app",
     "cleartext": true
   },
   "android": {
