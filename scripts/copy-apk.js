@@ -29,7 +29,7 @@ const possiblePaths = [
 ];
 
 const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
-const publicApkPath = path.join(__dirname, '../public-static/apk/kdice-reservas.apk');
+const publicApkPath = path.join(__dirname, '../public/apk/kdice-reservas.apk');
 const distApkDir = path.dirname(distApkPath);
 const publicApkDir = path.dirname(publicApkPath);
 
@@ -84,7 +84,7 @@ try {
 
   console.log('\n🎉 APK lista para descargar!');
   console.log('📱 /admin/download-apk');
-  console.log('🌐 /apk/kdice-reservas.apk');
+  console.log('🌐 /static/apk/kdice-reservas.apk');
 
 } catch (error) {
   console.error('❌ Error:', error.message);
