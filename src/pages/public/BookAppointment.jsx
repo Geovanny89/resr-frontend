@@ -55,7 +55,12 @@ function CalendarPicker({ value, onChange, minDate, colors }) {
   const pad = (n) => String(n).padStart(2, '0');
   const toStr = (day) => `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
 
-  const isPast     = (day) => !day || toStr(day) < today;
+  const isPast = (day) => {
+    if (!day) return true;
+    const dayStr = toStr(day);
+    // Allow today and future dates (dayStr >= today)
+    return dayStr < today;
+  };
   const isSelected = (day) => !!day && !!value && toStr(day) === value;
   const isToday    = (day) => !!day && toStr(day) === today;
   const canGoPrev  = () => !(viewYear === y && viewMonth === m - 1);
@@ -470,9 +475,21 @@ export default function BookAppointment() {
                               <div style={{ fontWeight: 700, fontSize: 16, color: colors.text, marginBottom: 4 }}>{svc.name}</div>
                               {svc.description && <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>{svc.description}</div>}
                               <div style={{ fontSize: 12, color: colors.textSecondary }}>⏱ {svc.durationMin} min</div>
+                              {svc.isTechnicalService && (
+                                <div style={{ fontSize: 11, color: '#0369a1', marginTop: 4, fontWeight: 600 }}>
+                                  🔧 Servicio técnico
+                                </div>
+                              )}
                             </div>
-                            <div style={{ fontSize: 20, fontWeight: 800, color: '#059669', flexShrink: 0 }}>
-                              ${Number(svc.price).toLocaleString('es-CO')}
+                            <div style={{ fontSize: svc.priceOptional ? 14 : 20, fontWeight: 800, color: svc.priceOptional ? '#92400e' : '#059669', flexShrink: 0, textAlign: 'right' }}>
+                              {svc.priceOptional ? (
+                                <>
+                                  <div>A cotizar</div>
+                                  {svc.price > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary }}>Ref: ${Number(svc.price).toLocaleString('es-CO')}</div>}
+                                </>
+                              ) : (
+                                `$${Number(svc.price).toLocaleString('es-CO')}`
+                              )}
                             </div>
                           </div>
                         ))}
@@ -817,8 +834,12 @@ export default function BookAppointment() {
                 <div>👤 {selected.slot?.employeeName}</div>
                 <div>📅 {formatDateES(selected.date)}</div>
                 <div>🕐 {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
-                <div style={{ fontWeight: 700, color: '#059669', marginTop: 4 }}>
-                  💰 ${Number(selected.service?.price).toLocaleString('es-CO')}
+                <div style={{ fontWeight: 700, color: selected.service?.priceOptional ? '#92400e' : '#059669', marginTop: 4 }}>
+                  {selected.service?.priceOptional ? (
+                    <>� Precio a cotizar en sitio</>
+                  ) : (
+                    <>�💰 ${Number(selected.service?.price).toLocaleString('es-CO')}</>
+                  )}
                 </div>
               </div>
             </div>

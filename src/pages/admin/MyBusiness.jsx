@@ -73,6 +73,7 @@ export default function MyBusiness() {
         ctaText: biz.ctaText || 'Reservar cita ahora',
         businessHours: biz.businessHours || '',
         metaDescription: biz.metaDescription || '',
+        isTechnicalServices: biz.isTechnicalServices || false,
         whatsapp: biz.whatsapp || '',
         instagram: biz.instagram || '',
         facebook: biz.facebook || '',
@@ -323,6 +324,23 @@ export default function MyBusiness() {
                   <div className="form-group">
                     <label>Meta descripcion (SEO)</label>
                     <input type="text" value={form.metaDescription} onChange={e=>setForm({...form,metaDescription:e.target.value})} placeholder="Descripcion para buscadores..."/>
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1/-1', background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={form.isTechnicalServices} 
+                        onChange={e => setForm({ ...form, isTechnicalServices: e.target.checked })}
+                        style={{ width: 20, height: 20 }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>Empresa de Servicios Técnicos</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                          Activa esta opción si tu negocio es de soporte técnico, reparaciones o revisiones. 
+                          Esto ocultará los precios de los servicios y permitirá cotizar en sitio.
+                        </div>
+                      </div>
+                    </label>
                   </div>
                 </div>
                 <button type="submit" className="btn-primary" style={{marginTop:16}} disabled={saving}>

@@ -102,29 +102,40 @@ export default function AdminLayout({ children, title, subtitle }) {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(section => (
-            <div key={section.section}>
-              <div className="sidebar-section-label">{section.section}</div>
-              {section.items.map(item => {
-                const Icon = item.icon;
-                const isActive = item.exact
-                  ? location.pathname === item.to
-                  : location.pathname.startsWith(item.to);
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.exact}
-                    className={`sidebar-link ${isActive ? 'active' : ''}`}
-                    onClick={() => isMobile && setSidebarOpen(false)}
-                  >
-                    <Icon className="nav-icon" size={18} />
-                    {item.label}
-                  </NavLink>
-                );
-              })}
-            </div>
-          ))}
+          {NAV_ITEMS.map(section => {
+            // Filtrar items según configuración del negocio
+            const filteredItems = section.items.filter(item => {
+              // Si es empresa técnica, ocultar el módulo de Pagos (comisiones)
+              if (business?.isTechnicalServices && item.to === '/admin/payments') return false;
+              return true;
+            });
+
+            if (filteredItems.length === 0) return null;
+
+            return (
+              <div key={section.section}>
+                <div className="sidebar-section-label">{section.section}</div>
+                {filteredItems.map(item => {
+                  const Icon = item.icon;
+                  const isActive = item.exact
+                    ? location.pathname === item.to
+                    : location.pathname.startsWith(item.to);
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.exact}
+                      className={`sidebar-link ${isActive ? 'active' : ''}`}
+                      onClick={() => isMobile && setSidebarOpen(false)}
+                    >
+                      <Icon className="nav-icon" size={18} />
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">

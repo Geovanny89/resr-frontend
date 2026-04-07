@@ -5,7 +5,8 @@ import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
   BarChart3, Download, FileText, Table2, RefreshCw,
-  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, FileSpreadsheet
+  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, FileSpreadsheet,
+  Clock, XCircle
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -484,16 +485,23 @@ export default function Reports() {
     
     // Tabla de resumen con estilo limpio
     yPos += 8;
+    const summaryBody = [
+      ['Total citas', appointments.length.toString()],
+      ['Citas completadas', done.length.toString()],
+      ['Citas pendientes', appointments.filter(a => a.status === 'pending').length.toString()],
+      ['Citas canceladas', appointments.filter(a => a.status === 'cancelled').length.toString()],
+    ];
+
+    if (!business?.isTechnicalServices) {
+      summaryBody.push(['Ingresos totales', fmt(totalRev)]);
+      summaryBody.push(['Ganancia del negocio', fmt(ownerRev)]);
+      summaryBody.push(['Pago a empleados', fmt(empRev)]);
+    }
+
     autoTable(doc, {
       startY: yPos,
       head: [['Métrica', 'Valor']],
-      body: [
-        ['Total citas', appointments.length.toString()],
-        ['Citas completadas', done.length.toString()],
-        ['Ingresos totales', fmt(totalRev)],
-        ['Ganancia del negocio', fmt(ownerRev)],
-        ['Pago a empleados', fmt(empRev)],
-      ],
+      body: summaryBody,
       theme: 'plain',
       headStyles: {
         fillColor: colors.light,
@@ -540,18 +548,28 @@ export default function Reports() {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
       doc.setTextColor(...colors.black);
-      doc.text('Resumen de Pagos a Empleados', margin, yPos);
+      doc.text(business?.isTechnicalServices ? 'Citas por Empleado' : 'Resumen de Pagos a Empleados', margin, yPos);
       
       yPos += 8;
+      const empHead = business?.isTechnicalServices 
+        ? [['Empleado', 'Citas completadas']]
+        : [['Empleado', 'Citas completadas', 'Total a pagar']];
+      
+      const empBody = employeeList.map(emp => {
+        const row = [emp.name, emp.citas.toString()];
+        if (!business?.isTechnicalServices) row.push(fmt(emp.total));
+        return row;
+      });
+
+      const empFoot = business?.isTechnicalServices
+        ? [['TOTAL', done.length.toString()]]
+        : [['TOTAL', done.length.toString(), fmt(empRev)]];
+
       autoTable(doc, {
         startY: yPos,
-        head: [['Empleado', 'Citas completadas', 'Total a pagar']],
-        body: employeeList.map(emp => [
-          emp.name,
-          emp.citas.toString(),
-          fmt(emp.total),
-        ]),
-        foot: [['TOTAL', done.length.toString(), fmt(empRev)]],
+        head: empHead,
+        body: empBody,
+        foot: empFoot,
         theme: 'plain',
         headStyles: {
           fillColor: colors.light,
@@ -570,9 +588,9 @@ export default function Reports() {
           fontSize: 10,
         },
         columnStyles: {
-          0: { cellWidth: 80 },
-          1: { cellWidth: 50, halign: 'center' },
-          2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' },
+          0: { cellWidth: business?.isTechnicalServices ? 130 : 80 },
+          1: { cellWidth: business?.isTechnicalServices ? 50 : 50, halign: 'center' },
+          ...(business?.isTechnicalServices ? {} : { 2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' } }),
         },
         styles: {
           cellPadding: 5,
@@ -590,18 +608,26 @@ export default function Reports() {
     doc.setTextColor(...colors.black);
     doc.text('Detalle de Citas', margin, yPos);
     
-    yPos += 8;
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']],
-      body: appointments.map(a => [
+    const appointmentsHead = business?.isTechnicalServices
+      ? [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Estado']]
+      : [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']];
+    
+    const appointmentsBody = appointments.map(a => {
+      const row = [
         new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
         a.clientName || '',
         a.Service?.name || '',
         a.Employee?.User?.name || '',
-        fmt(a.Service?.price),
-        STATUS_LABELS[a.status] || a.status,
-      ]),
+      ];
+      if (!business?.isTechnicalServices) row.push(fmt(a.Service?.price));
+      row.push(STATUS_LABELS[a.status] || a.status);
+      return row;
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: appointmentsHead,
+      body: appointmentsBody,
       theme: 'plain',
       headStyles: {
         fillColor: colors.light,
@@ -613,7 +639,13 @@ export default function Reports() {
         fontSize: 8,
         textColor: colors.black,
       },
-      columnStyles: {
+      columnStyles: business?.isTechnicalServices ? {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 25, halign: 'center' },
+      } : {
         0: { cellWidth: 28 },
         1: { cellWidth: 30 },
         2: { cellWidth: 32 },
@@ -654,24 +686,33 @@ export default function Reports() {
       
       // Hoja de Resumen
       const summaryData = [
-        { 'Métrica': 'Total citas en el período', 'Valor': appointments.length },
+        { 'Métrica': 'Total de citas', 'Valor': appointments.length },
         { 'Métrica': 'Citas completadas', 'Valor': done.length },
-        { 'Métrica': 'Ingresos totales', 'Valor': totalRev },
-        { 'Métrica': 'Ganancia del negocio', 'Valor': ownerRev },
-        { 'Métrica': 'Pago a empleados', 'Valor': empRev },
+        { 'Métrica': 'Citas pendientes', 'Valor': appointments.filter(a => a.status === 'pending').length },
+        { 'Métrica': 'Citas canceladas', 'Valor': appointments.filter(a => a.status === 'cancelled').length },
       ];
+      
+      if (!business?.isTechnicalServices) {
+        summaryData.push({ 'Métrica': 'Ingresos totales', 'Valor': totalRev });
+        summaryData.push({ 'Métrica': 'Ganancia del negocio', 'Valor': ownerRev });
+        summaryData.push({ 'Métrica': 'Pago a empleados', 'Valor': empRev });
+      }
+
       const wsSummary = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen');
 
       // Hoja de Detalle
-      const detailData = appointments.map(a => ({
-        'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
-        'Cliente': a.clientName || '',
-        'Servicio': a.Service?.name || '',
-        'Empleado': a.Employee?.User?.name || '',
-        'Precio': parseFloat(a.Service?.price || 0),
-        'Estado': STATUS_LABELS[a.status] || a.status,
-      }));
+      const detailData = appointments.map(a => {
+        const row = {
+          'Fecha': new Date(a.startTime).toLocaleString('es-CO'),
+          'Cliente': a.clientName || '',
+          'Servicio': a.Service?.name || '',
+          'Empleado': a.Employee?.User?.name || '',
+        };
+        if (!business?.isTechnicalServices) row['Precio'] = parseFloat(a.Service?.price || 0);
+        row['Estado'] = STATUS_LABELS[a.status] || a.status;
+        return row;
+      });
       const wsDetail = XLSX.utils.json_to_sheet(detailData);
       XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle de Citas');
 
@@ -871,20 +912,41 @@ export default function Reports() {
                 <div className="stat-label">Citas completadas</div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon blue"><DollarSign size={22} /></div>
-              <div className="stat-body">
-                <div className="stat-value">{fmt(totalRev)}</div>
-                <div className="stat-label">Ingresos totales</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon teal"><TrendingUp size={22} /></div>
-              <div className="stat-body">
-                <div className="stat-value">{fmt(ownerRev)}</div>
-                <div className="stat-label">Ganancia del negocio</div>
-              </div>
-            </div>
+            {!business?.isTechnicalServices ? (
+              <>
+                <div className="stat-card">
+                  <div className="stat-icon blue"><DollarSign size={22} /></div>
+                  <div className="stat-body">
+                    <div className="stat-value">{fmt(totalRev)}</div>
+                    <div className="stat-label">Ingresos totales</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon teal"><TrendingUp size={22} /></div>
+                  <div className="stat-body">
+                    <div className="stat-value">{fmt(ownerRev)}</div>
+                    <div className="stat-label">Ganancia del negocio</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="stat-card">
+                  <div className="stat-icon yellow"><Clock size={22} /></div>
+                  <div className="stat-body">
+                    <div className="stat-value">{appointments.filter(a => a.status === 'pending').length}</div>
+                    <div className="stat-label">Citas pendientes</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon red"><XCircle size={22} /></div>
+                  <div className="stat-body">
+                    <div className="stat-value">{appointments.filter(a => a.status === 'cancelled').length}</div>
+                    <div className="stat-label">Citas canceladas</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
             {/* TABS */}
@@ -1001,7 +1063,7 @@ export default function Reports() {
                         <Tooltip />
                         {!isMobile && <Legend />}
                         <Bar dataKey="citas" fill="#667eea" name="Citas" />
-                        <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />
+                        {!business?.isTechnicalServices && <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1022,7 +1084,9 @@ export default function Reports() {
                           <div style={{ fontWeight: 600, color: 'var(--text)' }}>{svc.name}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{svc.count} cita(s)</div>
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{fmt(svc.revenue)}</div>
+                        {!business?.isTechnicalServices && (
+                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{fmt(svc.revenue)}</div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1043,7 +1107,14 @@ export default function Reports() {
               <div className="table-wrapper reports-desktop-only">
                 <table className="table">
                   <thead>
-                    <tr><th>Fecha</th><th>Cliente</th><th>Servicio</th><th>Empleado</th><th>Precio</th><th>Estado</th></tr>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Cliente</th>
+                      <th>Servicio</th>
+                      <th>Empleado</th>
+                      {!business?.isTechnicalServices && <th>Precio</th>}
+                      <th>Estado</th>
+                    </tr>
                   </thead>
                   <tbody>
                     {paginatedAppointments.map(a => (
@@ -1052,7 +1123,7 @@ export default function Reports() {
                         <td>{a.clientName}</td>
                         <td>{a.Service?.name}</td>
                         <td>{a.Employee?.User?.name}</td>
-                        <td><span className="money positive">{fmt(a.Service?.price)}</span></td>
+                        {!business?.isTechnicalServices && <td><span className="money positive">{fmt(a.Service?.price)}</span></td>}
                         <td><span className={`badge badge-${a.status}`}>{STATUS_LABELS[a.status]}</span></td>
                       </tr>
                     ))}
@@ -1124,12 +1195,14 @@ export default function Reports() {
                             {a.Employee?.User?.name || '—'}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Precio</span>
-                          <span className="money positive" style={{ fontSize: 13 }}>
-                            {fmt(a.Service?.price)}
-                          </span>
-                        </div>
+                        {!business?.isTechnicalServices && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Precio</span>
+                            <span className="money positive" style={{ fontSize: 13 }}>
+                              {fmt(a.Service?.price)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

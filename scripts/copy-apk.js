@@ -29,7 +29,7 @@ const possiblePaths = [
 ];
 
 const distApkPath = path.join(__dirname, '../dist/apk/kdice-reservas.apk');
-const publicApkPath = path.join(__dirname, '../public/apk/kdice-reservas.apk');
+const publicApkPath = path.join(__dirname, '../public-static/apk/kdice-reservas.apk');
 const distApkDir = path.dirname(distApkPath);
 const publicApkDir = path.dirname(publicApkPath);
 

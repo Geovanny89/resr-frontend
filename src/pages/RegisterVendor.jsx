@@ -26,7 +26,7 @@ export default function RegisterVendor() {
     businessType: 'barberia',
     description: '',
     phone: '',
-    address: ''
+    address: '',
   });
 
   useEffect(() => {
@@ -67,8 +67,8 @@ export default function RegisterVendor() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const validateStep1 = () => {
@@ -123,7 +123,7 @@ export default function RegisterVendor() {
         businessType: form.businessType,
         description: form.description,
         phone: form.phone,
-        address: form.address
+        address: form.address,
       });
 
       // Mostrar pantalla de éxito
@@ -605,8 +605,6 @@ export default function RegisterVendor() {
                   onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 />
               </div>
-
-
 
               <div className="register-vendor-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
                 <button

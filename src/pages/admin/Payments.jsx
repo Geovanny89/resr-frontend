@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
@@ -310,6 +311,40 @@ function MonthYearPicker({ value, onChange, onClose }) {
 export default function Payments() {
   const { business } = useAuth();
   
+  // Bloquear vista si es empresa de servicios técnicos
+  if (business?.isTechnicalServices) {
+    return (
+      <AdminLayout title="Pagos" subtitle="Gestión de comisiones">
+        <div className="card" style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh'
+        }}>
+          <div style={{ fontSize: 64, marginBottom: 20 }}>🛠️</div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>
+            Módulo no disponible
+          </h2>
+          <p style={{ 
+            color: 'var(--text-muted)', 
+            maxWidth: 450, 
+            margin: '0 auto 24px', 
+            lineHeight: 1.6,
+            fontSize: 15
+          }}>
+            Has configurado tu empresa como <strong>Servicios Técnicos</strong>. En este modo, el sistema no gestiona pagos ni comisiones por servicio, ya que las visitas se cotizan directamente en el sitio.
+          </p>
+          <Link to="/admin/business" className="btn-primary" style={{ padding: '12px 24px' }}>
+            Cambiar configuración del negocio
+          </Link>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   // Inicializar con el mes actual en formato YYYY-MM (zona horaria Colombia UTC-5)
   const [month, setMonth] = useState(() => {
     const today = new Date();

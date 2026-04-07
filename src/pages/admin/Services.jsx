@@ -5,10 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveForm from '../../components/ResponsiveForm';
 
-const empty = { name: '', description: '', price: '', durationMin: 60 };
+  const empty = { name: '', description: '', price: '', durationMin: 60, isTechnicalService: false, priceOptional: false, hasEmployeeCommission: true };
 
 export default function Services() {
   const { business } = useAuth();
+  
+  // Detectar si la empresa es de servicios técnicos
+  const isTechnicalBusiness = business?.isTechnicalServices || false;
+  
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState(null);
@@ -48,12 +52,23 @@ export default function Services() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    
+    // Preparar datos finales según el tipo de negocio
+    const finalForm = {
+      ...form,
+      businessId: business.id,
+      // Si la empresa es de servicios técnicos, forzamos estos valores
+      isTechnicalService: isTechnicalBusiness ? true : false,
+      priceOptional: isTechnicalBusiness ? true : false,
+      price: isTechnicalBusiness ? 0 : form.price
+    };
+
     try {
       if (editing) {
-        await api.put(`/services/${editing}`, form);
+        await api.put(`/services/${editing}`, finalForm);
         setSuccess('Servicio actualizado');
       } else {
-        await api.post('/services', { ...form, businessId: business.id });
+        await api.post('/services', finalForm);
         setSuccess('Servicio creado exitosamente');
       }
       setForm(empty);
@@ -66,7 +81,15 @@ export default function Services() {
 
   const handleEdit = (svc) => {
     setEditing(svc.id);
-    setForm({ name: svc.name, description: svc.description || '', price: svc.price, durationMin: svc.durationMin });
+    setForm({ 
+      name: svc.name, 
+      description: svc.description || '', 
+      price: svc.price || '', 
+      durationMin: svc.durationMin,
+      isTechnicalService: svc.isTechnicalService || false,
+      priceOptional: svc.priceOptional || false,
+      hasEmployeeCommission: svc.hasEmployeeCommission !== false
+    });
   };
 
   const handleDelete = async (id) => {
@@ -114,15 +137,18 @@ export default function Services() {
                 fullWidth: true,
                 rows: 3
               },
-              {
-                name: 'price',
-                label: 'Precio ($)',
-                type: 'number',
-                required: true,
-                placeholder: '0.00',
-                value: form.price,
-                onChange: e => setForm({ ...form, price: e.target.value })
-              },
+              // Mostrar precio solo si NO es empresa de servicios técnicos
+              ...(!isTechnicalBusiness ? [
+                {
+                  name: 'price',
+                  label: 'Precio ($)',
+                  type: 'number',
+                  required: true,
+                  placeholder: '0.00',
+                  value: form.price,
+                  onChange: e => setForm({ ...form, price: e.target.value })
+                }
+              ] : []),
               {
                 name: 'durationMin',
                 label: 'Duración (minutos)',
@@ -167,8 +193,56 @@ export default function Services() {
             columns={[
               { key: 'name', label: 'Nombre' },
               { key: 'description', label: 'Descripción', render: v => v || '—' },
-              { key: 'price', label: 'Precio', render: v => `$${Number(v).toLocaleString('es-CO')}` },
-              { key: 'durationMin', label: 'Duración', render: v => `${v} min` }
+              // Mostrar columna de precio solo si NO es empresa de servicios técnicos
+              ...(!isTechnicalBusiness ? [
+                { 
+                  key: 'price', 
+                  label: 'Precio', 
+                  render: (v, row) => row.priceOptional ? 'A cotizar' : `$${Number(v || 0).toLocaleString('es-CO')}` 
+                }
+              ] : [
+                { 
+                  key: 'price', 
+                  label: 'Precio', 
+                  render: () => <span style={{ color: '#92400e', fontWeight: 600 }}>A cotizar</span>
+                }
+              ]),
+              { key: 'durationMin', label: 'Duración', render: v => `${v} min` },
+              // Solo mostrar columna de tipo si NO es empresa de servicios técnicos
+              ...(!isTechnicalBusiness ? [
+                { 
+                  key: 'type', 
+                  label: 'Tipo', 
+                  render: (v, row) => (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {row.isTechnicalService && (
+                        <span style={{ 
+                          background: '#e0f2fe', 
+                          color: '#0369a1', 
+                          padding: '2px 8px', 
+                          borderRadius: 4, 
+                          fontSize: 11,
+                          fontWeight: 600
+                        }}>
+                          Técnico
+                        </span>
+                      )}
+                      {!row.hasEmployeeCommission && (
+                        <span style={{ 
+                          background: '#fef3c7', 
+                          color: '#92400e', 
+                          padding: '2px 8px', 
+                          borderRadius: 4, 
+                          fontSize: 11,
+                          fontWeight: 600
+                        }}>
+                          Sin comisión
+                        </span>
+                      )}
+                    </div>
+                  )
+                }
+              ] : [])
             ]}
             data={paginatedServices}
             actions={[

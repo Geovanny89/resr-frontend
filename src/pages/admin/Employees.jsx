@@ -25,6 +25,10 @@ function getImgUrl(url) {
 export default function Employees() {
   const { business } = useAuth();
   const { colors } = useTheme();
+  
+  // Detectar si la empresa es de servicios técnicos
+  const isTechnicalBusiness = business?.isTechnicalServices || false;
+  
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -351,6 +355,7 @@ export default function Employees() {
                     label: 'Nombre completo',
                     type: 'text',
                     required: true,
+                    placeholder: 'Nombre del empleado',
                     value: form.name,
                     onChange: e => setForm({ ...form, name: e.target.value }),
                     fullWidth: true
@@ -360,41 +365,44 @@ export default function Employees() {
                     label: 'Email',
                     type: 'email',
                     required: true,
+                    placeholder: 'empleado@email.com',
                     value: form.email,
                     onChange: e => setForm({ ...form, email: e.target.value }),
                     fullWidth: true
                   },
-                  ...(editEmp
-                    ? []
-                    : [
-                      {
-                        name: 'password',
-                        label: 'Contraseña',
-                        type: 'password',
-                        required: true,
-                        value: form.password,
-                        onChange: e => setForm({ ...form, password: e.target.value }),
-                        fullWidth: true
-                      }
-                    ]),
-                  {
-                    name: 'commissionPct',
-                    label: 'Comisión (%)',
-                    type: 'number',
-                    min: 0,
-                    max: 100,
-                    value: form.commissionPct,
-                    onChange: e => handleCommissionChange(e.target.value),
-                    fullWidth: true
-                  },
-                  {
-                    name: 'ownerPct',
-                    label: 'Para el negocio (%)',
-                    type: 'number',
-                    disabled: true,
-                    value: form.ownerPct,
-                    fullWidth: true
-                  }
+                  ...(!editEmp ? [
+                    {
+                      name: 'password',
+                      label: 'Contraseña',
+                      type: 'password',
+                      required: true,
+                      placeholder: 'Mínimo 6 caracteres',
+                      value: form.password,
+                      onChange: e => setForm({ ...form, password: e.target.value }),
+                      fullWidth: true
+                    }
+                  ] : []),
+                  // Solo mostrar campos de comisión si NO es empresa de servicios técnicos
+                  ...(!isTechnicalBusiness ? [
+                    {
+                      name: 'commissionPct',
+                      label: 'Comisión (%)',
+                      type: 'number',
+                      min: 0,
+                      max: 100,
+                      value: form.commissionPct,
+                      onChange: e => handleCommissionChange(e.target.value),
+                      fullWidth: true
+                    },
+                    {
+                      name: 'ownerPct',
+                      label: 'Para el negocio (%)',
+                      type: 'number',
+                      disabled: true,
+                      value: form.ownerPct,
+                      fullWidth: true
+                    }
+                  ] : [])
                 ]}
                 onSubmit={handleSave}
                 submitText={editEmp ? '💾 Actualizar' : '✅ Crear empleado'}

@@ -31,9 +31,12 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
-  // Inicializar FCM cuando hay sesión activa al cargar
+  // Inicializar FCM cuando hay sesión activa o email de cliente al cargar
   useEffect(() => {
-    if (token) {
+    const hasSession = !!token;
+    const isClientMode = !!localStorage.getItem('clientEmail');
+    
+    if (hasSession || isClientMode) {
       fcmService.initialize();
     }
   }, [token]);
@@ -62,6 +65,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem('clientEmail', normalizedEmail);
     localStorage.setItem('userRole', 'client');
     setUser({ role: 'client', email: normalizedEmail }); // Usuario virtual para el contexto
+    
+    // Inicializar FCM para el cliente invitado
+    fcmService.initialize();
   };
 
   const logout = async () => {
