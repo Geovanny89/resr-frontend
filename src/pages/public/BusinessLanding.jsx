@@ -228,7 +228,7 @@ export default function BusinessLanding() {
   const [expandedServices, setExpandedServices] = useState({});
   const [expandedMission, setExpandedMission] = useState(false);
   const [expandedVision, setExpandedVision] = useState(false);
-  const servicesPerPage = 4;
+  const servicesPerPage = 10;
 
   const MAX_TEXT_LENGTH = 150; // Caracteres máximos antes de mostrar Leer más
 
