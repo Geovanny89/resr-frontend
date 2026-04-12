@@ -870,6 +870,7 @@ export default function BusinessLanding() {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center top;
         }
         .employee-modal-avatar-placeholder {
           width: 100%;
@@ -1229,6 +1230,7 @@ export default function BusinessLanding() {
           height: 100%;
           border-radius: 48px;
           object-fit: cover;
+          object-position: center top;
           border: 4px solid white;
           box-shadow: 0 15px 35px rgba(0,0,0,0.1);
           transition: all 0.5s ease;
