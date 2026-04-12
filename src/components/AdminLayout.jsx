@@ -4,9 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { Capacitor } from '@capacitor/core';
 import ThemeToggle from './ThemeToggle';
+import api from '../api/client';
+import BranchSelector from './BranchSelector';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
-  BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock
+  BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
+  MessageCircle, RefreshCw, Smartphone, Tag
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -15,6 +18,8 @@ const NAV_ITEMS = [
     items: [
       { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
       { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
+      { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
+      { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
     ]
   },
   {
@@ -48,8 +53,28 @@ export default function AdminLayout({ children, title, subtitle }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
+  const [whatsappStatus, setWhatsappStatus] = useState('disconnected');
+  const [loadingWA, setLoadingWA] = useState(false);
 
-  // Calcular días restantes de suscripción
+  const checkWAStatus = async () => {
+    if (!business?.id || !['admin', 'admin_suc'].includes(user?.role)) return;
+    try {
+      const res = await api.get(`/notifications/whatsapp/status?businessId=${business.id}`);
+      setWhatsappStatus(res.data.status);
+    } catch (e) {
+      console.error('Error checking WA status in Layout:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (business?.id && ['admin', 'admin_suc'].includes(user?.role)) {
+      checkWAStatus();
+      const interval = setInterval(checkWAStatus, 15000); // Check cada 15s en el layout
+      return () => clearInterval(interval);
+    }
+  }, [business?.id, user?.role]);
+
+  // Detectar cambios de tamaño de pantalla
   const subscriptionDaysLeft = business?.subscriptionDaysLeft ?? null;
   const showSubscriptionWarning = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 5 && subscriptionDaysLeft > 0;
 
@@ -96,7 +121,7 @@ export default function AdminLayout({ children, title, subtitle }) {
       >
         <div className="sidebar-logo">
           <div>
-            <div className="sidebar-logo-name">KDice POS</div>
+            <div className="sidebar-logo-name">KDice </div>
             <div className="sidebar-logo-sub">{business?.name || 'Sistema de Citas'}</div>
           </div>
         </div>
@@ -158,6 +183,46 @@ export default function AdminLayout({ children, title, subtitle }) {
             {subtitle && <div className="topbar-subtitle">{subtitle}</div>}
           </div>
           <div className="topbar-actions">
+            {/* Selector de Sucursales (Solo si hay sucursales) */}
+            {user?.role === 'admin' && <BranchSelector />}
+
+            {/* Indicador de WhatsApp Global */}
+            {['admin', 'admin_suc'].includes(user?.role) && (
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 8, 
+                  padding: '6px 12px', 
+                  borderRadius: 20, 
+                  background: whatsappStatus === 'connected' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                  border: `1px solid ${whatsappStatus === 'connected' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                  marginRight: 8,
+                  cursor: 'pointer'
+                }}
+                onClick={() => navigate('/admin')} // Ir al dashboard para reconectar si es necesario
+                title={whatsappStatus === 'connected' ? 'WhatsApp Conectado' : 'WhatsApp Desconectado - Clic para conectar'}
+              >
+                <div style={{ 
+                  width: 8, 
+                  height: 8, 
+                  borderRadius: '50%', 
+                  background: whatsappStatus === 'connected' ? '#10b981' : '#f59e0b',
+                  boxShadow: whatsappStatus === 'connected' ? '0 0 8px #10b981' : 'none'
+                }} />
+                <MessageCircle size={16} color={whatsappStatus === 'connected' ? '#10b981' : '#f59e0b'} />
+                {!isMobile && (
+                  <span style={{ 
+                    fontSize: 12, 
+                    fontWeight: 700, 
+                    color: whatsappStatus === 'connected' ? '#065f46' : '#92400e' 
+                  }}>
+                    {whatsappStatus === 'connected' ? 'WhatsApp Activo' : 'WhatsApp Offline'}
+                  </span>
+                )}
+              </div>
+            )}
+
             {!Capacitor.isNativePlatform() && business?.slug && (
               <a
                 href={`/${business.slug}`}

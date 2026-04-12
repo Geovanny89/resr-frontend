@@ -18,6 +18,8 @@ import Services     from './pages/admin/Services';
 import Employees    from './pages/admin/Employees';
 import Schedule     from './pages/admin/Schedule';
 import Appointments from './pages/admin/Appointments';
+import Promotions   from './pages/admin/Promotions';
+import Ratings      from './pages/admin/Ratings';
 import Reports      from './pages/admin/Reports';
 import Payments     from './pages/admin/Payments';
 import SubmitPayment from './pages/admin/SubmitPayment';
@@ -33,6 +35,7 @@ import UpdateChecker from './components/UpdateChecker';
 // ===== PANEL SUPER ADMIN (independiente) =====
 import SuperAdminHome  from './pages/superadmin/SuperAdminHome';
 import Businesses      from './pages/superadmin/Businesses';
+import Branches        from './pages/superadmin/Branches';
 import BusinessTypes   from './pages/superadmin/BusinessTypes';
 
 const PREFERRED_SLUG_KEY = 'preferredBusinessSlug';
@@ -129,7 +132,7 @@ function RootRoute() {
     // Usuario autenticado en APK, redirigir según rol
     if (user.role === 'superadmin') {
       return <Navigate to="/superadmin" replace />;
-    } else if (user.role === 'admin') {
+    } else if (user.role === 'admin' || user.role === 'admin_suc') {
       return <Navigate to="/admin" replace />;
     } else if (user.role === 'employee') {
       return <Navigate to="/employee" replace />;
@@ -162,13 +165,15 @@ export default function App() {
           <Route path="/register-client" element={<RegisterClient />} />
           <Route path="/register-vendor" element={<RegisterVendor />} />
           <Route path="/download-apk" element={<DownloadAPKPublic />} />
-          <Route path="/admin" element={<ProtectedRoute roles={['admin']} />}>
+          <Route path="/admin" element={<ProtectedRoute roles={['admin', 'admin_suc']} />}>
             <Route index               element={<Dashboard />} />
             <Route path="business"     element={<MyBusiness />} />
             <Route path="services"     element={<Services />} />
             <Route path="employees"    element={<Employees />} />
             <Route path="schedule"     element={<Schedule />} />
             <Route path="appointments" element={<Appointments />} />
+            <Route path="promotions"   element={<Promotions />} />
+            <Route path="ratings"      element={<Ratings />} />
             <Route path="reports"      element={<Reports />} />
             <Route path="payments"     element={<Payments />} />
             <Route path="submit-payment" element={<SubmitPayment />} />
@@ -181,6 +186,7 @@ export default function App() {
           <Route path="/superadmin" element={<ProtectedRoute roles={['superadmin']} />}>
             <Route index                 element={<SuperAdminHome />} />
             <Route path="businesses"     element={<Businesses />} />
+            <Route path="branches"       element={<Branches />} />
             <Route path="business-types" element={<BusinessTypes />} />
           </Route>
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>

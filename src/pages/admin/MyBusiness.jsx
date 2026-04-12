@@ -3,19 +3,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
-import { Store, Globe, Image, Palette, Share2, Clock, Eye, Upload, Trash2, Plus } from 'lucide-react';
+import { Store, Globe, Image, Palette, Share2, Clock, Eye, Upload, Trash2, Plus, CreditCard, Trash, CheckCircle, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
-// Extraer la URL base del backend desde el cliente API
-const API_BASE_URL = api.defaults.baseURL || '';
-const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
+// URL base para imágenes
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const FALLBACK_BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
 
 function getImgUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  // Asegurar que la URL comience con / si no lo tiene
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${BACKEND_URL}${cleanUrl}`;
+  const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/')) 
+    ? api.defaults.baseURL.replace('/api', '') 
+    : FALLBACK_BACKEND_URL;
+  return `${base}${cleanUrl}`;
 }
 
 const SUB_STATUS_COLORS  = { pending: '#f6ad55', paid: '#48bb78', overdue: '#f56565' };
@@ -23,9 +25,12 @@ const SUB_STATUS_LABELS  = { pending: 'Pendiente', paid: 'Al dia', overdue: 'Ven
 
 const TABS = [
   { id: 'info',    icon: Store,   label: 'Informacion' },
+  { id: 'branches', icon: Store,  label: 'Sucursales' },
   { id: 'media',   icon: Image,   label: 'Logo & Banner' },
   { id: 'gallery', icon: Image,   label: 'Galeria' },
   { id: 'social',  icon: Share2,  label: 'Redes Sociales' },
+  { id: 'payments', icon: CreditCard, label: 'Metodos de Pago' },
+  { id: 'mission-vision', icon: Store, label: 'Mision y Vision' },
   { id: 'design',  icon: Palette, label: 'Diseno' },
   { id: 'hours',   icon: Clock,   label: 'Horarios' },
 ];
@@ -39,15 +44,23 @@ export default function MyBusiness() {
   const [tab, setTab] = useState('info');
   const [form, setForm] = useState({});
   const [gallery, setGallery] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [paymentUploading, setPaymentUploading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [branchForm, setBranchForm] = useState({ name: '', type: 'otro', address: '', phone: '' });
+  const [branchScreenshot, setBranchScreenshot] = useState(null);
+  const [submittingBranch, setSubmittingBranch] = useState(false);
+  const [showWhatsAppReconnect, setShowWhatsAppReconnect] = useState(false);
   const logoRef    = useRef();
   const bannerRef  = useRef();
   const galleryRef = useRef();
   const paymentRef = useRef();
+  const branchPaymentRef = useRef();
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -57,12 +70,32 @@ export default function MyBusiness() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/businesses/my/business');
+      // Cargamos el negocio y las sucursales por separado para que si una falla la otra no bloquee todo
+      // Usamos el ctxBiz.id del contexto para saber cual negocio cargar si el admin tiene varios
+      const res = await api.get(`/businesses/my/business${ctxBiz?.id ? `?businessId=${ctxBiz.id}` : ''}`);
       const biz = res.data;
       setBusiness(biz);
+
+      try {
+        const bRes = await api.get('/businesses/my/branches');
+        setBranches(bRes.data || []);
+      } catch (branchErr) {
+        console.log('No se pudieron cargar las sucursales:', branchErr.message);
+        setBranches([]);
+      }
+
       let gal = [];
       try { gal = JSON.parse(biz.gallery || '[]'); } catch(e) { gal = []; }
       setGallery(gal);
+      let pmt = [];
+      try { 
+        if (typeof biz.paymentMethods === 'string') {
+          pmt = JSON.parse(biz.paymentMethods || '[]');
+        } else {
+          pmt = biz.paymentMethods || [];
+        }
+      } catch(e) { pmt = []; }
+      setPaymentMethods(pmt);
       setForm({
         name: biz.name || '',
         type: biz.type || 'otro',
@@ -75,37 +108,131 @@ export default function MyBusiness() {
         metaDescription: biz.metaDescription || '',
         isTechnicalServices: biz.isTechnicalServices || false,
         whatsapp: biz.whatsapp || '',
+        whatsappCatalog: biz.whatsappCatalog || '',
         instagram: biz.instagram || '',
         facebook: biz.facebook || '',
         tiktok: biz.tiktok || '',
         twitter: biz.twitter || '',
+        pinterest: biz.pinterest || '',
+        youtube: biz.youtube || '',
         website: biz.website || '',
         primaryColor: biz.primaryColor || '#667eea',
         secondaryColor: biz.secondaryColor || '#764ba2',
         logoUrl: biz.logoUrl || '',
         bannerUrl: biz.bannerUrl || '',
+        showPaymentMethods: biz.showPaymentMethods || false,
+        mission: biz.mission || '',
+        vision: biz.vision || '',
+        showMissionVision: biz.showMissionVision || false,
+        useParentWhatsApp: biz.useParentWhatsApp !== undefined ? biz.useParentWhatsApp : true,
+        googleMapsUrl: biz.googleMapsUrl || '',
       });
     } catch(e) {
-      showToast('Error al cargar el negocio', 'error');
+      if (e.response?.status !== 404) {
+        showToast('Error al cargar el negocio', 'error');
+      }
+      console.error('Error loading business:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [ctxBiz?.id]);
 
   const handleSave = async (e) => {
     e && e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/businesses/my/business', { ...form, gallery: JSON.stringify(gallery) });
+      // Detectar si cambió el número de WhatsApp
+      const originalWhatsApp = business?.whatsapp || '';
+      const newWhatsApp = form.whatsapp || '';
+      const whatsappChanged = originalWhatsApp !== newWhatsApp && newWhatsApp !== '';
+      
+      const payload = { ...form, gallery: JSON.stringify(gallery), paymentMethods: JSON.stringify(paymentMethods) };
+      console.log('Saving showPaymentMethods:', payload.showPaymentMethods);
+      await api.put(`/businesses/my/business${ctxBiz?.id ? `?businessId=${ctxBiz.id}` : ''}`, payload);
       if (refreshBusiness) await refreshBusiness();
       await load();
-      showToast('Cambios guardados correctamente');
+      
+      if (whatsappChanged) {
+        showToast('Cambios guardados. Reconecta WhatsApp con el nuevo número', 'warning');
+        setShowWhatsAppReconnect(true);
+      } else {
+        showToast('Cambios guardados correctamente');
+      }
     } catch(e) {
       showToast(e.response?.data?.error || 'Error al guardar', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+  
+  const handleReconnectWhatsApp = async () => {
+    try {
+      await api.post(`/notifications/whatsapp/logout?businessId=${business.id}`);
+      showToast('Sesión cerrada. Ve al Dashboard para reconectar WhatsApp', 'success');
+      setShowWhatsAppReconnect(false);
+    } catch (e) {
+      showToast('Error al cerrar sesión. Ve al Dashboard y usa "Vincular WhatsApp"', 'error');
+    }
+  };
+
+  const handleBranchSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (submittingBranch) return;
+    if (!branchScreenshot) return showToast('El comprobante es obligatorio', 'error');
+    
+    setSubmittingBranch(true);
+    console.log('[BranchSubmit] Iniciando solicitud de sucursal...');
+    try {
+      // 1. Subir comprobante
+      const fd = new FormData();
+      fd.append('image', branchScreenshot);
+      console.log('[BranchSubmit] Subiendo imagen a /upload...');
+      const uploadRes = await api.post('/upload', fd, { 
+        headers: { 'Content-Type': 'multipart/form-data' } 
+      });
+      
+      const imageUrl = uploadRes.data.url;
+      console.log('[BranchSubmit] Imagen subida con éxito:', imageUrl);
+      
+      // 2. Solicitar sucursal
+      const branchData = {
+        name: branchForm.name,
+        type: branchForm.type || 'otro',
+        address: branchForm.address,
+        phone: branchForm.phone,
+        isTechnicalServices: branchForm.isTechnicalServices || false,
+        branchPaymentScreenshot: imageUrl
+      };
+      
+      console.log('[BranchSubmit] Enviando datos finales:', branchData);
+      const branchRes = await api.post('/businesses/request-branch', branchData);
+      console.log('[BranchSubmit] Respuesta del servidor:', branchRes.data);
+      
+      // LIMPIAR ESTADOS
+      setShowBranchModal(false);
+      setBranchForm({ name: '', type: 'otro', address: '', phone: '' });
+      setBranchScreenshot(null);
+      
+      // NOTIFICAR ÉXITO
+      showToast('✅ Solicitud enviada correctamente al administrador');
+      
+      // REFRESCAR DATOS
+      if (refreshBusiness) await refreshBusiness();
+      await load();
+      
+    } catch (err) {
+      console.error('[BranchSubmit] ERROR DETALLADO:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      
+      const errorMsg = err.response?.data?.error || err.message || 'Error al solicitar sucursal';
+      showToast('❌ ' + errorMsg, 'error');
+    } finally {
+      setSubmittingBranch(false);
     }
   };
 
@@ -174,6 +301,12 @@ export default function MyBusiness() {
 
   if (loading) return (
     <AdminLayout title="Mi Negocio">
+      {toast && (
+        <div style={{position:'fixed',top:20,right:20,zIndex:9999,padding:'12px 20px',borderRadius:10,background:toast.type==='error'?'#f56565':'#48bb78',color:'white',fontWeight:600,boxShadow:'0 4px 20px rgba(0,0,0,0.2)',animation:'slideIn 0.3s ease'}}>
+          {toast.type === 'error' ? '❌' : '✅'} {toast.msg}
+          <style>{`@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
+        </div>
+      )}
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:300}}>
         <div style={{textAlign:'center',color:'var(--text-muted)'}}>
           <div style={{width:40,height:40,border:'3px solid var(--border)',borderTopColor:'var(--primary)',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 12px'}}/>
@@ -266,14 +399,18 @@ export default function MyBusiness() {
               Sección
             </label>
             <select value={tab} onChange={(e) => setTab(e.target.value)}>
-              {TABS.map(t => (
+              {TABS
+                .filter(t => t.id !== 'branches' || !business?.isBranch)
+                .map(t => (
                 <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>
           </div>
           {/* Tabs */}
           <div className="my-business-tabs" style={{display:'flex',gap:4,background:'var(--bg-secondary)',borderRadius:12,padding:4,marginBottom:24,flexWrap:'wrap'}}>
-            {TABS.map(t => {
+            {TABS
+              .filter(t => t.id !== 'branches' || !business?.isBranch)
+              .map(t => {
               const Icon = t.icon;
               return (
                 <button key={t.id} onClick={()=>setTab(t.id)}
@@ -309,6 +446,19 @@ export default function MyBusiness() {
                     <input type="text" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="Calle 10 #5-30, Ciudad"/>
                   </div>
                   <div className="form-group" style={{gridColumn:'1/-1'}}>
+                    <label>Google Maps (URL de ubicación)</label>
+                    <input 
+                      type="text" 
+                      value={form.googleMapsUrl} 
+                      onChange={e=>setForm({...form,googleMapsUrl:e.target.value})} 
+                      placeholder="https://www.google.com/maps/embed?pb=..."
+                    />
+                    <small style={{color:'var(--text-muted)'}}>
+                      Pega aquí la URL de Google Maps (modo embed) para mostrar el mapa en tu página pública. 
+                      <a href="https://www.google.com/maps" target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}>Abrir Google Maps</a>
+                    </small>
+                  </div>
+                  <div className="form-group" style={{gridColumn:'1/-1'}}>
                     <label>Descripcion del negocio</label>
                     <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={4} placeholder="Describe tu negocio, servicios especiales, experiencia..."/>
                   </div>
@@ -325,27 +475,84 @@ export default function MyBusiness() {
                     <label>Meta descripcion (SEO)</label>
                     <input type="text" value={form.metaDescription} onChange={e=>setForm({...form,metaDescription:e.target.value})} placeholder="Descripcion para buscadores..."/>
                   </div>
-                  <div className="form-group" style={{ gridColumn: '1/-1', background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+
+                  <div className="form-group" style={{ gridColumn: '1/-1', marginTop: 10, padding: 20, background: 'rgba(99, 102, 241, 0.05)', borderRadius: 12, border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', margin: 0 }}>
                       <input 
                         type="checkbox" 
                         checked={form.isTechnicalServices} 
                         onChange={e => setForm({ ...form, isTechnicalServices: e.target.checked })}
-                        style={{ width: 20, height: 20 }}
+                        style={{ width: 20, height: 20, cursor: 'pointer' }}
                       />
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>Empresa de Servicios Técnicos</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
-                          Activa esta opción si tu negocio es de soporte técnico, reparaciones o revisiones. 
-                          Esto ocultará los precios de los servicios y permitirá cotizar en sitio.
+                        <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15 }}>Empresa de Servicios Técnicos</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, marginTop: 4 }}>
+                          Activa esta opción si tu negocio es de soporte técnico, reparaciones o revisiones. Esto ocultará los precios de los servicios y permitirá cotizar en sitio.
                         </div>
                       </div>
                     </label>
                   </div>
                 </div>
-                <button type="submit" className="btn-primary" style={{marginTop:16}} disabled={saving}>
+
+                <button type="submit" className="btn-primary" style={{ marginTop: 24 }} disabled={saving}>
                   {saving ? 'Guardando...' : '💾 Guardar cambios'}
                 </button>
+              </div>
+            )}
+
+            {/* TAB: Sucursales */}
+            {tab === 'branches' && (
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Store size={18} style={{ color: 'var(--primary)' }}/> Mis Sucursales
+                  </h3>
+                  {!business?.isBranch && (
+                    <button type="button" className="btn-primary" onClick={() => setShowBranchModal(true)}>
+                      <Plus size={14}/> Solicitar Sucursal
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ background: '#f0f9ff', padding: 16, borderRadius: 12, border: '1px solid #bae6fd', marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, color: '#0369a1', margin: 0, fontWeight: 500 }}>
+                    🎁 ¡Aprovecha nuestro beneficio! Cada sucursal nueva tiene un <strong>50% de descuento (35.000)</strong> en la suscripción mensual. 
+                    Solo debes subir el comprobante de pago para que la habilitemos.
+                  </p>
+                </div>
+
+                {branches.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40, border: '2px dashed var(--border)', borderRadius: 12, color: 'var(--text-muted)' }}>
+                    <Store size={40} style={{ opacity: 0.2, marginBottom: 12 }}/>
+                    <p style={{ margin: 0 }}>No tienes sucursales registradas aún.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {branches.map(b => (
+                      <div key={b.id} style={{ 
+                        padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15 }}>{b.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.address || 'Sin dirección'}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ 
+                            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
+                            background: b.branchStatus === 'approved' ? '#dcfce7' : b.branchStatus === 'pending_approval' ? '#fef3c7' : '#fee2e2',
+                            color: b.branchStatus === 'approved' ? '#166534' : b.branchStatus === 'pending_approval' ? '#92400e' : '#991b1b'
+                          }}>
+                            {b.branchStatus === 'approved' ? 'Activa' : b.branchStatus === 'pending_approval' ? 'Pendiente' : 'Rechazada'}
+                          </span>
+                          <button type="button" className="btn-icon" onClick={() => window.open(`/${b.slug}`, '_blank')}>
+                            <Globe size={16}/>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -462,26 +669,230 @@ export default function MyBusiness() {
                 <h3 style={{fontSize:16,fontWeight:700,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
                   <Share2 size={18} style={{color:'var(--primary)'}}/> Redes sociales y contacto
                 </h3>
+
+                {business?.isBranch && (
+                  <div className="form-group" style={{ marginBottom: 24, background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={form.useParentWhatsApp} 
+                        onChange={e => setForm({ ...form, useParentWhatsApp: e.target.checked })}
+                        style={{ width: 20, height: 20 }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>Usar WhatsApp del negocio principal</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                          Si esta activo, los recordatorios y notificaciones se enviaran desde el numero del negocio principal.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
                 <div style={{display:'flex',flexDirection:'column',gap:14}}>
                   {[
-                    {field:'whatsapp',  icon:'📱', label:'WhatsApp',  placeholder:'+57 300 000 0000', hint:'Numero con codigo de pais. Aparece como boton flotante en tu pagina.'},
+                    {field:'whatsapp',  icon:'📱', label:'WhatsApp',  placeholder:'+57 300 000 0000', hint:'Numero con codigo de pais. Aparece como boton flotante en tu pagina.', disabled: business?.isBranch && form.useParentWhatsApp},
+                    {field:'whatsappCatalog', icon:'🛍️', label:'Catálogo de WhatsApp', placeholder:'https://wa.me/c/573000000000', hint:'Enlace directo a tu catálogo de productos en WhatsApp.'},
                     {field:'instagram', icon:'📸', label:'Instagram', placeholder:'@tunegocio o https://instagram.com/tunegocio'},
                     {field:'facebook',  icon:'👤', label:'Facebook',  placeholder:'https://facebook.com/tunegocio'},
                     {field:'tiktok',    icon:'🎵', label:'TikTok',    placeholder:'@tunegocio'},
                     {field:'twitter',   icon:'🐦', label:'Twitter/X', placeholder:'@tunegocio'},
+                    {field:'pinterest', icon:'📌', label:'Pinterest', placeholder:'https://pinterest.com/tunegocio'},
+                    {field:'youtube',   icon:'▶️', label:'YouTube',   placeholder:'https://youtube.com/@tunegocio'},
                     {field:'website',   icon:'🌐', label:'Sitio web', placeholder:'https://tunegocio.com'},
-                  ].map(({field,icon,label,placeholder,hint}) => (
-                    <div key={field} className="form-group">
+                  ].map(({field,icon,label,placeholder,hint,disabled}) => (
+                    <div key={field} className="form-group" style={{ opacity: disabled ? 0.6 : 1 }}>
                       <label style={{display:'flex',alignItems:'center',gap:6}}>
                         <span style={{fontSize:16}}>{icon}</span> {label}
                       </label>
-                      <input type="text" value={form[field]||''} onChange={e=>setForm({...form,[field]:e.target.value})} placeholder={placeholder}/>
+                      <input 
+                        type="text" 
+                        value={disabled ? (business?.ParentBusiness?.whatsapp || 'Usando WhatsApp del principal') : (form[field]||'')} 
+                        onChange={e=>setForm({...form,[field]:e.target.value})} 
+                        placeholder={placeholder}
+                        disabled={disabled}
+                        style={{ cursor: disabled ? 'not-allowed' : 'text' }}
+                      />
                       {hint && <small style={{color:'var(--text-muted)'}}>{hint}</small>}
+                      
+                      {/* Alerta de reconexión para WhatsApp */}
+                      {field === 'whatsapp' && showWhatsAppReconnect && (
+                        <div style={{ marginTop: 12, padding: 12, background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8 }}>
+                          <div style={{ fontSize: 13, color: '#92400e', marginBottom: 8 }}>
+                            <strong>⚠️ WhatsApp cambiado:</strong> Debes reconectar la sesión con el nuevo número.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleReconnectWhatsApp}
+                            style={{ 
+                              padding: '8px 16px', 
+                              background: '#f59e0b', 
+                              color: 'white', 
+                              border: 'none', 
+                              borderRadius: 6, 
+                              fontSize: 13,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            🔓 Cerrar sesión actual y reconectar
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
                 <button type="submit" className="btn-primary" style={{marginTop:16}} disabled={saving}>
                   {saving ? 'Guardando...' : '💾 Guardar redes sociales'}
+                </button>
+              </div>
+            )}
+
+            {/* TAB: Metodos de Pago */}
+            {tab === 'payments' && (
+              <div className="card">
+                <h3 style={{fontSize:16,fontWeight:700,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
+                  <CreditCard size={18} style={{color:'var(--primary)'}}/> Metodos de pago
+                </h3>
+                
+                <div className="form-group" style={{ marginBottom: 24, background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={form.showPaymentMethods} 
+                      onChange={e => setForm({ ...form, showPaymentMethods: e.target.checked })}
+                      style={{ width: 20, height: 20 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>Mostrar metodos de pago en la pagina</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                        Activa esta opcion para mostrar tus metodos de pago en la landing page.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {form.showPaymentMethods && (
+                  <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                    {(!paymentMethods || paymentMethods.length === 0) && (
+                      <p style={{color:'var(--text-muted)',fontSize:13,textAlign:'center',padding:'20px 0'}}>
+                        No tienes metodos de pago configurados. Agrega uno nuevo.
+                      </p>
+                    )}
+                    
+                    {paymentMethods.map((method, index) => (
+                      <div key={index} style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end',padding:16,background:'var(--bg-secondary)',borderRadius:12,border:'1px solid var(--border)'}}>
+                        <div className="form-group" style={{margin:0}}>
+                          <label style={{fontSize:12,fontWeight:600,color:'var(--text-muted)'}}>Nombre</label>
+                          <input 
+                            type="text" 
+                            value={method.name || ''} 
+                            onChange={e => {
+                              const newMethods = [...paymentMethods];
+                              newMethods[index] = { ...method, name: e.target.value };
+                              setPaymentMethods(newMethods);
+                            }}
+                            placeholder="Nequi, Daviplata, Bancolombia..."
+                          />
+                        </div>
+                        <div className="form-group" style={{margin:0}}>
+                          <label style={{fontSize:12,fontWeight:600,color:'var(--text-muted)'}}>Numero / Cuenta</label>
+                          <input 
+                            type="text" 
+                            value={method.number || ''} 
+                            onChange={e => {
+                              const newMethods = [...paymentMethods];
+                              newMethods[index] = { ...method, number: e.target.value };
+                              setPaymentMethods(newMethods);
+                            }}
+                            placeholder="31245557521"
+                          />
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setPaymentMethods(paymentMethods.filter((_, i) => i !== index))}
+                          style={{padding:'8px 12px',background:'#ef4444',color:'white',border:'none',borderRadius:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}
+                          title="Eliminar"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    <button 
+                      type="button" 
+                      className="btn-secondary"
+                      onClick={() => setPaymentMethods([...paymentMethods, { name: '', number: '' }])}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}
+                    >
+                      <Plus size={16}/> Agregar metodo de pago
+                    </button>
+                  </div>
+                )}
+                
+                <button type="submit" className="btn-primary" style={{marginTop:24}} disabled={saving}>
+                  {saving ? 'Guardando...' : '💾 Guardar metodos de pago'}
+                </button>
+              </div>
+            )}
+
+            {/* TAB: Mision y Vision */}
+            {tab === 'mission-vision' && (
+              <div className="card">
+                <h3 style={{fontSize:16,fontWeight:700,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
+                  <Store size={18} style={{color:'var(--primary)'}}/> Mision y Vision
+                </h3>
+                
+                <div className="form-group" style={{ marginBottom: 24, background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={form.showMissionVision} 
+                      onChange={e => setForm({ ...form, showMissionVision: e.target.checked })}
+                      style={{ width: 20, height: 20 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>Mostrar Mision y Vision en la pagina</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                        Activa esta opcion para mostrar tu mision y vision en la landing page.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {form.showMissionVision && (
+                  <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                    <div className="form-group">
+                      <label style={{fontSize:12,fontWeight:600,color:'var(--text-muted)'}}>Mision</label>
+                      <textarea
+                        value={form.mission || ''} 
+                        onChange={e => setForm({ ...form, mission: e.target.value })}
+                        placeholder="Describe la mision de tu empresa..."
+                        rows={4}
+                        style={{width:'100%',padding:12,borderRadius:8,border:'1px solid var(--border)',resize:'vertical'}}
+                      />
+                      <p style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>
+                        Cual es el proposito de tu empresa? Que te motiva a ofrecer tus servicios?
+                      </p>
+                    </div>
+
+                    <div className="form-group">
+                      <label style={{fontSize:12,fontWeight:600,color:'var(--text-muted)'}}>Vision</label>
+                      <textarea
+                        value={form.vision || ''} 
+                        onChange={e => setForm({ ...form, vision: e.target.value })}
+                        placeholder="Describe la vision de tu empresa..."
+                        rows={4}
+                        style={{width:'100%',padding:12,borderRadius:8,border:'1px solid var(--border)',resize:'vertical'}}
+                      />
+                      <p style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>
+                        Hacia donde quieres llevar tu empresa? Que aspiras lograr a largo plazo?
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <button type="submit" className="btn-primary" style={{marginTop:24}} disabled={saving}>
+                  {saving ? 'Guardando...' : '💾 Guardar Mision y Vision'}
                 </button>
               </div>
             )}
@@ -563,7 +974,7 @@ export default function MyBusiness() {
                   <Clock size={18} style={{color:'var(--primary)'}}/> Horario de atencion
                 </h3>
                 <p style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
-                  Este texto aparece en el encabezado de tu pagina publica. Puedes escribirlo libremente.
+                  Este texto aparece en el footer de tu pagina publica. Puedes escribirlo libremente.
                 </p>
                 <br/>
                 <div className="form-group">
@@ -653,6 +1064,76 @@ export default function MyBusiness() {
           </div>
         </div>
       </div>
+
+      {showBranchModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Nueva Sucursal</h3>
+              <button 
+                type="button" 
+                onClick={() => setShowBranchModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleBranchSubmit}>
+              <div className="form-group">
+                <label>Nombre de la sucursal *</label>
+                <input type="text" value={branchForm.name} onChange={e => setBranchForm({ ...branchForm, name: e.target.value })} required placeholder="Ej: Barbería El Rey - Sucursal Norte"/>
+              </div>
+              <div className="form-group">
+                <label>Dirección *</label>
+                <input type="text" value={branchForm.address} onChange={e => setBranchForm({ ...branchForm, address: e.target.value })} required placeholder="Calle..."/>
+              </div>
+              <div className="form-group">
+                <label>Teléfono</label>
+                <input type="tel" value={branchForm.phone} onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })} placeholder="300..."/>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={branchForm.isTechnicalServices} 
+                    onChange={e => setBranchForm({ ...branchForm, isTechnicalServices: e.target.checked })}
+                    style={{ width: 18, height: 18 }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Es empresa de servicios técnicos</span>
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label>Comprobante de Pago (50% de descuento) *</label>
+                <div style={{ 
+                  border: '2px dashed var(--border)', borderRadius: 12, padding: 20, textAlign: 'center', cursor: 'pointer',
+                  background: branchScreenshot ? '#f0fdf4' : 'transparent'
+                }} onClick={() => branchPaymentRef.current.click()}>
+                  {branchScreenshot ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#166534', fontWeight: 600 }}>
+                      <CheckCircle size={20}/> Archivo seleccionado
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      <Upload size={24} style={{ marginBottom: 8 }}/>
+                      <div>Haz clic para subir el comprobante</div>
+                    </div>
+                  )}
+                </div>
+                <input ref={branchPaymentRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setBranchScreenshot(e.target.files[0])}/>
+              </div>
+              
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowBranchModal(false)}>Cancelar</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submittingBranch}>
+                  {submittingBranch ? 'Enviando...' : 'Enviar Solicitud'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

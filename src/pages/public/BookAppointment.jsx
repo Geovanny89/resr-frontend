@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/client';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 const STEPS = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos'];
 
@@ -147,7 +148,12 @@ function CalendarPicker({ value, onChange, minDate, colors }) {
 export default function BookAppointment() {
   const { slug }    = useParams();
   const navigate    = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedEmployeeId = searchParams.get('employeeId');
+  const preselectedServiceId = searchParams.get('serviceId');
+  
   const { colors }  = useTheme();
+  const { user }    = useAuth();
   const [business, setBusiness]     = useState(null);
   const [step, setStep]             = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -223,10 +229,51 @@ export default function BookAppointment() {
 
   useEffect(() => {
     api.get(`/businesses/${slug}/public`)
-      .then(r => setBusiness(r.data))
+      .then(r => {
+        setBusiness(r.data);
+        const data = r.data;
+        
+        let newSelected = {};
+        let jumpToStep = 0;
+
+        // Si hay un servicio preseleccionado por URL, buscarlo y asignarlo
+        if (preselectedServiceId && data.Services) {
+          const svc = data.Services.find(s => String(s.id) === String(preselectedServiceId));
+          if (svc) {
+            newSelected.service = svc;
+            jumpToStep = 1;
+          }
+        }
+
+        // Si hay un empleado preseleccionado por URL, buscarlo y asignarlo
+        if (preselectedEmployeeId && data.Employees) {
+          const emp = data.Employees.find(e => String(e.id) === String(preselectedEmployeeId));
+          if (emp) {
+            newSelected.employee = emp;
+            // Si ya tenemos servicio, saltamos directo a fecha (paso 2)
+            // Si no tenemos servicio, vamos a paso 0 (Servicio) y saltaremos Empleado después
+            if (newSelected.service) jumpToStep = 2;
+            // Si solo hay empleado, nos quedamos en paso 0 (Servicio)
+          }
+        }
+
+        if (Object.keys(newSelected).length > 0) {
+          setSelected(prev => ({ ...prev, ...newSelected }));
+          setStep(jumpToStep);
+        }
+      })
       .catch(() => setError('Negocio no encontrado'))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, preselectedEmployeeId, preselectedServiceId]);
+
+  // Redirigir si estamos en paso Empleado pero hay empleado preseleccionado
+  useEffect(() => {
+    if (step === 1 && preselectedEmployeeId) {
+      // Si ya hay servicio seleccionado, ir a Fecha (paso 2)
+      // Si no hay servicio, volver a Servicio (paso 0)
+      setStep(selected.service ? 2 : 0);
+    }
+  }, [step, preselectedEmployeeId, selected.service]);
 
   useEffect(() => {
     if (step === 3 && selected.date && selected.service) {
@@ -250,6 +297,19 @@ export default function BookAppointment() {
     setSubmitting(true);
     setError('');
     try {
+      // Asegurar que el startTime esté en formato ISO string para el backend
+      const startTimeIso = selected.slot.startTime 
+        ? new Date(selected.slot.startTime).toISOString()
+        : null;
+      
+      console.log('[BookAppointment] Enviando cita:', {
+        businessId: business.id,
+        serviceId: selected.service.id,
+        employeeId: selected.slot.employeeId,
+        startTime: startTimeIso,
+        clientEmail: selected.clientEmail
+      });
+      
       await api.post('/appointments', {
         businessId:  business.id,
         serviceId:   selected.service.id,
@@ -257,10 +317,10 @@ export default function BookAppointment() {
         clientName:  selected.clientName,
         clientPhone: selected.clientPhone,
         clientEmail: selected.clientEmail,
-        startTime:   selected.slot.startTime,
+        startTime:   startTimeIso,
         notes:       selected.notes,
       });
-      setConfirmed(true);
+      setConfirmed(true)
     } catch (e) {
       setError(e.response?.data?.error || 'Error al reservar la cita');
     } finally {
@@ -301,21 +361,42 @@ export default function BookAppointment() {
 
   // ── Flujo de navegación ──
   const handleBack = () => {
-    // Si hay un clientEmail en localStorage, significa que viene de la APK de clientes
-    if (localStorage.getItem('clientEmail')) {
-      navigate('/my-appointments');
+    if (step > 0) {
+      if (preselectedEmployeeId && step === 2) {
+        setStep(0);
+      } else {
+        setStep(step - 1);
+      }
     } else {
-      navigate(`/${slug}`);
+      // Si el usuario está autenticado como cliente (APK), volver a sus citas
+      if (user?.role === 'client' || localStorage.getItem('clientEmail')) {
+        navigate('/my-appointments', { replace: true });
+      } else {
+        navigate(`/${slug}`, { replace: true });
+      }
+    }
+  };
+  
+  // Navegación directa para pantalla de confirmación
+  const handleConfirmBack = () => {
+    // Si el usuario está autenticado como cliente, ir directo a sus citas
+    if (user?.role === 'client' || localStorage.getItem('clientEmail')) {
+      navigate('/my-appointments', { replace: true });
+    } else {
+      navigate(`/${slug}`, { replace: true });
     }
   };
 
   const getImgUrl = (url) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
-    const API_BASE_URL = api.defaults.baseURL || '';
-    const BACKEND_URL = API_BASE_URL.replace(/\/api$/, '');
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const FALLBACK_BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
     const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-    return `${BACKEND_URL}${cleanUrl}`;
+    const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/')) 
+      ? api.defaults.baseURL.replace('/api', '') 
+      : FALLBACK_BACKEND_URL;
+    return `${base}${cleanUrl}`;
   };
 
   // ── Confirmación ──
@@ -340,14 +421,14 @@ export default function BookAppointment() {
           <div><strong>Nombre:</strong> {selected.clientName}</div>
         </div>
         <button
-          onClick={handleBack}
+          onClick={handleConfirmBack}
           style={{
             background: gradient, color: 'white', border: 'none',
             borderRadius: 10, padding: '12px 32px', fontSize: 15,
             fontWeight: 700, cursor: 'pointer', width: '100%',
           }}
         >
-          Volver
+          Volver a mis citas
         </button>
       </div>
     </div>
@@ -402,27 +483,30 @@ export default function BookAppointment() {
       {/* Indicador de pasos */}
       <div style={{ background: colors.cardBg, borderBottom: `1px solid ${colors.border}`, padding: '12px 16px' }}>
         <div className="book-steps" style={{ maxWidth: 720, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 4, minWidth: 'max-content' }}>
-          {STEPS.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, flexShrink: 0,
-                background: i < step ? primary : i === step ? secondary : colors.bgSecondary,
-                color: i <= step ? 'white' : colors.textSecondary,
-                transition: 'all 0.2s',
-              }}>
-                {i < step ? '✓' : i + 1}
+          {STEPS.map((s, i) => {
+            if (preselectedEmployeeId && s === 'Empleado') return null;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, flexShrink: 0,
+                  background: i < step ? primary : i === step ? secondary : colors.bgSecondary,
+                  color: i <= step ? 'white' : colors.textSecondary,
+                  transition: 'all 0.2s',
+                }}>
+                  {i < step ? '✓' : (preselectedEmployeeId && i > 1 ? i : i + 1)}
+                </div>
+                <span className="step-label" style={{
+                  fontSize: 12, color: i <= step ? primary : colors.textSecondary,
+                  fontWeight: i === step ? 700 : 400,
+                }}>{s}</span>
+                {i < STEPS.length - 1 && (
+                  <div className="step-sep" style={{ width: 20, height: 1, background: colors.border, margin: '0 2px' }} />
+                )}
               </div>
-              <span className="step-label" style={{
-                fontSize: 12, color: i <= step ? primary : colors.textSecondary,
-                fontWeight: i === step ? 700 : 400,
-              }}>{s}</span>
-              {i < STEPS.length - 1 && (
-                <div className="step-sep" style={{ width: 20, height: 1, background: colors.border, margin: '0 2px' }} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -462,7 +546,10 @@ export default function BookAppointment() {
                           <div
                             key={svc.id}
                             className="book-svc"
-                            onClick={() => { setSelected(s => ({ ...s, service: svc })); setStep(1); }}
+                            onClick={() => { 
+                              setSelected(s => ({ ...s, service: svc })); 
+                              setStep(preselectedEmployeeId ? 2 : 1); 
+                            }}
                             style={{
                               background: colors.cardBg, borderRadius: 14, padding: '16px 20px',
                               border: `2px solid ${selected.service?.id === svc.id ? primary : colors.border}`,
@@ -488,7 +575,30 @@ export default function BookAppointment() {
                                   {svc.price > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary }}>Ref: ${Number(svc.price).toLocaleString('es-CO')}</div>}
                                 </>
                               ) : (
-                                `$${Number(svc.price).toLocaleString('es-CO')}`
+                                (() => {
+                                  const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
+                                  const basePrice = Number(svc.price);
+                                  if (promo) {
+                                    const discount = promo.discountType === 'percentage' 
+                                      ? basePrice * (Number(promo.discountValue) / 100) 
+                                      : Number(promo.discountValue);
+                                    const finalPrice = Math.max(0, basePrice - discount);
+                                    return (
+                                      <>
+                                        <div style={{ fontSize: 12, color: '#ef4444', textDecoration: 'line-through', marginBottom: -4 }}>
+                                          ${basePrice.toLocaleString('es-CO')}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                          <span style={{ fontSize: 11, background: '#fee2e2', color: '#b91c1c', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+                                            -{promo.discountType === 'percentage' ? `${promo.discountValue}%` : 'PROMO'}
+                                          </span>
+                                          ${finalPrice.toLocaleString('es-CO')}
+                                        </div>
+                                      </>
+                                    );
+                                  }
+                                  return `$${basePrice.toLocaleString('es-CO')}`;
+                                })()
                               )}
                             </div>
                           </div>
@@ -551,7 +661,8 @@ export default function BookAppointment() {
         )}
 
         {/* ── PASO 1: Empleado ── */}
-        {step === 1 && (
+        {/* Saltar este paso si ya hay empleado preseleccionado */}
+        {step === 1 && !preselectedEmployeeId && (
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>¿Con quién quieres tu cita?</h2>
             <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
@@ -605,6 +716,21 @@ export default function BookAppointment() {
                           }
                         </div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>{emp.User?.name}</div>
+                        {emp.description && (
+                          <div style={{ 
+                            fontSize: 10, 
+                            color: colors.textSecondary, 
+                            marginTop: 4,
+                            lineHeight: 1.2,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            fontStyle: 'italic'
+                          }}>
+                            {emp.description}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -697,7 +823,7 @@ export default function BookAppointment() {
 
             <div className="book-action-row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
-                onClick={() => setStep(1)}
+                onClick={handleBack}
                 style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '10px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
               >
                 ← Atrás

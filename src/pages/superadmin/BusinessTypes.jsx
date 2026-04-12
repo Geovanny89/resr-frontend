@@ -123,10 +123,27 @@ export default function BusinessTypes() {
   return (
     <SuperAdminLayout title="Tipos de Empresa" subtitle="Gestiona los tipos de negocio disponibles en la plataforma">
       <style>{`
-        @media (max-width: 900px) {
-          .sa-types-stats { grid-template-columns: 1fr !important; }
+        @media (max-width: 1024px) {
+          .sa-types-stats { 
+            grid-template-columns: 1fr !important; 
+            gap: 12px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .sa-types-stats {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .sa-types-stats > div:last-child {
+            grid-column: span 2;
+          }
         }
         @media (max-width: 480px) {
+          .sa-types-stats {
+            grid-template-columns: 1fr !important;
+          }
+          .sa-types-stats > div:last-child {
+            grid-column: span 1;
+          }
           .sa-types-modal-grid { grid-template-columns: 1fr !important; }
           .sa-types-icon-input { width: 100% !important; }
         }

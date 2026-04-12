@@ -94,8 +94,9 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
             <thead>
               <tr>
                 <th>Fecha</th>
+                <th>Cliente</th>
                 <th>Servicio</th>
-                <th>Precio</th>
+                <th>Pago</th>
                 <th>Empleado gana</th>
                 <th>Negocio gana</th>
               </tr>
@@ -104,8 +105,23 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
               {paginatedAppointments.map((a, i) => (
                 <tr key={i}>
                   <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDate(a.date)}</td>
-                  <td>{a.service}</td>
-                  <td><span className="money">{fmt(a.price)}</span></td>
+                  <td style={{ fontWeight: 600 }}>{a.client || '—'}</td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span>{a.service}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        {fmt(a.basePrice)} + {fmt(a.additional)} (Adic.)
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 700 }}>{fmt(a.price)}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        {a.paymentMethod === 'cash' ? '💵 Efectivo' : a.paymentMethod === 'transfer' ? '📲 Transf.' : '-'}
+                      </span>
+                    </div>
+                  </td>
                   <td><span className="money positive">{fmt(a.employeeEarns)}</span></td>
                   <td><span className="money positive">{fmt(a.ownerEarns)}</span></td>
                 </tr>
@@ -114,9 +130,11 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
             <tfoot>
               <tr style={{ background: colors.bgSecondary, fontWeight: 700 }}>
                 <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700, color: colors.text }}>TOTALES</td>
-                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(emp.total)}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.employeeEarns)}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(emp.ownerEarns)}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.basePrice) || 0), 0))}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money" style={{ color: '#d97706' }}>{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.additional) || 0), 0))}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.price) || 0), 0))}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.employeeEarns) || 0), 0))}</span></td>
+                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.ownerEarns) || 0), 0))}</span></td>
               </tr>
             </tfoot>
           </table>
@@ -134,20 +152,31 @@ function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMobile }) 
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, borderBottom: `1px solid ${colors.border}`, paddingBottom: 6 }}>
                 <span style={{ fontWeight: 700, color: colors.text }}>{fmtDate(a.date)}</span>
-                <span style={{ fontWeight: 800, color: 'var(--primary)' }}>{a.service}</span>
+                <span style={{ fontWeight: 800, color: 'var(--primary)' }}>{a.client || 'Cliente'}</span>
+              </div>
+              <div style={{ marginBottom: 10, fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                {a.service}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: colors.textSecondary }}>Precio total:</div>
-                  <div style={{ fontWeight: 700, color: colors.text }}>{fmt(a.price)}</div>
+                  <div style={{ fontSize: '11px', color: colors.textSecondary }}>Precio Base:</div>
+                  <div style={{ fontWeight: 600, color: colors.text }}>{fmt(a.basePrice)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', color: '#d97706' }}>Adicional:</div>
+                  <div style={{ fontWeight: 600, color: '#d97706' }}>{fmt(a.additional)}</div>
+                </div>
+                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: `1px dashed ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: colors.textSecondary }}>PRECIO TOTAL:</span>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: colors.text }}>{fmt(a.price)}</span>
+                </div>
+                <div style={{ marginTop: 4 }}>
                   <div style={{ fontSize: '11px', color: colors.textSecondary }}>Comisión Emp:</div>
                   <div style={{ fontWeight: 700, color: 'var(--success)' }}>{fmt(a.employeeEarns)}</div>
                 </div>
-                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: `1px dashed ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: colors.textSecondary }}>GANANCIA NEGOCIO:</span>
-                  <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--success)' }}>{fmt(a.ownerEarns)}</span>
+                <div style={{ textAlign: 'right', marginTop: 4 }}>
+                  <div style={{ fontSize: '11px', color: colors.textSecondary }}>GANANCIA NEGOCIO:</div>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--success)' }}>{fmt(a.ownerEarns)}</span>
                 </div>
               </div>
             </div>
@@ -527,14 +556,15 @@ export default function Payments() {
     yPos += 15;
     autoTable(doc, {
       startY: yPos,
-      head: [['Fecha', 'Servicio', 'Empleado gana']],
+      head: [['Fecha', 'Cliente', 'Servicio', 'Gana']],
       body: emp.appointments.map(a => [
         fmtDate(a.date),
+        a.client || '—',
         a.service,
         fmt(a.employeeEarns),
       ]),
       foot: [[
-        '', 'TOTAL', fmt(emp.employeeEarns)
+        '', '', 'TOTAL', fmt(emp.employeeEarns)
       ]],
       theme: 'plain',
       headStyles: {
@@ -698,14 +728,15 @@ export default function Payments() {
 
       autoTable(doc, {
         startY: y,
-        head: [['Fecha', 'Servicio', 'Empleado gana']],
+        head: [['Fecha', 'Cliente', 'Servicio', 'Total']],
         body: emp.appointments.map(a => [
           fmtDate(a.date),
+          a.client || '—',
           a.service,
           fmt(a.employeeEarns),
         ]),
         foot: [[
-          '', 'TOTAL', fmt(emp.employeeEarns)
+          '', '', 'TOTAL', fmt(emp.employeeEarns)
         ]],
         theme: 'plain',
         headStyles: {

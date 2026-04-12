@@ -15,21 +15,45 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('business')) || null; }
     catch { return null; }
   });
+  const [mainBusiness, setMainBusiness] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mainBusiness')) || null; }
+    catch { return null; }
+  });
+  const [branches, setBranches] = useState([]);
   const [bizLoading, setBizLoading] = useState(false);
 
-  // Cargar negocio del admin cuando hay token
+  // Cargar negocio del admin y sus sucursales cuando hay token
   useEffect(() => {
-    if (token && user?.role === 'admin' && !business) {
-      setBizLoading(true);
-      api.get('/businesses/my/business')
-        .then(r => {
-          setBusiness(r.data);
-          localStorage.setItem('business', JSON.stringify(r.data));
-        })
-        .catch(() => {})
-        .finally(() => setBizLoading(false));
+    if (token && (user?.role === 'admin' || user?.role === 'admin_suc')) {
+      const loadData = async () => {
+        setBizLoading(true);
+        try {
+          // Cargar negocio principal
+          const bizRes = await api.get('/businesses/my/business');
+          const biz = bizRes.data;
+          
+          setMainBusiness(biz);
+          localStorage.setItem('mainBusiness', JSON.stringify(biz));
+          
+          // Cargar sucursales
+          const branchesRes = await api.get('/businesses/my/branches');
+          const branchesData = branchesRes.data || [];
+          setBranches(branchesData);
+          
+          // Si no hay negocio activo o el que hay no coincide, poner el principal
+          if (!business || (business.id !== biz.id && !branchesData.some(b => b.id === business.id))) {
+            setBusiness(biz);
+            localStorage.setItem('business', JSON.stringify(biz));
+          }
+        } catch (err) {
+          console.error('[Auth] Error loading business data:', err);
+        } finally {
+          setBizLoading(false);
+        }
+      };
+      loadData();
     }
-  }, [token]);
+  }, [token, user?.role]);
 
   // Inicializar FCM cuando hay sesión activa o email de cliente al cargar
   useEffect(() => {
@@ -41,15 +65,39 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
+  // Restaurar sesión del cliente al recargar la página (modo cliente sin token)
+  useEffect(() => {
+    // Si no hay usuario autenticado pero hay clientEmail en localStorage, restaurar sesión
+    if (!user && !token) {
+      const savedClientEmail = localStorage.getItem('clientEmail');
+      const savedRole = localStorage.getItem('userRole');
+      if (savedClientEmail && savedRole === 'client') {
+        console.log('[Auth] Restaurando sesión de cliente:', savedClientEmail);
+        setUser({ role: 'client', email: savedClientEmail });
+      }
+    }
+  }, []); // Solo al montar
+
   const login = async (newToken, userData, biz = null) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.removeItem('clientEmail'); // Limpiar modo cliente si inicia sesión real
     setToken(newToken);
     setUser(userData);
+    
+    // Si viene un negocio en la respuesta del login (como el caso del manager)
+    // lo establecemos como el negocio activo inmediatamente
     if (biz) {
       setBusiness(biz);
+      setMainBusiness(biz);
       localStorage.setItem('business', JSON.stringify(biz));
+      localStorage.setItem('mainBusiness', JSON.stringify(biz));
+    } else {
+      // Si no viene, limpiamos para que el useEffect lo cargue
+      setBusiness(null);
+      setMainBusiness(null);
+      localStorage.removeItem('business');
+      localStorage.removeItem('mainBusiness');
     }
     
     // Inicializar FCM para notificaciones push
@@ -81,18 +129,53 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('business');
+    localStorage.removeItem('mainBusiness');
     localStorage.removeItem('clientEmail');
     localStorage.removeItem('userRole');
     setToken(null);
     setUser(null);
     setBusiness(null);
+    setMainBusiness(null);
+    setBranches([]);
+  };
+
+  const switchBusiness = (bizId) => {
+    if (!bizId || bizId === 'main' || bizId === mainBusiness?.id) {
+      setBusiness(mainBusiness);
+      localStorage.setItem('business', JSON.stringify(mainBusiness));
+      return;
+    }
+    const target = branches.find(b => b.id === bizId);
+    if (target) {
+      setBusiness(target);
+      localStorage.setItem('business', JSON.stringify(target));
+    }
   };
 
   const refreshBusiness = async () => {
     try {
       const r = await api.get('/businesses/my/business');
-      setBusiness(r.data);
-      localStorage.setItem('business', JSON.stringify(r.data));
+      setMainBusiness(r.data);
+      localStorage.setItem('mainBusiness', JSON.stringify(r.data));
+      
+      // Actualizar sucursales
+      const branchesRes = await api.get('/businesses/my/branches');
+      const branchesData = branchesRes.data || [];
+      setBranches(branchesData);
+
+      // Si el activo es el principal, actualizarlo
+      if (!business || business.id === r.data.id) {
+        setBusiness(r.data);
+        localStorage.setItem('business', JSON.stringify(r.data));
+      } else {
+        // Si el activo es una sucursal, buscarla en la lista actualizada y refrescarla
+        const updatedBranch = branchesData.find(b => b.id === business.id);
+        if (updatedBranch) {
+          setBusiness(updatedBranch);
+          localStorage.setItem('business', JSON.stringify(updatedBranch));
+        }
+      }
+
       return r.data;
     } catch (e) {
       return null;
@@ -100,7 +183,10 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, business, bizLoading, login, loginAsClient, logout, refreshBusiness, setBusiness }}>
+    <AuthContext.Provider value={{ 
+      token, user, business, mainBusiness, branches, bizLoading, 
+      login, loginAsClient, logout, refreshBusiness, setBusiness, switchBusiness 
+    }}>
       {children}
     </AuthContext.Provider>
   );

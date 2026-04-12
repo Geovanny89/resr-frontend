@@ -1,14 +1,30 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveForm from '../../components/ResponsiveForm';
+import { Camera, X, Loader2 } from 'lucide-react';
 
-  const empty = { name: '', description: '', price: '', durationMin: 60, isTechnicalService: false, priceOptional: false, hasEmployeeCommission: true };
+// URL base para imágenes
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
+
+function getImgUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/')) 
+    ? api.defaults.baseURL.replace('/api', '') 
+    : BACKEND_URL;
+  return `${base}${cleanUrl}`;
+}
+
+  const empty = { name: '', description: '', price: '', durationMin: 60, isTechnicalService: false, priceOptional: false, hasEmployeeCommission: true, imageUrl: '' };
 
 export default function Services() {
   const { business } = useAuth();
+  const fileInputRef = useRef(null);
   
   // Detectar si la empresa es de servicios técnicos
   const isTechnicalBusiness = business?.isTechnicalServices || false;
@@ -19,13 +35,35 @@ export default function Services() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    setUploading(true);
+    setError('');
+    try {
+      const res = await api.post('/upload', formData);
+      setForm(prev => ({ ...prev, imageUrl: res.data.url }));
+      setSuccess('Imagen subida correctamente');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Error al subir la imagen');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   useEffect(() => {
     if (business?.id) loadServices();
-  }, [business]);
+  }, [business?.id]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -34,9 +72,16 @@ export default function Services() {
   }, []);
 
   const loadServices = () => {
+    if (!business?.id) return;
     setLoading(true);
     api.get(`/services/business/${business.id}`)
-      .then(r => setServices(r.data))
+      .then(r => {
+        if (Array.isArray(r.data)) {
+          setServices(r.data);
+        } else {
+          setServices([]);
+        }
+      })
       .catch(() => setServices([]))
       .finally(() => setLoading(false));
   };
@@ -54,13 +99,19 @@ export default function Services() {
     setSuccess('');
     
     // Preparar datos finales según el tipo de negocio
+    const bizId = business?.id;
+
     const finalForm = {
-      ...form,
-      businessId: business.id,
+      name: form.name,
+      description: form.description,
+      durationMin: Number(form.durationMin),
+      hasEmployeeCommission: form.hasEmployeeCommission,
+      imageUrl: form.imageUrl,
+      businessId: bizId, // Puede ser null, el backend lo resolverá
       // Si la empresa es de servicios técnicos, forzamos estos valores
       isTechnicalService: isTechnicalBusiness ? true : false,
       priceOptional: isTechnicalBusiness ? true : false,
-      price: isTechnicalBusiness ? 0 : form.price
+      price: isTechnicalBusiness ? 0 : Number(form.price)
     };
 
     try {
@@ -75,7 +126,8 @@ export default function Services() {
       setEditing(null);
       loadServices();
     } catch (e) {
-      setError(e.response?.data?.error || 'Error al procesar');
+      const errorMsg = e.response?.data?.error || e.response?.data?.message || 'Error al procesar';
+      setError(errorMsg);
     }
   };
 
@@ -88,7 +140,8 @@ export default function Services() {
       durationMin: svc.durationMin,
       isTechnicalService: svc.isTechnicalService || false,
       priceOptional: svc.priceOptional || false,
-      hasEmployeeCommission: svc.hasEmployeeCommission !== false
+      hasEmployeeCommission: svc.hasEmployeeCommission !== false,
+      imageUrl: svc.imageUrl || ''
     });
   };
 
@@ -115,6 +168,69 @@ export default function Services() {
           <h2 style={{ fontSize: 16, marginBottom: 14 }}>
             {editing ? '✏️ Editar servicio' : '➕ Nuevo servicio'}
           </h2>
+          
+          {/* Subida de Imagen */}
+          <div style={{ marginBottom: 20, textAlign: 'center' }}>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: '100%',
+                height: 180,
+                borderRadius: 16,
+                border: '2px dashed var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                position: 'relative',
+                background: form.imageUrl ? 'none' : 'var(--bg-secondary)',
+                transition: 'all 0.3s'
+              }}
+            >
+              {uploading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <Loader2 className="animate-spin" size={32} color="var(--primary)" />
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Subiendo...</span>
+                </div>
+              ) : form.imageUrl ? (
+                <>
+                  <img 
+                    src={getImgUrl(form.imageUrl)} 
+                    alt="Servicio" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                  <div style={{ 
+                    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.3s' 
+                  }} className="hover-overlay">
+                    <Camera color="white" size={32} />
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setForm({...form, imageUrl: ''}); }}
+                    style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer' }}
+                  >
+                    <X size={16} color="white" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Camera size={32} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Foto del servicio</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>(Opcional)</span>
+                </>
+              )}
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+            />
+          </div>
+
           <ResponsiveForm
             fields={[
               {
@@ -191,6 +307,20 @@ export default function Services() {
           </div>
           <ResponsiveTable
             columns={[
+              { 
+                key: 'imageUrl', 
+                label: 'Imagen', 
+                render: (v) => v ? (
+                  <img 
+                    src={getImgUrl(v)} 
+                    style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover' }} 
+                  />
+                ) : (
+                  <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Camera size={16} color="var(--text-muted)" />
+                  </div>
+                )
+              },
               { key: 'name', label: 'Nombre' },
               { key: 'description', label: 'Descripción', render: v => v || '—' },
               // Mostrar columna de precio solo si NO es empresa de servicios técnicos
@@ -249,6 +379,7 @@ export default function Services() {
               { label: '✏️ Editar', onClick: (row) => handleEdit(row), color: 'var(--primary)' },
               { label: '🗑️ Eliminar', onClick: (row) => handleDelete(row.id), color: 'var(--danger)' }
             ]}
+            fullWidthActions={false}
             loading={loading}
             emptyMessage="No hay servicios creados. ¡Crea uno para empezar!"
           />

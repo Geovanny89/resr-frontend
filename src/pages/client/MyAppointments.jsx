@@ -92,11 +92,35 @@ export default function MyAppointments() {
   };
 
   const handleCancel = async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas cancelar tu cita?')) return;
+    // Buscar la cita para calcular horas restantes
+    const appointment = appointments.find(a => a.id === id);
+    if (!appointment) return;
+    
+    const apptTime = new Date(appointment.startTime);
+    const now = new Date();
+    const diffHours = (apptTime - now) / (1000 * 60 * 60);
+    
+    // Mensaje según el tiempo restante
+    let confirmMsg = '¿Estás seguro de que deseas cancelar tu cita?';
+    if (diffHours > 12) {
+      confirmMsg = '¿Cancelar tu cita? Puedes agendar una nueva cuando lo necesites.';
+    } else if (diffHours > 0) {
+      confirmMsg = '¿Cancelar tu cita? Faltan menos de 12 horas. Ten en cuenta que podría aplicarse una política de cancelación tardía.';
+    }
+    
+    if (!window.confirm(confirmMsg)) return;
+    
     try {
       const clientEmail = localStorage.getItem('clientEmail');
       await api.patch(`/appointments/${id}/cancel`, { clientEmail });
-      setToast({ type: 'success', message: 'Cita cancelada exitosamente' });
+      
+      // Mensaje sutil según el tiempo
+      let successMsg = 'Cita cancelada exitosamente';
+      if (diffHours > 12) {
+        successMsg = 'Tu cita ha sido cancelada. Esperamos verte pronto reservando una nueva.';
+      }
+      
+      setToast({ type: 'success', message: successMsg });
       setTimeout(() => setToast(null), 4000);
       loadAppointments();
     } catch (e) {

@@ -73,8 +73,8 @@ export default function Landing() {
 
   const plans = [
     {
-      name: 'KDice POS Pro', 
-      price: '$60,000', 
+      name: 'KDice Pro', 
+      price: '$70,000', 
       period: 'COP/mes', 
       desc: 'Todo incluido para tu negocio', 
       color: '#667eea',
@@ -84,6 +84,7 @@ export default function Landing() {
         '✅ Empleados ilimitados', 
         '✅ App móvil personalizada (APK)',
         '✅ Página web de reservas',
+        '✅ Recordatorios automáticos por Whatsaap',
         '✅ Recordatorios automáticos por email',
         '✅ Reportes de ingresos y comisiones',
         '✅ Soporte prioritario',
@@ -585,7 +586,7 @@ export default function Landing() {
                 <p style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 32 }}>{plan.desc}</p>
                 
                 <div style={{ marginBottom: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 'clamp(36px, 10vw, 56px)', fontWeight: 800, color: colors.text }}>$60.000</span>
+                  <span style={{ fontSize: 'clamp(36px, 10vw, 56px)', fontWeight: 800, color: colors.text }}>$70.000</span>
                   <span style={{ fontSize: 16, color: colors.textSecondary, fontWeight: 500 }}>COP / mes</span>
                 </div>
 

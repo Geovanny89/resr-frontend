@@ -1,669 +1,2176 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Copy, 
+  Check, 
+  X, 
+  Globe, 
+  Phone, 
+  MapPin, 
+  Clock, 
+  Calendar,
+  Zap,
+  Star,
+  Users,
+  CreditCard,
+  ExternalLink
+} from 'lucide-react';
 import api from '../../api/client';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeToggle from '../../components/ThemeToggle';
 
-// URL base para imágenes - si es relativa, usar el dominio del backend
+// URL base para imágenes
 const API_BASE_URL = api.defaults.baseURL || '/api';
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-// En desarrollo local el backend corre en el puerto 4000, en producción usamos el subdominio api-reservas
 const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
 
 function getImgUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  // Asegurar que la URL comience con / si no lo tiene
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${BACKEND_URL}${cleanUrl}`;
+  // Priorizar BACKEND_URL si base es relativo o local
+  const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/'))
+    ? api.defaults.baseURL.replace('/api', '')
+    : BACKEND_URL;
+  return `${base}${cleanUrl}`;
 }
 
-function SocialLink({ href, children, label, color }) {
+// Convierte URL de Google Maps a formato embed
+function getGoogleMapsEmbedUrl(url) {
+  if (!url) return null;
+
+  // Si ya es una URL de embed, retornarla
+  if (url.includes('/embed')) return url;
+
+  // Si es una URL corta de Google Maps (maps.app.goo.gl o goo.gl/maps/...)
+  // Estas URLs no funcionan en iframes, deben abrirse directamente
+  if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
+    return { isShortUrl: true, url };
+  }
+
+  // Si es una URL de lugar (google.com/maps/place/...)
+  if (url.includes('google.com/maps/place')) {
+    // Extraer coordenadas si están disponibles en la URL
+    const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      const lat = coordMatch[1];
+      const lng = coordMatch[2];
+      return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0!2z${lat},${lng}!5e0!3m2!1ses!2sco!4v1`;
+    }
+
+    // Extraer el query parameter 'q' si existe
+    try {
+      const urlObj = new URL(url);
+      const q = urlObj.searchParams.get('q');
+      if (q) {
+        return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0!2s${encodeURIComponent(q)}!5e0!3m2!1ses!2sco!4v1`;
+      }
+    } catch (e) {
+      // URL inválida, continuar
+    }
+
+    // Extraer el nombre del lugar de la URL
+    const placeMatch = url.match(/\/place\/([^/@]+)/);
+    if (placeMatch) {
+      const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+      return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0!2s${encodeURIComponent(placeName)}!5e0!3m2!1ses!2sco!4v1`;
+    }
+  }
+
+  return url;
+}
+
+// Verifica si la URL es una URL corta que no funciona en iframe
+function isShortGoogleMapsUrl(url) {
+  if (!url) return false;
+  return url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps');
+}
+
+function SocialLink({ href, iconUrl, label, color, invert, hoverColor }) {
   if (!href) return null;
   const url = href.startsWith('http') ? href : `https://${href}`;
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <a
-      href={url} target="_blank" rel="noreferrer" title={label}
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title={label}
+      className="social-sidebar-link"
       style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 40, height: 40, borderRadius: '50%', background: color, color: 'white',
-        fontSize: 17, textDecoration: 'none', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)', flexShrink: 0,
+        '--link-color': color,
+        backgroundColor: isHovered && hoverColor ? hoverColor : undefined
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.25)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {children}
+      {iconUrl && <img src={iconUrl} alt={label} style={{ width: 20, height: 20, filter: invert ? 'invert(1)' : 'none' }} />}
     </a>
   );
 }
 
 function GalleryModal({ images, index, onClose }) {
-  const [cur, setCur] = useState(index);
+  const [current, setCurrent] = useState(index);
+
   useEffect(() => {
-    const h = e => {
-      if (e.key === 'Escape')      onClose();
-      if (e.key === 'ArrowRight')  setCur(c => Math.min(c + 1, images.length - 1));
-      if (e.key === 'ArrowLeft')   setCur(c => Math.max(c - 1, 0));
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, images.length - 1));
+      if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0));
     };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [images.length, onClose]);
 
   return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.93)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
-    >
-      <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="gallery-modal-content" onClick={e => e.stopPropagation()}>
         <img
-          src={getImgUrl(images[cur])} alt={`Imagen ${cur + 1}`}
-          style={{ maxWidth: '92vw', maxHeight: '75vh', borderRadius: 12, objectFit: 'contain' }}
+          src={getImgUrl(images[current])}
+          alt={`Galería ${current + 1}`}
+          className="gallery-main-img"
         />
-        {/* Controles */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        
+        <div className="gallery-controls">
           <button
-            onClick={() => setCur(c => Math.max(c - 1, 0))}
-            disabled={cur === 0}
-            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: 'white', fontSize: 20, cursor: cur === 0 ? 'not-allowed' : 'pointer', opacity: cur === 0 ? 0.3 : 1 }}
-          >‹</button>
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>{cur + 1} / {images.length}</span>
+            onClick={() => setCurrent(c => Math.max(c - 1, 0))}
+            disabled={current === 0}
+            className="gallery-nav-btn"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <span className="gallery-counter">
+            {current + 1} / {images.length}
+          </span>
           <button
-            onClick={() => setCur(c => Math.min(c + 1, images.length - 1))}
-            disabled={cur === images.length - 1}
-            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: 'white', fontSize: 20, cursor: cur === images.length - 1 ? 'not-allowed' : 'pointer', opacity: cur === images.length - 1 ? 0.3 : 1 }}
-          >›</button>
+            onClick={() => setCurrent(c => Math.min(c + 1, images.length - 1))}
+            disabled={current === images.length - 1}
+            className="gallery-nav-btn"
+          >
+            <ChevronRight size={24} />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          style={{ position: 'absolute', top: -44, right: 0, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, color: 'white', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}
-        >✕</button>
+
+        <button onClick={onClose} className="modal-close-btn">
+          <X size={24} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeModal({ emp, onClose, primary, colors, navigate, slug }) {
+  if (!emp) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="employee-modal-content" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="modal-close-btn-alt">
+          <X size={20} />
+        </button>
+        
+        <div className="employee-modal-header">
+          {emp.photoUrl ? (
+            <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} className="employee-modal-img" />
+          ) : (
+            <div className="employee-modal-avatar-placeholder" style={{ backgroundColor: `${primary}20`, color: primary }}>
+              {emp.User?.name?.charAt(0)}
+            </div>
+          )}
+          <div className="employee-modal-header-overlay" />
+          <div className="employee-modal-info">
+            <h3 className="employee-modal-name">{emp.User?.name}</h3>
+            <div className="employee-modal-badge" style={{ backgroundColor: primary }}>
+              {emp.specialty || (emp.isManager ? 'Administrador' : 'Especialista')}
+            </div>
+          </div>
+        </div>
+        
+        <div className="employee-modal-body">
+          {emp.description && (
+            <>
+              <h4 className="employee-modal-section-title" style={{ color: colors.text }}>Sobre mí</h4>
+              <p className="employee-modal-description" style={{ color: colors.textSecondary }}>
+                {emp.description}
+              </p>
+            </>
+          )}
+          
+          <button 
+            className="employee-modal-cta"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${primary}dd)`, boxShadow: `0 10px 20px ${primary}30` }}
+            onClick={() => {
+              onClose();
+              navigate(`/${slug}/book?employeeId=${emp.id}`);
+            }}
+          >
+            Reservar con {emp.User?.name?.split(' ')[0] || (emp.specialty || 'especialista')}
+          </button>        </div>
       </div>
     </div>
   );
 }
 
 export default function BusinessLanding() {
-  const { slug }    = useParams();
-  const navigate    = useNavigate();
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const { isDark, colors } = useTheme();
-  const [business, setBusiness]     = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState('');
+  
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = '';
   const [galleryModal, setGalleryModal] = useState(null);
+  const [employeeModal, setEmployeeModal] = useState(null);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [servicesPage, setServicesPage] = useState(0);
+  const [expandedServices, setExpandedServices] = useState({});
+  const [expandedMission, setExpandedMission] = useState(false);
+  const [expandedVision, setExpandedVision] = useState(false);
+  const servicesPerPage = 4;
+
+  const MAX_TEXT_LENGTH = 150; // Caracteres máximos antes de mostrar Leer más
+
+  const toggleServiceDescription = (svcId) => {
+    setExpandedServices(prev => ({
+      ...prev,
+      [svcId]: !prev[svcId]
+    }));
+  };
 
   useEffect(() => {
-    console.log('BusinessLanding - slug:', slug);
-    
     api.get(`/businesses/${slug}/public`)
       .then(r => {
-        console.log('BusinessLanding - API response:', r.data);
         if (!r.data || !r.data.id) {
           setError('Negocio no encontrado');
         } else {
-          setBusiness(r.data);
+          const data = r.data;
+          if (typeof data.paymentMethods === 'string') {
+            try {
+              data.paymentMethods = JSON.parse(data.paymentMethods || '[]');
+            } catch(e) {
+              data.paymentMethods = [];
+            }
+          }
+          setBusiness(data);
         }
       })
       .catch(e => {
-        console.error('BusinessLanding - API error:', e);
         setError(e.response?.status === 404 ? 'Negocio no encontrado' : 'Error al cargar el negocio');
       })
       .finally(() => setLoading(false));
   }, [slug]);
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f4f8' }}>
-      <div style={{ textAlign: 'center', color: '#718096' }}>
-        <div style={{ width: 48, height: 48, border: '4px solid #e2e8f0', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p>Cargando...</p>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div className={`page-loading-screen ${isDark ? 'dark' : ''}`}>
+      <div className="loading-spinner-container">
+        <div className="loading-spinner" />
+        <p>Cargando experiencias...</p>
       </div>
     </div>
   );
 
-  if (error) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f4f8', padding: 20 }}>
-      <div style={{ textAlign: 'center', maxWidth: 400 }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🔍</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>Negocio no encontrado</h2>
-        <p style={{ color: '#718096' }}>El enlace puede ser incorrecto o el negocio ya no está disponible.</p>
+  if (error || !business) return (
+    <div className={`page-error-screen ${isDark ? 'dark' : ''}`}>
+      <div className="error-content">
+        <div className="error-icon">🔍</div>
+        <h2 className="error-title">No encontrado</h2>
+        <p className="error-msg">El negocio que buscas no está disponible actualmente.</p>
+        <button className="error-retry-btn" onClick={() => navigate('/')}>Volver al inicio</button>
       </div>
     </div>
   );
 
-  if (!business) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f4f8', padding: 20 }}>
-      <div style={{ textAlign: 'center', maxWidth: 400 }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>⚠️</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#2d3748', marginBottom: 8 }}>Error al cargar</h2>
-        <p style={{ color: '#718096' }}>No se pudo cargar la información del negocio.</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          style={{ marginTop: 16, padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}
-        >
-          Reintentar
-        </button>
-      </div>
-    </div>
-  );
+  const primary = business.primaryColor || '#667eea';
+  const secondary = business.secondaryColor || '#764ba2';
+  const hasWhatsapp = !!business.whatsapp;
+  const hasWhatsappCatalog = !!business.whatsappCatalog;
+  const whatsappNum = business.whatsapp ? business.whatsapp.replace(/\D/g, '') : '';
+  const hasSocials = !!(business.instagram || business.facebook || business.tiktok || business.twitter || business.pinterest || business.youtube || business.website || business.whatsappCatalog);
 
-  const primary   = business.primaryColor   || '#4f46e5';
-  const secondary = business.secondaryColor || '#7c3aed';
-  const gradient  = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`;
-  const heroStyle = business.bannerUrl
-    ? {
-        backgroundImage: `
-          radial-gradient(circle at 20% 25%, rgba(255,255,255,0.12) 0%, transparent 55%),
-          linear-gradient(180deg, rgba(2, 6, 23, 0.72) 0%, rgba(2, 6, 23, 0.44) 55%, rgba(2, 6, 23, 0.78) 100%),
-          url(${getImgUrl(business.bannerUrl)})
-        `,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : { background: gradient };
-
+  // Parsear galería - puede venir como string JSON o como array
   let gallery = [];
-  try { gallery = JSON.parse(business.gallery || '[]'); } catch (e) { gallery = []; }
+  if (business.gallery) {
+    if (typeof business.gallery === 'string') {
+      try { gallery = JSON.parse(business.gallery); } catch (e) { gallery = []; }
+    } else if (Array.isArray(business.gallery)) {
+      gallery = business.gallery;
+    }
+  }
 
-  const hasWhatsapp  = !!business.whatsapp;
-  const whatsappNum  = business.whatsapp ? business.whatsapp.replace(/\D/g, '') : '';
-  const hasSocials   = !!(business.instagram || business.facebook || business.tiktok || business.twitter || business.website);
+  const getPaymentMethodImage = (name) => {
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('nequi')) return '/nequi.png';
+    if (lower.includes('daviplata')) return '/daviplat.png';
+    if (lower.includes('llave')) return '/Bre-B.png';
+    if (lower.includes('davivienda')) return '/davivienda.png';
+    if (lower.includes('bancolombia')) return '/bancolombia.png';
+    if (lower.includes('banco')) return '/banco.png';
+    return null;
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgTertiary, color: colors.text, fontFamily: "'Inter', system-ui, sans-serif", paddingBottom: 40 }}>
+    <div className={`landing-root ${isDark ? 'dark' : ''}`} style={{ '--brand-primary': primary, '--brand-secondary': secondary }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        *{box-sizing:border-box}
-        :root{
-          --pub-bg: ${colors.bgTertiary};
-          --pub-surface: ${colors.cardBg};
-          --pub-surface-2: ${colors.bgSecondary};
-          --pub-border: ${colors.border};
-          --pub-text: ${colors.text};
-          --pub-muted: ${colors.textTertiary};
-          --pub-subtle: ${colors.textSecondary};
-          --pub-shadow: ${colors.shadow};
-          --brand-primary: ${primary};
-          --brand-secondary: ${secondary};
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+          --jakarta: 'Plus Jakarta Sans', sans-serif;
+          --glass-bg: rgba(255, 255, 255, 0.75);
+          --glass-border: rgba(255, 255, 255, 0.4);
+          --card-shadow: 0 20px 50px -12px rgba(0,0,0,0.08);
+          --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+          --section-spacing: 120px;
         }
         
-        .section-card {
-          background: var(--pub-surface);
-          border-radius: 24px;
-          padding: 32px;
-          margin-bottom: 24px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-          border: 1px solid var(--pub-border);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .landing-root.dark {
+          --glass-bg: rgba(15, 23, 42, 0.8);
+          --glass-border: rgba(255, 255, 255, 0.1);
+          --card-shadow: 0 20px 50px -12px rgba(0,0,0,0.4);
         }
 
-        .svc-card {
-          background: var(--pub-surface-2);
-          border: 1px solid var(--pub-border);
-          border-radius: 20px;
-          padding: 24px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .svc-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-          border-color: var(--brand-primary);
-        }
-
-        .gal-item {
-          aspect-ratio: 1;
-          border-radius: 20px;
-          overflow: hidden;
-          cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        .landing-root {
+          font-family: var(--jakarta);
+          min-height: 100vh;
+          background: ${isDark
+            ? 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e293b 100%)'
+            : 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 30%, #e2e8f0 70%, #f8fafc 100%)'
+          };
+          color: ${isDark ? '#f1f5f9' : '#0f172a'};
+          transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          scroll-behavior: smooth;
+          overflow-x: hidden;
           position: relative;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .gal-item::before {
+        .landing-root::before {
           content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: ${isDark
+            ? 'radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(139, 92, 246, 0.05) 0%, transparent 50%)'
+            : 'radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 40%), radial-gradient(ellipse at 80% 60%, rgba(139, 92, 246, 0.02) 0%, transparent 40%), radial-gradient(ellipse at 50% 100%, rgba(59, 130, 246, 0.02) 0%, transparent 50%)'
+          };
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        /* SIDEBAR SOCIALS */
+        .social-sidebar {
+          display: none;
+        }
+        @media (min-width: 1280px) {
+          .social-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: fixed;
+            left: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 50;
+          }
+        }
+        .social-sidebar-link {
+          width: 48px;
+          height: 48px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--glass-bg);
+          backdrop-filter: blur(12px);
+          border: 1px solid var(--glass-border);
+          color: var(--link-color);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+        .social-sidebar-link:hover {
+          transform: scale(1.15) translateX(10px);
+          background: var(--link-color);
+          color: white;
+          border-color: transparent;
+        }
+
+        /* HERO */
+        .hero-section {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 100px 24px;
+          overflow: hidden;
+          background: ${business.bannerUrl ? `url(${getImgUrl(business.bannerUrl)}) center/cover no-repeat fixed` : 'var(--accent-gradient)'};
+        }
+        .hero-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
-          opacity: 0;
-          transition: opacity 0.3s ease;
+          background: ${isDark 
+            ? 'linear-gradient(180deg, rgba(2, 6, 23, 0.8) 0%, rgba(2, 6, 23, 0.4) 50%, rgba(2, 6, 23, 0.95) 100%)' 
+            : 'linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.3) 50%, rgba(15, 23, 42, 0.8) 100%)'};
           z-index: 1;
         }
-        .gal-item:hover::before {
-          opacity: 1;
-        }
-        .gal-item::after {
-          content: 'Ver más';
-          position: absolute;
-          bottom: 16px;
-          left: 50%;
-          transform: translateX(-50%);
+        .hero-content {
+          position: relative;
+          z-index: 10;
+          max-width: 900px;
+          text-align: center;
           color: white;
-          font-size: 14px;
-          font-weight: 600;
-          opacity: 0;
-          transition: all 0.3s ease;
-          z-index: 2;
+          animation: fadeUp 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .gal-item:hover::after {
-          opacity: 1;
+        .hero-logo-container {
+          width: 140px;
+          height: 140px;
+          margin: 0 auto 40px;
+          padding: 8px;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 44px;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+          transform: rotate(-2deg);
+          transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .gal-item:hover {
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
-          z-index: 2;
+        .hero-logo-container:hover {
+          transform: rotate(0deg) scale(1.05);
         }
-        .gal-item img {
+        .hero-logo {
           width: 100%;
           height: 100%;
+          border-radius: 36px;
           object-fit: cover;
-          transition: transform 0.4s ease;
+          background: white;
         }
-        .gal-item:hover img {
-          transform: scale(1.1);
+        .hero-title {
+          font-size: clamp(48px, 10vw, 84px);
+          font-weight: 900;
+          letter-spacing: -4px;
+          line-height: 1;
+          margin-bottom: 24px;
+          text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          background: linear-gradient(to bottom, #ffffff, #e2e8f0);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
-
-        .brand-cta {
-          display: inline-flex;
-          align-items: center;
+        .hero-tagline {
+          font-size: clamp(18px, 4vw, 24px);
+          opacity: 0.95;
+          margin-bottom: 56px;
+          font-weight: 500;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+          letter-spacing: -0.5px;
+        }
+        .hero-actions {
+          display: flex;
+          flex-wrap: wrap;
           justify-content: center;
-          gap: 12px;
-          padding: 18px 48px;
-          border-radius: 16px;
-          background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-          color: white;
+          gap: 20px;
+        }
+        .main-cta-btn {
+          padding: 20px 48px;
+          background: white;
+          color: #020617;
           font-weight: 800;
           font-size: 18px;
+          border-radius: 20px;
+          transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+          box-shadow: 0 20px 40px -15px rgba(255,255,255,0.4);
           border: none;
           cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-          width: 100%;
-          max-width: 400px;
         }
-        .brand-cta:hover {
+        .main-cta-btn:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 30px 60px -15px rgba(255,255,255,0.5);
+        }
+        .secondary-cta-btn {
+          padding: 20px 48px;
+          background: rgba(255,255,255,0.08);
+          backdrop-filter: blur(20px);
+          color: white;
+          font-weight: 700;
+          font-size: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.2);
+          transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+          cursor: pointer;
+        }
+        .secondary-cta-btn:hover {
+          background: rgba(255,255,255,0.15);
           transform: translateY(-4px);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-          filter: brightness(1.1);
+          border-color: rgba(255,255,255,0.4);
         }
 
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-        .hero-shell {
+        /* CARDS & SECTIONS */
+        .content-container {
+          max-width: 1200px;
+          margin: -100px auto 0;
+          padding: 0 24px var(--section-spacing);
           position: relative;
-          min-height: 450px;
+          z-index: 20;
+        }
+        .section-card {
+          background: var(--glass-bg);
+          backdrop-filter: blur(20px);
+          border-radius: 40px;
+          padding: 60px;
+          margin-bottom: 40px;
+          box-shadow: ${isDark
+            ? '0 25px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            : `0 25px 60px -15px ${primary}25, 0 8px 24px -8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)`
+          };
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : `${primary}20`};
+          transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+          position: relative;
+          overflow: hidden;
+        }
+        .section-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, ${isDark ? 'rgba(255,255,255,0.03)' : `${primary}08`}, transparent);
+          transition: left 0.6s ease;
+        }
+        .section-card:hover::before {
+          left: 100%;
+        }
+        .section-card:hover {
+          transform: translateY(-6px);
+          box-shadow: ${isDark
+            ? '0 35px 70px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            : `0 35px 70px -15px ${primary}35, 0 12px 32px -10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95)`
+          };
+          border-color: ${isDark ? 'rgba(255, 255, 255, 0.2)' : `${primary}40`};
+        }
+        .section-header {
+          margin-bottom: 48px;
+          text-align: center;
+        }
+        .section-label {
+          font-size: 14px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 4px;
+          color: var(--brand-primary);
+          margin-bottom: 12px;
+          display: block;
+        }
+        .section-title {
+          font-size: clamp(32px, 5vw, 44px);
+          font-weight: 900;
+          letter-spacing: -2px;
+          line-height: 1.1;
+        }
+
+        /* MISSION & VISION MODERN */
+        .mv-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 32px;
+          margin-top: 60px;
+          margin-bottom: 80px;
+        }
+        .mv-card {
+          background: ${isDark
+            ? `linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(30, 41, 59, 0.9) 100%)`
+            : `linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, ${primary}08 50%, rgba(248, 250, 252, 0.98) 100%)`
+          };
+          backdrop-filter: blur(20px);
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : `${primary}25`};
+          border-radius: 40px;
+          padding: 48px;
+          transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+          position: relative;
+          overflow: hidden;
+          box-shadow: ${isDark
+            ? '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            : `0 25px 50px -12px ${primary}20, inset 0 1px 0 rgba(255, 255, 255, 0.8)`
+          };
+        }
+        .mv-card::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          right: -50%;
+          width: 100%;
+          height: 100%;
+          background: radial-gradient(circle, ${primary}15 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .mv-card::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, ${primary}, transparent);
+          opacity: 0.6;
+        }
+        .mv-card:hover {
+          transform: translateY(-12px) scale(1.02);
+          box-shadow: ${isDark
+            ? '0 35px 60px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            : `0 35px 60px -15px ${primary}35, inset 0 1px 0 rgba(255, 255, 255, 0.9)`
+          };
+          border-color: ${isDark ? 'rgba(255, 255, 255, 0.25)' : `${primary}40`};
+        }
+        .mv-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%);
+          color: white;
+          display: flex;
+          alignItems: center;
+          justifyContent: center;
+          margin-bottom: 28px;
+          box-shadow: 0 15px 30px -10px ${primary}60;
+          position: relative;
+          z-index: 1;
+        }
+        .mv-card:nth-child(2) .mv-icon {
+          background: linear-gradient(135deg, ${secondary} 0%, ${primary} 100%);
+          box-shadow: 0 15px 30px -10px ${secondary}60;
+        }
+        .mv-title {
+          font-size: 28px;
+          font-weight: 800;
+          margin-bottom: 16px;
+          letter-spacing: -1px;
+          color: ${isDark ? 'white' : '#0f172a'};
+        }
+        .mv-text {
+          font-size: 16px;
+          line-height: 1.7;
+          opacity: 0.8;
+          color: ${isDark ? 'rgba(255,255,255,0.7)' : '#334155'};
+          position: relative;
+          z-index: 1;
+        }
+        .mv-text-truncated {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .mv-read-more {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 12px;
+          padding: 8px 16px;
+          background: ${primary}15;
+          border: 1px solid ${primary}30;
+          border-radius: 20px;
+          color: ${primary};
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 1;
+        }
+        .mv-read-more:hover {
+          background: ${primary};
+          color: white;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px ${primary}40;
+        }
+
+        /* INFO GRID */
+        .info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+          margin-bottom: 80px;
+          align-items: stretch;
+        }
+        .info-card {
+          background: var(--glass-bg);
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--glass-border);
+          border-radius: 32px;
+          padding: 32px;
+          display: flex;
+          align-items: flex-start;
+          gap: 24px;
+          transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+          height: 100%;
+        }
+        .info-card:hover {
+          transform: translateY(-5px);
+          background: ${isDark ? 'rgba(30, 41, 59, 0.9)' : 'white'};
+        }
+        .info-icon-wrapper {
+          width: 56px;
+          height: 56px;
+          border-radius: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 60px 20px;
-          background-attachment: fixed;
-        }
-        
-        .hero-glass {
-          background: transparent;
-          backdrop-filter: none;
-          -webkit-backdrop-filter: none;
-          border: none;
-          border-radius: 0;
-          padding: 48px;
-          width: 100%;
-          max-width: 700px;
-          box-shadow: none;
-          text-align: center;
+          flex-shrink: 0;
+          background: var(--brand-primary);
           color: white;
+          margin-top: 4px;
         }
-
-        .team-item {
-          text-align: center;
-          padding: 20px;
-          border-radius: 20px;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-        }
-        .team-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-          transform: translateY(-8px);
-        }
-        .team-photo {
-          width: 120px;
-          height: 120px;
-          border-radius: 50%;
-          margin: 0 auto 16px;
-          overflow: hidden;
-          border: 3px solid var(--brand-primary);
-          padding: 4px;
-          background: white;
-          transition: all 0.4s ease;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        .team-item:hover .team-photo {
-          transform: scale(1.08);
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-        }
-        .team-photo img,
-        .team-photo > div {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          border-radius: 50%;
-          transition: transform 0.4s ease;
-        }
-        .team-item:hover .team-photo img {
-          transform: scale(1.1);
-        }
-
-        .brand-ring {
-          width: 120px;
-          height: 120px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-          padding: 4px;
-          margin: 0 auto 24px;
-          box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.05);
-        }
-        .brand-logo {
-          width: 100%;
-          height: 100%;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 4px solid white;
-        }
-
-        .hero-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 18px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 999px;
-          font-size: 14px;
-          color: white;
-          text-decoration: none;
-          backdrop-filter: blur(4px);
-          line-height: 1.5;
-        }
-
-        .section-title {
-          font-size: 24px;
+        .info-label {
+          font-size: 12px;
           font-weight: 800;
-          margin-bottom: 24px;
+          letter-spacing: 1px;
+          opacity: 0.5;
+          margin-bottom: 8px;
+        }
+        .info-value {
+          font-weight: 700;
+          font-size: 15px;
+          line-height: 1.5;
+          color: ${isDark ? 'white' : '#0f172a'};
+          white-space: pre-line;
+        }
+
+        /* MODALS */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(12px);
+          z-index: 2000;
           display: flex;
           align-items: center;
-          gap: 12px;
-          color: var(--pub-text);
+          justify-content: center;
+          padding: 24px;
+          animation: fadeIn 0.3s ease;
+        }
+        .gallery-modal-content {
+          position: relative;
+          max-width: 1100px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+        }
+        .gallery-main-img {
+          max-height: 75vh;
+          max-width: 100%;
+          object-fit: contain;
+          border-radius: 24px;
+          box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+          border: 4px solid rgba(255,255,255,0.1);
+        }
+        .gallery-controls {
+          display: flex;
+          align-items: center;
+          gap: 32px;
+          background: rgba(255,255,255,0.1);
+          backdrop-filter: blur(20px);
+          padding: 12px 24px;
+          border-radius: 100px;
+          border: 1px solid rgba(255,255,255,0.2);
+          color: white;
+        }
+        .gallery-nav-btn {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: white;
+          color: #020617;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          cursor: pointer;
+        }
+        .gallery-nav-btn:hover:not(:disabled) {
+          transform: scale(1.1);
+          background: var(--brand-primary);
+          color: white;
+        }
+        .gallery-nav-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+        .gallery-counter {
+          font-weight: 800;
+          font-size: 16px;
+          min-width: 60px;
+          text-align: center;
+          letter-spacing: 1px;
+        }
+        .modal-close-btn {
+          position: absolute;
+          top: -60px;
+          right: 0;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.1);
+          color: white;
+          border: 1px solid rgba(255,255,255,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+        .modal-close-btn:hover {
+          background: #ef4444;
+          border-color: transparent;
+          transform: rotate(90deg);
         }
 
+        .employee-modal-content {
+          background: ${isDark ? '#1e293b' : 'white'};
+          width: 100%;
+          max-width: 480px;
+          border-radius: 40px;
+          overflow: hidden;
+          position: relative;
+          box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5);
+          animation: modalSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+        }
+        .modal-close-btn-alt {
+          position: absolute;
+          top: 24px;
+          right: 24px;
+          z-index: 50;
+          width: 36px;
+          height: 36px;
+          border-radius: 12px;
+          background: rgba(0,0,0,0.2);
+          backdrop-filter: blur(10px);
+          color: white;
+          border: none;
+          display: flex; 
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .modal-close-btn-alt:hover {
+          background: rgba(239, 68, 68, 0.8);
+          transform: scale(1.1);
+        }
+        .employee-modal-header {
+          height: 320px;
+          position: relative;
+        }
+        .employee-modal-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .employee-modal-avatar-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 80px;
+          font-weight: 800;
+        }
+        .employee-modal-header-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top, ${isDark ? '#1e293b' : 'white'} 0%, transparent 70%);
+        }
+        .employee-modal-info {
+          position: absolute;
+          bottom: 24px;
+          left: 32px;
+          right: 32px;
+          color: ${isDark ? 'white' : '#0f172a'};
+        }
+        .employee-modal-name {
+          font-size: 32px;
+          font-weight: 900;
+          margin-bottom: 8px;
+          letter-spacing: -1px;
+        }
+        .employee-modal-badge {
+          display: inline-block;
+          padding: 6px 16px;
+          border-radius: 100px;
+          font-size: 12px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: white;
+        }
+        .employee-modal-body {
+          padding: 40px;
+        }
+        .employee-modal-section-title {
+          font-size: 14px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 12px;
+          opacity: 0.5;
+        }
+        .employee-modal-description {
+          font-size: 16px;
+          line-height: 1.6;
+          margin-bottom: 32px;
+        }
+        .employee-modal-cta {
+          width: 100%;
+          padding: 20px;
+          border-radius: 20px;
+          color: white;
+          border: none;
+          font-weight: 800;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .employee-modal-cta:hover {
+          transform: translateY(-4px) scale(1.02);
+        }
+
+        /* PROMOTIONS MODERN */
+        .promo-section {
+          background: ${isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.5)'};
+          padding: 80px 40px;
+          border-radius: 50px;
+          margin-bottom: 80px;
+          border: 1px dashed ${isDark ? 'rgba(255,255,255,0.2)' : 'var(--brand-primary)'};
+          position: relative;
+        }
+        .promo-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 32px;
+        }
+        .promo-card {
+          background: ${isDark ? '#1e293b' : 'white'};
+          border-radius: 32px;
+          padding: 32px;
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          box-shadow: var(--card-shadow);
+          transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'transparent'};
+        }
+        .promo-card:hover {
+          transform: translateY(-8px) rotate(1deg);
+          border-color: var(--brand-primary);
+          box-shadow: 0 30px 60px -20px rgba(0,0,0,0.2);
+        }
+        .promo-badge {
+          width: 72px;
+          height: 72px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          animation: pulse-glow 2s infinite;
+          box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+        }
+        .promo-value {
+          font-size: 24px;
+          font-weight: 900;
+          line-height: 1;
+        }
+        .promo-type {
+          font-size: 11px;
+          font-weight: 800;
+        }
+        .promo-info h3 {
+          color: ${isDark ? 'white' : '#0f172a'};
+          font-weight: 800;
+          font-size: 18px;
+          margin-bottom: 4px;
+        }
+        .promo-info p {
+          color: ${isDark ? 'rgba(255,255,255,0.8)' : 'rgba(15, 23, 42, 0.7)'};
+          font-size: 13px;
+          line-height: 1.4;
+        }
+
+        /* SERVICES */
+        .services-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 20px;
+          align-items: stretch;
+        }
+        .service-card {
+          background: ${isDark ? '#1e293b' : 'white'};
+          border-radius: 32px;
+          padding: 0;
+          overflow: hidden;
+          transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          width: 100%;
+        }
+        .service-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 30px 60px -15px rgba(0,0,0,0.15);
+          border-color: var(--brand-primary);
+        }
+        .service-img-container {
+          width: 100%;
+          aspect-ratio: 16 / 11;
+          overflow: hidden;
+          position: relative;
+        }
+        .service-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .service-content {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+        }
+        .service-title {
+          font-size: 18px;
+          font-weight: 800;
+          margin-bottom: 12px;
+          color: ${isDark ? '#ffffff' : '#0f172a'};
+          line-height: 1.3;
+        }
+        .service-description {
+          font-size: 13px;
+          color: ${isDark ? 'rgba(255, 255, 255, 0.7)' : '#475569'};
+          line-height: 1.6;
+          margin-bottom: 12px;
+          flex: 1;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+        .service-description.expanded {
+          -webkit-line-clamp: unset;
+          display: block;
+          overflow: visible;
+        }
+        .read-more-btn {
+          background: none;
+          border: none;
+          color: var(--brand-primary);
+          font-size: 12px;
+          font-weight: 800;
+          padding: 0;
+          margin-bottom: 24px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.2s;
+        }
+        .read-more-btn:hover {
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+        .service-ver-mas {
+          background: none;
+          border: none;
+          color: var(--brand-primary);
+          font-size: 12px;
+          font-weight: 700;
+          padding: 0;
+          margin: -8px 0 12px 0;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.2s;
+        }
+        .service-ver-mas:hover {
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+        .service-footer {
+          margin-top: auto;
+          padding-top: 16px;
+          border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
+        }
+        .service-price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+        .service-price {
+          font-size: 19px;
+          font-weight: 900;
+          color: var(--brand-primary);
+          line-height: 1;
+        }
+        .service-old-price {
+          font-size: 13px;
+          color: ${isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)'};
+          text-decoration: line-through;
+          margin-right: 4px;
+          display: block;
+          margin-bottom: 2px;
+        }
+        .service-meta-text {
+          color: ${isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'};
+          font-size: 11px;
+          font-weight: 700;
+          text-align: right;
+          white-space: nowrap;
+          background: ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'};
+          padding: 4px 8px;
+          border-radius: 8px;
+        }
+        .service-reserve-btn-small {
+          width: 100%;
+          padding: 14px;
+          background: var(--brand-primary);
+          color: white;
+          font-weight: 800;
+          font-size: 14px;
+          border-radius: 16px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 8px 20px var(--brand-primary)40;
+        }
+        .service-reserve-btn-small:hover {
+          background: var(--brand-primary);
+          opacity: 0.9;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 25px var(--brand-primary)60;
+        }
+
+        .pagination-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-top: 48px;
+        }
+        .pagination-btn {
+          width: 48px;
+          height: 48px;
+          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: blur(10px);
+          border: 1px solid var(--glass-border);
+          color: ${isDark ? 'white' : '#0f172a'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pagination-btn:hover:not(:disabled) {
+          background: var(--brand-primary);
+          color: white;
+          transform: scale(1.1);
+        }
+        .pagination-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+        .pagination-info {
+          font-weight: 700;
+          font-size: 15px;
+          opacity: 0.7;
+        }
+
+        /* TEAM */
+        .team-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 40px;
+        }
+        .team-member-card {
+          background: var(--glass-bg);
+          border-radius: 40px;
+          padding: 40px 24px;
+          text-align: center;
+          transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          border: 1px solid var(--glass-border);
+          cursor: pointer;
+        }
+        .team-member-card:hover {
+          transform: translateY(-16px) scale(1.02);
+          background: ${isDark ? 'rgba(30, 41, 59, 0.9)' : 'white'};
+          box-shadow: 0 40px 80px -25px rgba(0,0,0,0.15);
+        }
+        .team-avatar-container {
+          width: 140px;
+          height: 140px;
+          margin: 0 auto 28px;
+          position: relative;
+        }
+        .team-avatar-img {
+          width: 100%;
+          height: 100%;
+          border-radius: 48px;
+          object-fit: cover;
+          border: 4px solid white;
+          box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+          transition: all 0.5s ease;
+        }
+        .team-member-card:hover .team-avatar-img {
+          border-radius: 32px;
+          transform: rotate(-5deg);
+        }
+
+        .team-member-name {
+          color: ${isDark ? 'white' : '#0f172a'};
+          font-weight: 800;
+          font-size: 20px;
+          margin-bottom: 8px;
+        }
+        .team-member-role {
+          color: var(--brand-primary);
+          font-size: 14px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        /* GALLERY - UNIFORM SQUARE STYLE */
         .gallery-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          grid-template-columns: repeat(5, 1fr);
           gap: 20px;
         }
 
-        @media(max-width:600px){
-          .hero-glass { padding: 32px 20px; }
-          .section-card { padding: 24px 20px; }
-          .svc-card { padding: 16px !important; }
-          .hero-shell { min-height: 350px; }
+        .gallery-item {
+          position: relative;
+          aspect-ratio: 1 / 1;
+          border-radius: 24px;
+          overflow: hidden;
+          cursor: pointer;
+          background: ${isDark ? '#1e293b' : '#ffffff'};
+          transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
+        }
+        
+        .gallery-item:hover {
+          transform: translateY(-10px);
+          box-shadow: 0 30px 60px -15px rgba(0,0,0,0.25);
+          border-color: var(--brand-primary);
+          z-index: 10;
+        }
+
+        .gallery-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          transition: transform 0.8s ease;
+        }
+
+        .gallery-item:hover .gallery-img {
+          transform: scale(1.1);
+        }
+
+        .gallery-overlay {
+          position: absolute;
+          inset: 0;
+          background: var(--brand-primary);
+          opacity: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+          opacity: 0.2;
+        }
+
+        .gallery-view-icon {
+          width: 48px;
+          height: 48px;
+          background: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--brand-primary);
+          transform: scale(0.8);
+          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .gallery-item:hover .gallery-view-icon {
+          transform: scale(1);
+        }
+
+        @media (max-width: 1200px) {
+          .gallery-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 1024px) {
+          .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
           .gallery-grid { 
-            grid-template-columns: repeat(2, 1fr) !important; 
-            gap: 12px !important; 
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px; 
           }
-          .gal-item {
-            border-radius: 12px;
-          }
-          .services-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
-          .team-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
-          .team-grid .team-photo { width: 80px !important; height: 80px !important; }
-          .hero-pill { font-size: 13px; padding: 8px 14px; }
+          .gallery-item { border-radius: 18px; }
+        }
+
+        /* WHATSAPP FLOAT */
+        .whatsapp-float {
+          position: fixed;
+          bottom: 40px;
+          right: 40px;
+          width: 72px;
+          height: 72px;
+          background: #25d366;
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          box-shadow: 0 20px 40px rgba(37,211,102,0.4);
+          z-index: 100;
+          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .whatsapp-float:hover {
+          transform: scale(1.1) rotate(10deg);
+          box-shadow: 0 30px 60px rgba(37,211,102,0.5);
+        }
+
+        @keyframes pulse-glow {
+          0% { box-shadow: 0 0 0 0 ${primary}60; }
+          70% { box-shadow: 0 0 0 15px ${primary}00; }
+          100% { box-shadow: 0 0 0 0 ${primary}00; }
+        }
+
+        @keyframes fadeUp { 
+          from { opacity: 0; transform: translateY(40px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes modalSlideUp {
+          from { opacity: 0; transform: translateY(60px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 768px) {
+          .landing-root { overflow-x: hidden; width: 100vw; }
+          .hero-section { min-height: 80vh; padding: 60px 16px; }
+          .hero-title { font-size: 42px; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 16px; }
+          .hero-tagline { font-size: 16px; margin-bottom: 32px; padding: 0 10px; }
+          .hero-logo-container { width: 110px; height: 110px; margin-bottom: 24px; }
+          .hero-actions { flex-direction: column; width: 100%; max-width: 280px; margin: 0 auto; gap: 12px; }
+          .main-cta-btn, .secondary-cta-btn { width: 100%; padding: 16px 20px; font-size: 16px; border-radius: 16px; }
+          
+          .content-container { margin-top: -40px; padding: 0 16px 80px; width: 100%; box-sizing: border-box; }
+          .section-card { padding: 32px 20px; border-radius: 24px; margin-bottom: 24px; width: 100%; box-sizing: border-box; }
+          .section-title { font-size: 26px; letter-spacing: -1px; }
+          
+          .info-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 40px; }
+          .info-card { padding: 20px; border-radius: 20px; }
+          
+          .promo-section { padding: 40px 16px; border-radius: 32px; margin-bottom: 60px; width: 100%; box-sizing: border-box; }
+          .promo-grid { gap: 16px; grid-template-columns: 1fr; }
+          .promo-card { padding: 20px; gap: 16px; border-radius: 24px; width: 100%; box-sizing: border-box; }
+          .promo-badge { width: 60px; height: 60px; border-radius: 16px; }
+          .promo-value { font-size: 20px; }
+          .promo-info h3 { font-size: 17px; }
+          
+          .services-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .service-card { border-radius: 24px; width: 100%; }
+          .service-content { padding: 16px; }
+          .service-title { font-size: 14px; }
+          .service-description { font-size: 11px; margin-bottom: 12px; }
+          .service-price { font-size: 15px; }
+          .service-reserve-btn-small { padding: 10px; font-size: 12px; border-radius: 12px; }
+          
+          .team-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+          .team-member-card { padding: 24px 16px; border-radius: 24px; }
+          .team-avatar-container { width: 90px; height: 90px; margin-bottom: 16px; }
+          .team-member-card h3 { font-size: 16px; }
+          
+          .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .gallery-item { border-radius: 20px; }
+          .gallery-item:nth-child(3n) { aspect-ratio: 1/1; }
+          
+          .whatsapp-float { width: 60px; height: 60px; right: 20px; bottom: 20px; border-radius: 18px; }
+          .whatsapp-float svg { width: 28px; height: 28px; }
+          
+          .employee-modal-content { max-width: 100%; border-radius: 32px 32px 0 0; position: fixed; bottom: 0; left: 0; right: 0; margin: 0; }
+          .employee-modal-header { height: 260px; }
+          .employee-modal-body { padding: 32px 24px; }
         }
       `}</style>
 
-      {/* Toggle de tema (público) */}
-      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1200 }}>
+      <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 100 }}>
         <ThemeToggle />
       </div>
 
-      {/* ── HERO ── */}
-      <div
-        className="hero-shell"
-        style={{
-          ...heroStyle,
-          ['--brand-primary']: primary,
-          ['--brand-secondary']: secondary,
-        }}
-      >
-        <div className="hero-glass fade-up">
-          {/* Logo */}
-          <div className="brand-ring">
+      {/* SOCIAL SIDEBAR */}
+      {hasSocials && (
+        <div className="social-sidebar">
+          {business.instagram && <SocialLink href={business.instagram} iconUrl="/instagram.png" label="Instagram" color="#E1306C" />}
+          {business.facebook && <SocialLink href={business.facebook} iconUrl="/facebook.png" label="Facebook" color="#1877F2" />}
+          {business.tiktok && <SocialLink href={business.tiktok} iconUrl="/tik-tok.png" label="TikTok" color="#000000" invert={isDark} />}
+          {business.twitter && <SocialLink href={business.twitter} iconUrl="/x.png" label="X" color="#000000" invert={isDark} hoverColor="#1DA1F2" />}
+          {business.pinterest && <SocialLink href={business.pinterest} iconUrl="/pinterest.png" label="Pinterest" color="#E60023" />}
+          {business.youtube && <SocialLink href={business.youtube} iconUrl="/youtube.png" label="YouTube" color="#FF0000" />}
+          {business.website && <SocialLink href={business.website} iconUrl="/web.png" label="Website" color={primary} />}
+        </div>
+      )}
+
+      {/* HERO */}
+      <section className="hero-section">
+        <div className="hero-overlay" />
+        <div className="hero-content">
+          <div className="hero-logo-container">
             {business.logoUrl ? (
-              <img className="brand-logo" src={getImgUrl(business.logoUrl)} alt={business.name} />
+              <img src={getImgUrl(business.logoUrl)} alt={business.name} className="hero-logo" />
             ) : (
-              <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, background: 'white' }}>🏪</div>
-            )}
-          </div>
-
-          <h1 style={{ fontSize: 'clamp(28px, 6vw, 48px)', fontWeight: 800, marginBottom: 12, letterSpacing: '-1px' }}>
-            {business.name}
-          </h1>
-          
-          {business.tagline && (
-            <p style={{ fontSize: 18, opacity: 0.9, marginBottom: 32, fontStyle: 'italic', fontWeight: 500 }}>
-              "{business.tagline}"
-            </p>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
-              {business.address && (
-                <div className="hero-pill">📍 {business.address}</div>
-              )}
-              {business.phone && (
-                <a href={`tel:${business.phone}`} className="hero-pill">📞 {business.phone}</a>
-              )}
-            </div>
-            {business.businessHours && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', width: '100%' }}>
-                {business.businessHours.split(/Sab|Dom/).map((part, i) => {
-                  if (i === 0 && part.trim()) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 {part.trim()}</div>;
-                  if (i === 1) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 Sab {part.trim()}</div>;
-                  if (i === 2) return <div key={i} className="hero-pill" style={{ display: 'flex' }}>🕐 Dom {part.trim()}</div>;
-                  return null;
-                })}
+              <div className="hero-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, fontWeight: 900, background: 'white', color: '#3b82f6' }}>
+                {business.name.charAt(0)}
               </div>
             )}
           </div>
-
-          {/* Redes sociales */}
-          {hasSocials && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-              <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-                <img src="/instagram.png" alt="Instagram" style={{ width: 22, height: 22 }} />
-              </SocialLink>
-              <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-                <img src="/facebook.png" alt="Facebook" style={{ width: 22, height: 22 }} />
-              </SocialLink>
-              <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-                <img src="/tik-tok.png" alt="TikTok" style={{ width: 22, height: 22, filter: 'invert(1)' }} />
-              </SocialLink>
-              <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-                <img src="/x.png" alt="Twitter" style={{ width: 22, height: 22 }} />
-              </SocialLink>
-              <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-                <img src="/web.png" alt="Web" style={{ width: 22, height: 22 }} />
-              </SocialLink>
-            </div>
-          )}
+          <h1 className="hero-title">{business.name}</h1>
+          {business.tagline && <p className="hero-tagline">{business.tagline}</p>}
+          
+          <div className="hero-actions">
+            <button className="main-cta-btn" onClick={() => navigate(`/${slug}/book`)}>
+              {business.isTechnicalServices ? 'Solicitar Servicio Técnico' : (business.ctaText || 'Reservar mi cita ahora')}
+            </button>
+            {hasWhatsappCatalog && (
+              <a href={business.whatsappCatalog} target="_blank" rel="noreferrer" className="secondary-cta-btn">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{fontSize: 20}}>🛍️</span> Catálogo Digital
+                </div>
+              </a>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── CONTENIDO ── */}
-      <div style={{ maxWidth: 900, margin: '-40px auto 0', padding: '0 20px 100px', position: 'relative', zIndex: 10 }}>
-
-        {/* Descripción */}
-        {business.description && (
-          <div className="section-card fade-up" style={{ animationDelay: '0.1s' }}>
-            <h2 className="section-title">✨ Nosotros</h2>
-            <p style={{ fontSize: 16, color: colors.textSecondary, lineHeight: 1.8, margin: 0 }}>
+      {/* BUSINESS DESCRIPTION */}
+      {business.description && (
+        <section style={{
+          padding: '80px 24px 100px',
+          marginBottom: '60px',
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%)'
+            : `linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, ${primary}05 50%, rgba(248, 250, 252, 0.8) 100%)`,
+          borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : `${primary}15`}`,
+          position: 'relative',
+          overflow: 'hidden',
+          zIndex: 10
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            right: '-20%',
+            width: '60%',
+            height: '200%',
+            background: `radial-gradient(ellipse, ${primary}10 0%, transparent 70%)`,
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            maxWidth: 800,
+            margin: '0 auto',
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <span style={{
+              fontSize: 14,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: 4,
+              color: primary,
+              marginBottom: 20,
+              display: 'block'
+            }}>
+              Sobre Nosotros
+            </span>
+            <h2 style={{
+              fontSize: 'clamp(28px, 4vw, 36px)',
+              fontWeight: 800,
+              marginBottom: 24,
+              letterSpacing: -1,
+              color: isDark ? 'white' : '#0f172a'
+            }}>
+              Conócenos
+            </h2>
+            <p style={{
+              fontSize: 'clamp(16px, 2.5vw, 18px)',
+              lineHeight: 1.8,
+              color: isDark ? 'rgba(255, 255, 255, 0.85)' : '#475569',
+              fontWeight: 400
+            }}>
               {business.description}
             </p>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Galería */}
-        {gallery.length > 0 && (
-          <div className="section-card fade-up" style={{ animationDelay: '0.2s' }}>
-            <h2 className="section-title">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              Experiencias reales
-            </h2>
-            <div className="gallery-grid">
-              {gallery.map((img, i) => (
-                <div key={i} className="gal-item" onClick={() => setGalleryModal(i)}>
-                  <img src={getImgUrl(img)} alt={`Galería ${i + 1}`} loading="lazy" />
-                </div>
-              ))}
-            </div>
+      {/* MAIN CONTENT */}
+      <main className="content-container">
+
+        {/* MISSION & VISION */}
+        {business.showMissionVision && (business.mission || business.vision) && (
+          <div className="mv-container">
+            {business.mission && (
+              <div className="mv-card">
+                <div className="mv-icon"><Star size={32} color="white" /></div>
+                <h2 className="mv-title" style={{ position: 'relative', zIndex: 1 }}>Nuestra Misión</h2>
+                <p className={`mv-text ${!expandedMission && business.mission.length > MAX_TEXT_LENGTH ? 'mv-text-truncated' : ''}`}>
+                  {business.mission}
+                </p>
+                {business.mission.length > MAX_TEXT_LENGTH && (
+                  <button className="mv-read-more" onClick={() => setExpandedMission(!expandedMission)}>
+                    {expandedMission ? 'Ver menos' : 'Leer más'}
+                    <span style={{ fontSize: 10 }}>{expandedMission ? '▲' : '▼'}</span>
+                  </button>
+                )}
+              </div>
+            )}
+            {business.vision && (
+              <div className="mv-card">
+                <div className="mv-icon"><Zap size={32} color="white" /></div>
+                <h2 className="mv-title" style={{ position: 'relative', zIndex: 1 }}>Nuestra Visión</h2>
+                <p className={`mv-text ${!expandedVision && business.vision.length > MAX_TEXT_LENGTH ? 'mv-text-truncated' : ''}`}>
+                  {business.vision}
+                </p>
+                {business.vision.length > MAX_TEXT_LENGTH && (
+                  <button className="mv-read-more" onClick={() => setExpandedVision(!expandedVision)}>
+                    {expandedVision ? 'Ver menos' : 'Leer más'}
+                    <span style={{ fontSize: 10 }}>{expandedVision ? '▲' : '▼'}</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Servicios */}
+        {/* PROMOS */}
+        {((business.Promotions && business.Promotions.length > 0) || (business.promotions && business.promotions.length > 0)) && (
+          <section className="promo-section">
+            <div className="section-header">
+              <span className="section-label">OFERTAS EXCLUSIVAS</span>
+              <h2 className="section-title">Promociones para ti 🔥</h2>
+            </div>
+            <div className="promo-grid">
+              {(business.Promotions || business.promotions).map((promo, idx) => (
+                <div key={idx} className="promo-card">
+                  <div className="promo-badge">
+                    <span className="promo-value">{promo.discountType === 'percentage' ? `${Math.round(promo.discountValue)}%` : '$'}</span>
+                    <span className="promo-type">OFF</span>
+                  </div>
+                  <div className="promo-info">
+                    <h3>{promo.name}</h3>
+                    <p>
+                      {promo.applyToAllServices ? 'Aplica en todos nuestros servicios' : 'Disponible en servicios seleccionados'}
+                    </p>
+                    {promo.endDate && (
+                      <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: primary, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Calendar size={14} /> Válido hasta: {new Date(promo.endDate).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SERVICES */}
         {business.Services && business.Services.length > 0 && (
-          <div className="section-card fade-up" style={{ animationDelay: '0.3s' }}>
-            <h2 className="section-title">💆‍♂️ Servicios destacados</h2>
-            <div className="services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
-              {business.Services.filter(s => s.active !== false).map(svc => (
-                <div key={svc.id} className="svc-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: colors.text }}>{svc.name}</div>
-                    <div style={{ background: `${primary}15`, color: colors.text, padding: '4px 12px', borderRadius: '12px', fontSize: 12, fontWeight: 700 }}>
-                      ⏱ {svc.durationMin} min
+          <section style={{ marginBottom: 100 }}>
+            <div className="section-header">
+              <span className="section-label">NUESTROS SERVICIOS</span>
+              <h2 className="section-title">Experiencias Diseñadas</h2>
+            </div>
+            <div className="services-grid">
+              {business.Services
+                .filter(s => s.active !== false)
+                .slice(servicesPage * servicesPerPage, (servicesPage + 1) * servicesPerPage)
+                .map(svc => {
+                const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
+                const basePrice = Number(svc.price);
+                let finalPrice = basePrice;
+                if (promo) {
+                  const discount = promo.discountType === 'percentage' ? basePrice * (Number(promo.discountValue) / 100) : Number(promo.discountValue);
+                  finalPrice = basePrice - discount;
+                }
+
+                return (
+                  <div key={svc.id} className="service-card">
+                    <div className="service-img-container">
+                      {svc.imageUrl ? (
+                        <img src={getImgUrl(svc.imageUrl)} alt={svc.name} className="service-img" />
+                      ) : (
+                        <div className="service-img" style={{ background: '#3b82f610', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', fontSize: 40 }}><Zap size={48} /></div>
+                      )}
+                      {promo && <div className="service-promo-tag">-{promo.discountType === 'percentage' ? `${Math.round(promo.discountValue)}%` : 'PROMO'}</div>}
+                    </div>
+                    <div className="service-content">
+                      <h3 className="service-title">{svc.name}</h3>
+                      <p className={`service-description ${expandedServices[svc.id] ? 'expanded' : ''}`}>
+                        {svc.description}
+                      </p>
+                      
+                      {svc.description && svc.description.length > 80 && (
+                        <button 
+                          className="service-ver-mas" 
+                          onClick={() => toggleServiceDescription(svc.id)}
+                        >
+                          {expandedServices[svc.id] ? 'Ver menos' : 'Ver más'}
+                        </button>
+                      )}
+                      
+                      <div className="service-footer">
+                        <div className="service-price-row">
+                          <div>
+                            {svc.priceOptional ? (
+                              <span className="service-price" style={{ fontSize: 14 }}>A cotizar</span>
+                            ) : (
+                              <div>
+                                {promo && <span className="service-old-price">${basePrice.toLocaleString()}</span>}
+                                <span className="service-price">${finalPrice.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="service-meta-text">
+                            <Clock size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} /> {svc.durationMin} min
+                          </div>
+                        </div>
+
+                        <button 
+                          className="service-reserve-btn-small" 
+                          onClick={() => navigate(`/${slug}/book?serviceId=${svc.id}`)}
+                        >
+                          {business.isTechnicalServices ? 'Solicitar ahora' : 'Reservar Cita'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  {svc.description && (
-                    <p style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.5, margin: 0 }}>
-                      {svc.description}
-                    </p>
-                  )}
-                  <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 24, fontWeight: 900, color: colors.text }}>
-                      ${Number(svc.price).toLocaleString()}
-                    </span>
-                    <button 
-                      onClick={() => navigate(`/${slug}/book`)}
-                      style={{ background: 'transparent', border: 'none', color: colors.text, fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      Reservar →
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </div>
+
+            {/* Pagination Controls */}
+            {business.Services.filter(s => s.active !== false).length > servicesPerPage && (
+              <div className="pagination-container">
+                <button 
+                  className="pagination-btn"
+                  onClick={() => setServicesPage(p => Math.max(0, p - 1))}
+                  disabled={servicesPage === 0}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="pagination-info">
+                  Página {servicesPage + 1} de {Math.ceil(business.Services.filter(s => s.active !== false).length / servicesPerPage)}
+                </span>
+                <button 
+                  className="pagination-btn"
+                  onClick={() => setServicesPage(p => p + 1)}
+                  disabled={(servicesPage + 1) * servicesPerPage >= business.Services.filter(s => s.active !== false).length}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
-        {/* Equipo */}
+        {/* TEAM */}
         {business.Employees && business.Employees.length > 0 && (
-          <div className="section-card fade-up" style={{ animationDelay: '0.4s' }}>
-            <h2 className="section-title">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-              Nuestro equipo
-            </h2>
-            <div className="team-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 24 }}>
+          <section style={{ marginBottom: 100 }}>
+            <div className="section-header">
+              <span className="section-label">NUESTRO EQUIPO</span>
+              <h2 className="section-title">Especialistas a tu Servicio</h2>
+            </div>
+            <div className="team-grid">
               {business.Employees.map(emp => (
-                <div key={emp.id} className="team-item">
-                  <div className="team-photo">
+                <div key={emp.id} className="team-member-card" onClick={() => setEmployeeModal(emp)}>
+                  <div className="team-avatar-container">
                     {emp.photoUrl ? (
-                      <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} />
+                      <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} className="team-avatar-img" />
                     ) : (
-                      <div style={{ background: `${primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: primary }}>
+                      <div className="team-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, background: '#3b82f610', color: '#3b82f6' }}>
                         {emp.User?.name?.charAt(0)}
                       </div>
                     )}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: colors.text }}>{emp.User?.name}</div>
-                  <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>Experto</div>
+                  <h3 className="team-member-name">{emp.User?.name}</h3>
+                  <p className="team-member-role">
+                    {emp.specialty || (emp.isManager ? 'Director' : 'Especialista')}
+                  </p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* CTA FINAL */}
-        <div className="fade-up" style={{ animationDelay: '0.5s', textAlign: 'center', marginTop: 40 }}>
-          <button className="brand-cta" onClick={() => navigate(`/${slug}/book`)}>
-            📅 {business.ctaText || 'Reservar mi cita ahora'}
-          </button>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer style={{ textAlign: 'center', padding: '80px 20px 60px', background: colors.cardBg, borderTop: `1px solid ${colors.border}` }}>
-        {hasSocials && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-            <SocialLink href={business.instagram} label="Instagram" color="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
-              <img src="/instagram.png" alt="Instagram" style={{ width: 22, height: 22 }} />
-            </SocialLink>
-            <SocialLink href={business.facebook} label="Facebook" color="#1877f2">
-              <img src="/facebook.png" alt="Facebook" style={{ width: 22, height: 22 }} />
-            </SocialLink>
-            <SocialLink href={business.tiktok} label="TikTok" color="#010101">
-              <img src="/tik-tok.png" alt="TikTok" style={{ width: 22, height: 22, filter: 'invert(1)' }} />
-            </SocialLink>
-            <SocialLink href={business.twitter} label="Twitter/X" color="#1da1f2">
-              <img src="/x.png" alt="Twitter" style={{ width: 22, height: 22 }} />
-            </SocialLink>
-            <SocialLink href={business.website} label="Sitio web" color="#6366f1">
-              <img src="/web.png" alt="Web" style={{ width: 22, height: 22 }} />
-            </SocialLink>
-          </div>
+        {/* GALLERY */}
+        {gallery.length > 0 && (
+          <section style={{ marginBottom: 100 }}>
+            <div className="section-header">
+              <span className="section-label">PORTAFOLIO</span>
+              <h2 className="section-title">Nuestros Resultados ✨</h2>
+            </div>
+            <div className="gallery-grid">
+              {gallery.slice(0, 10).map((img, i) => (
+                <div key={i} className="gallery-item" onClick={() => setGalleryModal(i)}>
+                  <img src={getImgUrl(img)} alt={`Galería ${i}`} className="gallery-img" loading="lazy" />
+                  <div className="gallery-overlay">
+                    <div className="gallery-view-icon">
+                      <Zap size={24} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
-        <p style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 12, fontWeight: 600 }}>
-          &copy; {new Date().getFullYear()} K-Dice 
-        </p>
-        <div style={{ fontSize: 13, color: colors.textTertiary }}>
-          Impulsado por <a href="https://k-dice.com" style={{ color: primary, fontWeight: 800, textDecoration: 'none' }}>K-Dice </a>
+
+        {/* PAYMENT METHODS */}
+        {business.showPaymentMethods && business.paymentMethods?.length > 0 && (
+          <section className="section-card" style={{ borderStyle: 'solid' }}>
+            <div className="section-header">
+              <span className="section-label">MÉTODOS DE PAGO</span>
+              <h2 className="section-title">Facilidades para ti</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {business.paymentMethods.map((method, idx) => (
+                <div key={idx} style={{ padding: 28, borderRadius: 32, background: isDark ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease' }} className="payment-method-item">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 16, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.05)' }}>
+                      <img src={getPaymentMethodImage(method.name) || '/banco.png'} style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 17 }}>{method.name}</div>
+                      <div style={{ fontSize: 15, opacity: 0.6, fontFamily: 'monospace', letterSpacing: 1 }}>{method.number}</div>
+                    </div>
+                  </div>
+                  <button 
+                    style={{ width: 44, height: 44, borderRadius: 14, background: `${primary}15`, color: primary, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(method.number);
+                      setCopiedIndex(idx);
+                      setTimeout(() => setCopiedIndex(null), 2000);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    {copiedIndex === idx ? <Check size={20} /> : <Copy size={20} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* GOOGLE MAPS SECTION */}
+        {business.googleMapsUrl && (
+          <section className="section-card" style={{ marginTop: 40 }}>
+            <div className="section-header">
+              <span className="section-label">Ubicación</span>
+              <h2 className="section-title">Encuéntranos aquí</h2>
+            </div>
+
+            {/* Si es URL corta (maps.app.goo.gl), mostrar botón en lugar de iframe */}
+            {isShortGoogleMapsUrl(business.googleMapsUrl) ? (
+              <div style={{
+                padding: '60px 40px',
+                textAlign: 'center',
+                background: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)',
+                borderRadius: 24,
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                boxShadow: '0 20px 50px -12px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 24,
+                  background: 'linear-gradient(135deg, #4285f4 0%, #34a853 50%, #ea4335 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                  boxShadow: '0 10px 30px rgba(66, 133, 244, 0.3)'
+                }}>
+                  <MapPin size={36} color="white" />
+                </div>
+                <p style={{
+                  fontSize: 16,
+                  color: isDark ? 'rgba(255,255,255,0.8)' : '#475569',
+                  marginBottom: 24,
+                  maxWidth: 400,
+                  margin: '0 auto 24px'
+                }}>
+                  Ver la ubicación del negocio en Google Maps
+                </p>
+                <a
+                  href={business.googleMapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '16px 32px',
+                    background: primary,
+                    color: 'white',
+                    borderRadius: 16,
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    fontSize: 16,
+                    boxShadow: `0 10px 30px ${primary}40`,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = `0 15px 40px ${primary}60`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = `0 10px 30px ${primary}40`;
+                  }}
+                >
+                  <ExternalLink size={20} />
+                  Ver en Google Maps
+                </a>
+                <p style={{
+                  fontSize: 12,
+                  color: isDark ? 'rgba(255,255,255,0.5)' : '#94a3b8',
+                  marginTop: 16
+                }}>
+                  (Se abrirá en una nueva pestaña)
+                </p>
+              </div>
+            ) : (
+              <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, boxShadow: '0 20px 50px -12px rgba(0,0,0,0.1)' }}>
+                <iframe
+                  src={getGoogleMapsEmbedUrl(business.googleMapsUrl)}
+                  width="100%"
+                  height="400"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`Ubicación de ${business.name}`}
+                />
+              </div>
+            )}
+
+            {business.address && (
+              <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: isDark ? 'rgba(255,255,255,0.7)' : '#475569' }}>
+                <MapPin size={18} style={{ color: primary }} />
+                <span style={{ fontSize: 15, fontWeight: 500 }}>{business.address}</span>
+              </div>
+            )}
+          </section>
+        )}
+
+      </main>
+
+      {/* FOOTER */}
+      <footer style={{ padding: '80px 24px 60px', textAlign: 'center', background: isDark ? '#020617' : 'white', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 40, letterSpacing: -1.5 }}>{business.name}</h2>
+
+          {/* INFO DE CONTACTO EN FOOTER */}
+          {(business.address || business.phone || business.businessHours) && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: '32px 48px',
+              marginBottom: 48,
+              padding: '32px 24px',
+              background: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)',
+              borderRadius: 24,
+              maxWidth: 800,
+              margin: '0 auto 48px'
+            }}>
+              {business.address && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: isDark ? 'rgba(255,255,255,0.9)' : '#334155' }}>
+                  <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    background: `${primary}20`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: primary
+                  }}>
+                    <MapPin size={20} />
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.6, marginBottom: 2 }}>Dirección</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{business.address}</div>
+                  </div>
+                </div>
+              )}
+              {business.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: isDark ? 'rgba(255,255,255,0.9)' : '#334155' }}>
+                  <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    background: `${primary}20`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: primary
+                  }}>
+                    <Phone size={20} />
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.6, marginBottom: 2 }}>Teléfono</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{business.phone}</div>
+                  </div>
+                </div>
+              )}
+              {business.businessHours && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: isDark ? 'rgba(255,255,255,0.9)' : '#334155',
+                  width: '100%',
+                  maxWidth: 500
+                }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: `linear-gradient(135deg, ${primary}30, ${primary}10)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: primary,
+                    boxShadow: `0 4px 15px ${primary}25`
+                  }}>
+                    <Clock size={24} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: 2,
+                      opacity: 0.7,
+                      marginBottom: 12,
+                      color: primary
+                    }}>
+                      Horario de Atención
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      lineHeight: 1.6
+                    }}>
+                      {(() => {
+                        // Parsear horarios - soporta dos formatos:
+                        // 1. Dia y horario en la misma línea: "Lunes - viernes 07:00 a.m -12:00 p.m..."
+                        // 2. Dia y horario en líneas separadas
+                        const lines = business.businessHours.split(/\n|\\n/);
+                        const scheduleItems = [];
+
+                        for (let i = 0; i < lines.length; i++) {
+                          const line = lines[i].trim();
+                          if (!line) continue;
+
+                          // Buscar donde empiezan los números (hora)
+                          const match = line.match(/^([^\d]+)(\d.*)$/);
+                          if (match) {
+                            // Formato: "Dia horarios" en misma línea
+                            scheduleItems.push({ day: match[1].trim(), hours: match[2].trim() });
+                          } else if (/\d/.test(line)) {
+                            // Solo números, podría ser línea de horarios suelta
+                            // Asociar con el último día si existe, o crear entrada sin día
+                            if (scheduleItems.length > 0 && !scheduleItems[scheduleItems.length - 1].hours) {
+                              scheduleItems[scheduleItems.length - 1].hours = line;
+                            } else {
+                              scheduleItems.push({ day: '', hours: line });
+                            }
+                          } else {
+                            // Solo texto (día sin horarios)
+                            scheduleItems.push({ day: line, hours: '' });
+                          }
+                        }
+
+                        return scheduleItems.map((item, idx) => {
+                          const { day, hours } = item;
+
+                          // Parsear horarios - limpiar y separar mañana/tarde
+                          let cleanHours = hours
+                            .replace(/\s+/g, ' ')
+                            .replace(/:\s+/g, ':')
+                            .replace(/pp\.m/gi, 'p.m')
+                            .replace(/:\s*05:\s*p\.?m/gi, '- 05:00 p.m')
+                            .trim();
+
+                          // Separar rangos de horario por patrones de AM/PM
+                          // Buscar patrones como: 07:00 a.m - 12:00 p.m 02:00 p.m - 07:00 p.m
+                          // O: 09:00 a.m - 12:00 m 02:00 p.m - 08:00 p.m
+
+                          // Detectar hora de inicio de tarde (después de 12:00 m)
+                          const afternoonStartMatch = cleanHours.match(/(12:\d{2}\s*m)[^\d]*\d{1,2}:\d{2}/i);
+
+                          if (afternoonStartMatch) {
+                            // Hay horario de mañana y tarde
+                            const morningEndIndex = afternoonStartMatch.index + afternoonStartMatch[1].length;
+                            const morningPart = cleanHours.substring(0, morningEndIndex).trim();
+                            const afternoonPart = cleanHours.substring(morningEndIndex).trim()
+                              .replace(/^[^\d]*/, ''); // Quitar separadores iniciales
+
+                            // Limpiar y formatear partes
+                            const morning = morningPart.replace(/\s*-\s*/g, ' - ');
+                            const afternoon = afternoonPart.replace(/\s*-\s*/g, ' - ')
+                              .replace(/^[^\d]*(\d)/, '$1'); // Quitar guiones o dos puntos iniciales
+
+                            return (
+                              <div key={idx} style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                                padding: '10px 16px',
+                                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+                                borderRadius: 10,
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                                textAlign: 'left'
+                              }}>
+                                <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
+                                  <span style={{
+                                    fontWeight: 700,
+                                    color: primary,
+                                    textTransform: 'capitalize',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 110
+                                  }}>
+                                    {day}
+                                  </span>
+                                  <span style={{
+                                    color: isDark ? 'rgba(255,255,255,0.9)' : '#475569'
+                                  }}>
+                                    {morning}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
+                                  <span style={{ minWidth: 110 }}></span>
+                                  <span style={{
+                                    color: isDark ? 'rgba(255,255,255,0.9)' : '#475569'
+                                  }}>
+                                    {afternoon}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Si no hay patrón claro de mañana/tarde, mostrar como viene
+                          return (
+                            <div key={idx} style={{
+                              padding: '10px 16px',
+                              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+                              borderRadius: 10,
+                              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                              textAlign: 'left'
+                            }}>
+                              <div style={{ display: 'flex', gap: 16 }}>
+                                <span style={{
+                                  fontWeight: 700,
+                                  color: primary,
+                                  textTransform: 'capitalize',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 110
+                                }}>
+                                  {day}
+                                </span>
+                                <span style={{ color: isDark ? 'rgba(255,255,255,0.9)' : '#475569' }}>
+                                  {cleanHours}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 40 }}>
+            {hasSocials && (
+              <>
+                {business.instagram && <SocialLink href={business.instagram} iconUrl="/instagram.png" label="Instagram" color="#E1306C" />}
+                {business.facebook && <SocialLink href={business.facebook} iconUrl="/facebook.png" label="Facebook" color="#1877F2" />}
+                {business.tiktok && <SocialLink href={business.tiktok} iconUrl="/tik-tok.png" label="TikTok" color="#000000" invert={isDark} />}
+                {business.twitter && <SocialLink href={business.twitter} iconUrl="/x.png" label="X" color="#000000" invert={isDark} hoverColor="#1DA1F2" />}
+                {business.pinterest && <SocialLink href={business.pinterest} iconUrl="/pinterest.png" label="Pinterest" color="#E60023" />}
+                {business.youtube && <SocialLink href={business.youtube} iconUrl="/youtube.png" label="YouTube" color="#FF0000" />}
+                {business.website && <SocialLink href={business.website} iconUrl="/web.png" label="Website" color={primary} />}
+              </>
+            )}
+          </div>
+          <div style={{ opacity: 0.4, fontSize: 14, fontWeight: 600, letterSpacing: 1 }}>
+            © {new Date().getFullYear()} — IMPULSADO POR K-DICE POS v5.0
+          </div>
         </div>
       </footer>
 
-      {/* Botón WhatsApp flotante */}
+      {/* WHATSAPP FLOAT */}
       {hasWhatsapp && (
-        <a
-          href={`https://wa.me/${whatsappNum}?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios`}
-          target="_blank" rel="noreferrer" title="Contactar por WhatsApp"
-          style={{
-            position: 'fixed', bottom: 24, right: 20, zIndex: 1000,
-            width: 56, height: 56, borderRadius: '50%', background: '#25d366',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(37,211,102,0.5)', textDecoration: 'none',
-            animation: 'pulse-wa 2s infinite', transition: 'transform 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-        >
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="white">
+        <a href={`https://wa.me/${whatsappNum}`} target="_blank" rel="noreferrer" className="whatsapp-float">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
           </svg>
         </a>
       )}
 
-      {/* Modal galería */}
-      {galleryModal !== null && (
-        <GalleryModal images={gallery} index={galleryModal} onClose={() => setGalleryModal(null)} />
+      {/* MODALS */}
+      {galleryModal !== null && <GalleryModal images={gallery} index={galleryModal} onClose={() => setGalleryModal(null)} />}
+      {employeeModal && (
+        <EmployeeModal 
+          emp={employeeModal} 
+          onClose={() => setEmployeeModal(null)} 
+          primary={primary} 
+          colors={colors} 
+          navigate={navigate}
+          slug={slug}
+        />
       )}
     </div>
   );

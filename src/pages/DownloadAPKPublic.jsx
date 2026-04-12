@@ -88,7 +88,7 @@ export default function DownloadAPKPublic() {
             marginBottom: '8px',
             margin: 0
           }}>
-            KDice POS
+            KDice 
           </h1>
           <p style={{
             color: '#718096',

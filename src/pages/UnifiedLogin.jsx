@@ -37,7 +37,7 @@ export default function UnifiedLogin() {
       }
 
       // Redirigir según rol
-      if (res.data.user.role === 'admin') {
+      if (res.data.user.role === 'admin' || res.data.user.role === 'admin_suc') {
         navigate('/admin');
       } else if (res.data.user.role === 'employee') {
         navigate('/employee');

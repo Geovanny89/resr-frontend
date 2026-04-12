@@ -4,7 +4,7 @@ import api from '../../api/client';
 import {
   Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
   Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  CreditCard, Calendar, User, Trash2, Check
+  CreditCard, Calendar, User, Trash2, Check, Store
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
@@ -57,6 +57,23 @@ export default function BusinessesResponsive() {
       showToast('Pago aprobado correctamente. Suscripción activada por 30 días.');
     } catch (err) {
       showToast('Error al aprobar el pago', 'error');
+    }
+  };
+
+  const handleApproveBranch = async (bizId, approve) => {
+    try {
+      await api.post(`/businesses/${bizId}/approve-branch`, { approve });
+      setBusinesses(prev => prev.map(b => 
+        b.id === bizId ? { 
+          ...b, 
+          branchStatus: approve ? 'approved' : 'rejected', 
+          status: approve ? 'active' : 'blocked',
+          subscriptionStatus: approve ? 'paid' : b.subscriptionStatus
+        } : b
+      ));
+      showToast(approve ? 'Sucursal aprobada y activada' : 'Sucursal rechazada');
+    } catch (err) {
+      showToast('Error al procesar la sucursal', 'error');
     }
   };
 
@@ -162,7 +179,7 @@ export default function BusinessesResponsive() {
   };
 
   const handleViewScreenshot = async (biz) => {
-    setScreenshot({ url: biz.paymentScreenshot, business: biz });
+    setScreenshot({ url: biz.paymentScreenshot || biz.branchPaymentScreenshot, business: biz });
     // Marcar como visto inmediatamente en UI
     if (!biz.paymentScreenshotViewed) {
       setBusinesses(prev => prev.map(b => 
@@ -236,7 +253,20 @@ export default function BusinessesResponsive() {
             {biz.subscriptionStatus === 'overdue' && <AlertTriangle size={12} />}
             {subInfo.label}
           </span>
-          {biz.paymentScreenshot && !biz.paymentScreenshotViewed && (
+          {biz.isBranch && (
+            <span className="badge" style={{ 
+              padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+              background: biz.branchStatus === 'approved' ? '#e0f2fe' : '#fef3c7', 
+              color: biz.branchStatus === 'approved' ? '#0369a1' : '#92400e',
+              display: 'flex', alignItems: 'center', gap: 4,
+              border: biz.branchStatus === 'pending_approval' ? '2px solid #f59e0b' : 'none',
+              animation: biz.branchStatus === 'pending_approval' ? 'pulse 2s infinite' : 'none'
+            }}>
+              <Store size={12} />
+              {biz.branchStatus === 'pending_approval' ? 'NUEVA SUCURSAL' : 'Sucursal'}
+            </span>
+          )}
+          {(biz.paymentScreenshot || biz.branchPaymentScreenshot) && (!biz.paymentScreenshotViewed) && (
             <span className="badge" style={{ 
               padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
               background: 'var(--info-bg)', color: 'var(--info-text)',
@@ -250,7 +280,7 @@ export default function BusinessesResponsive() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          {biz.paymentScreenshot && (
+          {(biz.paymentScreenshot || biz.branchPaymentScreenshot) && (
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <button 
                 className="btn-icon" 
@@ -259,7 +289,7 @@ export default function BusinessesResponsive() {
                 style={{ 
                   background: !biz.paymentScreenshotViewed ? 'var(--info-bg)' : 'var(--gray-100)', 
                   color: !biz.paymentScreenshotViewed ? 'var(--info-text)' : 'var(--text-muted)',
-                  border: biz.paymentScreenshotViewed ? '1px solid var(--border)' : '2px solid var(--primary)',
+                  border: (!biz.paymentScreenshotViewed || biz.branchStatus === 'pending_approval') ? '2px solid var(--primary)' : '1px solid var(--border)',
                   position: 'relative'
                 }}
               >
@@ -278,6 +308,26 @@ export default function BusinessesResponsive() {
                 )}
               </button>
             </div>
+          )}
+          {biz.branchStatus === 'pending_approval' && (
+            <>
+              <button 
+                className="btn-icon" 
+                onClick={() => handleApproveBranch(biz.id, true)}
+                title="Aprobar sucursal"
+                style={{ background: 'var(--success-bg)', color: 'var(--success-text)' }}
+              >
+                <CheckCircle size={18} />
+              </button>
+              <button 
+                className="btn-icon" 
+                onClick={() => handleApproveBranch(biz.id, false)}
+                title="Rechazar sucursal"
+                style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)' }}
+              >
+                <XCircle size={18} />
+              </button>
+            </>
           )}
           <button 
             className="btn-icon" 
@@ -316,13 +366,36 @@ export default function BusinessesResponsive() {
 
   return (
     <SuperAdminLayout title="Empresas">
+      <style>{`
+        @media (max-width: 1024px) {
+          .sa-biz-grid { 
+            grid-template-columns: 1fr 1fr !important; 
+            gap: 16px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .sa-biz-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .sa-biz-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 12px;
+          }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
       {toast && (
         <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 20px', borderRadius: 8, background: toast.type === 'success' ? '#10b981' : '#ef4444', color: 'white' }}>
           {toast.msg}
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="sa-biz-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>Gestión de Empresas</h2>
         <button className="btn-primary" onClick={loadAll}><RefreshCw size={16} /> Actualizar</button>
       </div>
@@ -342,7 +415,7 @@ export default function BusinessesResponsive() {
         <p>Cargando empresas...</p>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+          <div className="sa-biz-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
             {paginatedItems.map(biz => <BusinessCard key={biz.id} biz={biz} />)}
           </div>
           
@@ -417,7 +490,7 @@ export default function BusinessesResponsive() {
       )}
 
       {detailBiz && (
-        <div className="modal-overlay" onClick={() => setDetailBiz(null)}>
+        <div className="modal-overlay">
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <div style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -496,7 +569,7 @@ export default function BusinessesResponsive() {
       )}
 
       {subModal && (
-        <div className="modal-overlay" onClick={() => setSubModal(null)}>
+        <div className="modal-overlay">
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: '98%', maxHeight: '90vh', padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
@@ -537,7 +610,7 @@ export default function BusinessesResponsive() {
       )}
 
       {screenshot && (
-        <div className="modal-overlay" onClick={() => setScreenshot(null)} style={{ zIndex: 10000 }}>
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ 
             maxWidth: 500, 
             maxHeight: '90vh',

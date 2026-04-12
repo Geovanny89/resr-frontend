@@ -47,11 +47,19 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', form);
+      console.log('[Login] Respuesta:', res.data);
+      console.log('[Login] User role:', res.data.user?.role);
+      console.log('[Login] Business:', res.data.business);
       login(res.data.token, res.data.user, res.data.business);
       const role = res.data.user.role;
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'employee') navigate('/employee');
-      else if (role === 'superadmin') navigate('/superadmin');
+      console.log('[Login] Redirigiendo según rol:', role);
+      if (role === 'superadmin') {
+        navigate('/superadmin');
+      } else if (role === 'admin' || role === 'admin_suc') {
+        console.log('[Login] Redirigiendo a /admin');
+        navigate('/admin');
+      } else if (role === 'employee') navigate('/employee');
+      else if (role === 'client') navigate('/my-appointments');
       else navigate('/my-appointments');
     } catch (err) {
       if (!err.response) {
@@ -116,8 +124,8 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-page" style={{ position: 'relative' }}>
-      <div className="auth-card" style={{ maxWidth: 400, width: '100%', padding: 32 }}>
+    <div className="auth-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div className="auth-card" style={{ maxWidth: 400, width: '100%', padding: 32, background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
         {/* Back Button - solo en web */}
         {!isNative && (
           <button 

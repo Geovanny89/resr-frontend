@@ -21,7 +21,7 @@ const ADMIN_PAYMENT_INFO = {
   }
 };
 
-const MONTHLY_PRICE = 60000;
+const MONTHLY_PRICE = 70000;
 
 export default function SubmitPayment() {
   const { business } = useAuth();

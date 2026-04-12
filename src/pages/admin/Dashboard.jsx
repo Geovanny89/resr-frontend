@@ -6,7 +6,7 @@ import AdminLayout from '../../components/AdminLayout';
 import ResponsiveGrid from '../../components/ResponsiveGrid';
 import {
   CalendarCheck, Users, DollarSign, TrendingUp, Clock,
-  CheckCircle, XCircle, ArrowRight
+  CheckCircle, XCircle, ArrowRight, AlertTriangle
 } from 'lucide-react';
 
 const fmt = (n) =>
@@ -26,13 +26,101 @@ export default function Dashboard() {
   const { business } = useAuth();
   const [upcoming, setUpcoming] = useState([]);
   const [stats, setStats]       = useState({ total: 0, pending: 0, confirmed: 0, done: 0, cancelled: 0 });
-  const [finance, setFinance]   = useState({ totalRevenue: 0, ownerRevenue: 0, employeeRevenue: 0 });
+  const [finance, setFinance]   = useState({ 
+    totalRevenue: 0, 
+    ownerRevenue: 0, 
+    employeeRevenue: 0,
+    cashRevenue: 0,
+    transferRevenue: 0
+  });
   const [loading, setLoading]   = useState(true);
+  const [whatsappStatus, setWhatsappStatus] = useState('disconnected');
+  const [whatsappQR, setWhatsappQR] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [checkingWA, setCheckingWA] = useState(false);
+  const [waError, setWaError] = useState(null);
+  const [systemNotification, setSystemNotification] = useState(null);
+  const [employeeRatings, setEmployeeRatings] = useState([]);
 
   // Calcular días restantes de suscripción
   const daysLeft = business?.subscriptionDaysLeft;
   const isExpiringSoon = daysLeft !== null && daysLeft <= 5 && daysLeft > 0;
   const isExpired = daysLeft !== null && daysLeft <= 0;
+
+  const checkWAStatus = async () => {
+    if (!business?.id) return;
+    try {
+      const bizIdToCheck = (business.isBranch && business.useParentWhatsApp && business.parentBusinessId)
+        ? business.parentBusinessId
+        : business.id;
+      const res = await api.get(`/notifications/whatsapp/status?businessId=${bizIdToCheck}`);
+      setWhatsappStatus(res.data.status);
+    } catch (e) {
+      console.error('Error checking WA status:', e);
+    }
+  };
+
+  const getWAQR = async (force = false) => {
+    if (!business?.id) return;
+    if (business.isBranch && business.useParentWhatsApp) return; // No permitir vincular si usa el del padre
+    setCheckingWA(true);
+    setWaError(null);
+    setWhatsappQR(null); // Limpiar QR anterior
+    try {
+      if (force) {
+        await api.post(`/notifications/whatsapp/reset?businessId=${business.id}`);
+      }
+      
+      const res = await api.get(`/notifications/whatsapp/qr?businessId=${business.id}`);
+      if (res.data.qr) {
+        setWhatsappQR(res.data.qr);
+        setWhatsappStatus('connecting');
+      } else if (res.data.status === 'connected') {
+        setWhatsappStatus('connected');
+        setShowQRModal(false);
+      }
+    } catch (e) {
+      console.error('Error getting WA QR:', e);
+      setWaError(e.response?.data?.error || 'No se pudo generar el código QR. Intenta de nuevo.');
+    } finally {
+      setCheckingWA(false);
+    }
+  };
+
+  const resetWA = async () => {
+    if (!window.confirm('¿Deseas generar un código QR NUEVO y LIMPIO? Esto cerrará cualquier conexión previa de esta sede.')) return;
+    setWhatsappQR(null);
+    getWAQR(true);
+  };
+
+  const stopWA = async () => {
+    if (!window.confirm('¿Deseas pausar el servicio de WhatsApp? La sesión se mantendrá guardada para que puedas reconectar sin escanear el QR.')) return;
+    try {
+      await api.post(`/notifications/whatsapp/stop?businessId=${business.id}`);
+      setWhatsappStatus('disconnected');
+    } catch (e) {
+      console.error('Error stopping WA:', e);
+    }
+  };
+
+  const logoutWA = async () => {
+    if (!window.confirm('¡ATENCIÓN! Esto cerrará la sesión por completo y BORRARÁ la conexión actual. Tendrás que escanear el código QR nuevamente para vincular tu WhatsApp. ¿Deseas continuar?')) return;
+    try {
+      await api.post(`/notifications/whatsapp/logout?businessId=${business.id}`);
+      setWhatsappStatus('disconnected');
+      setWhatsappQR(null);
+    } catch (e) {
+      console.error('Error logging out WA:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (business?.id) {
+      checkWAStatus();
+      const interval = setInterval(checkWAStatus, 10000); // Check cada 10s
+      return () => clearInterval(interval);
+    }
+  }, [business?.id]);
 
   useEffect(() => {
     if (!business?.id) return;
@@ -40,10 +128,14 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const month = new Date().toISOString().slice(0, 7);
-        const [apptRes, reportRes] = await Promise.all([
+        const [apptRes, reportRes, systemNotifRes, employeesRes] = await Promise.all([
           api.get(`/appointments?businessId=${business.id}`),
           api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`).catch(() => ({ data: null })),
+          api.get('/system-settings/global-notification').catch(() => ({ data: { message: null } })),
+          api.get(`/employees?businessId=${business.id}`).catch(() => ({ data: [] })),
         ]);
+        setSystemNotification(systemNotifRes.data?.message);
+        setEmployeeRatings(employeesRes.data || []);
         const all = apptRes.data;
         setStats({
           total:     all.length,
@@ -60,10 +152,24 @@ export default function Dashboard() {
             .slice(0, 6)
         );
         if (reportRes.data?.totals) {
+          const allAppts = apptRes.data;
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const doneThisMonth = allAppts.filter(a => a.status === 'done' && a.startTime.startsWith(currentMonth));
+          
+          const cash = doneThisMonth
+            .filter(a => a.paymentMethod === 'cash')
+            .reduce((s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0), 0);
+            
+          const transfer = doneThisMonth
+            .filter(a => a.paymentMethod === 'transfer')
+            .reduce((s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0), 0);
+
           setFinance({
             totalRevenue:    reportRes.data.totals.total,
             ownerRevenue:    reportRes.data.totals.ownerTotal,
             employeeRevenue: reportRes.data.totals.employeeTotal,
+            cashRevenue: cash,
+            transferRevenue: transfer
           });
         }
       } catch (e) {
@@ -84,6 +190,112 @@ export default function Dashboard() {
 
   return (
     <AdminLayout title="Dashboard" subtitle={`Bienvenido · ${business?.name || ''}`}>
+      {/* NOTIFICACIÓN DEL SISTEMA (GLOBAL) */}
+      {systemNotification && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          color: 'white', padding: '16px 20px', borderRadius: 12, marginBottom: 24,
+          display: 'flex', alignItems: 'center', gap: 16, border: '1px solid #334155',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: 10, borderRadius: 10 }}>
+            <AlertTriangle color="#f59e0b" size={24} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', tracking: '0.05em', color: '#94a3b8', marginBottom: 4 }}>
+              Aviso del Sistema
+            </div>
+            <div style={{ fontSize: 15, lineHeight: 1.5 }}>
+              {systemNotification}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WHATSAPP STATUS BAR */}
+      <div className="card mb-6" style={{ background: whatsappStatus === 'connected' ? '#ecfdf5' : '#fff7ed', border: `1px solid ${whatsappStatus === 'connected' ? '#10b981' : '#f97316'}`, padding: '12px 20px', borderRadius: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 20 }}>{whatsappStatus === 'connected' ? '✅' : '📲'}</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: whatsappStatus === 'connected' ? '#065f46' : '#9a3412' }}>
+                {whatsappStatus === 'connected' 
+                  ? (business?.isBranch && business?.useParentWhatsApp ? 'WhatsApp (Sede Principal)' : 'WhatsApp Conectado')
+                  : 'WhatsApp Desconectado'}
+              </div>
+              <div style={{ fontSize: 12, color: whatsappStatus === 'connected' ? '#059669' : '#c2410c' }}>
+                {whatsappStatus === 'connected' 
+                  ? 'Los recordatorios automáticos y calificaciones están activos' 
+                  : (business?.isBranch && business?.useParentWhatsApp 
+                      ? 'Usando conexión de la sede principal. Si quieres usar otro número, cámbialo en "Mi Negocio".' 
+                      : 'Conecta tu WhatsApp para enviar recordatorios y recibir calificaciones')}
+              </div>
+            </div>
+          </div>
+          {whatsappStatus === 'connected' ? (
+            <div style={{ display: 'flex', gap: 10 }}>
+              {/* Botones de control ocultos a petición del usuario */}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10 }}>
+              {(!business?.isBranch || !business?.useParentWhatsApp) && (
+                <button onClick={() => { setShowQRModal(true); getWAQR(); }} className="btn-primary btn-sm" disabled={checkingWA}>
+                  {checkingWA ? 'Generando...' : 'Vincular WhatsApp'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* MODAL QR WHATSAPP */}
+      {showQRModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card" style={{ maxWidth: 400, width: '100%', textAlign: 'center', padding: 30 }}>
+            <h3 style={{ marginBottom: 10 }}>Vincular WhatsApp</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+              Abre WhatsApp en tu teléfono, ve a Dispositivos vinculados y escanea este código.
+            </p>
+            
+            {checkingWA ? (
+              <div style={{ height: 256, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 15 }}>
+                <div className="spinner" />
+                <span style={{ fontSize: 12 }}>Iniciando sesión segura...</span>
+              </div>
+            ) : waError ? (
+              <div style={{ height: 256, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <div style={{ color: '#ef4444', fontSize: 14, marginBottom: 10, padding: '0 20px' }}>{waError}</div>
+                <button onClick={() => getWAQR(true)} className="btn-primary btn-sm">Reintentar</button>
+                <button onClick={resetWA} className="btn-outline btn-sm" style={{ marginTop: 5 }}>Borrar Sesión y Reiniciar</button>
+              </div>
+            ) : whatsappQR ? (
+              <div style={{ background: 'white', padding: 15, borderRadius: 12, display: 'inline-block', boxShadow: '0 0 0 1px #eee' }}>
+                {whatsappQR.startsWith('data:image') ? (
+                  <img src={whatsappQR} alt="WhatsApp QR" style={{ width: 256, height: 256, display: 'block' }} />
+                ) : (
+                  <div style={{ width: 256, height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: 20 }}>
+                     <div style={{ fontSize: 12, color: '#64748b' }}>
+                        <div style={{ fontSize: 24, marginBottom: 10 }}>⚠️</div>
+                        Generando imagen del código...
+                        <div style={{ marginTop: 10, fontSize: 10, wordBreak: 'break-all', opacity: 0.5 }}>{whatsappQR.substring(0, 30)}...</div>
+                     </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => getWAQR(true)} className="btn-primary">Generar QR</button>
+              </div>
+            )}
+
+            <div style={{ marginTop: 25, display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowQRModal(false)} className="btn-secondary" style={{ flex: 1 }}>Cerrar</button>
+              {whatsappQR && <button onClick={resetWA} className="btn-outline" style={{ flex: 1 }}>Reiniciar</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ALERTAS DE SUSCRIPCIÓN */}
       {isExpiringSoon && (
         <div className="alert alert-warning" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fbd38d', borderRadius: 12, padding: '16px 20px', background: '#fffaf0' }}>
@@ -152,6 +364,25 @@ export default function Dashboard() {
             </div>
           </div>
         </ResponsiveGrid>
+      )}
+
+      {/* DESGLOSE POR MÉTODO DE PAGO */}
+      {!business?.isTechnicalServices && (
+        <div className="card mb-6" style={{ padding: '20px' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={16} /> Desglose de Ingresos (Mes Actual)
+          </div>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '140px', padding: '16px', borderRadius: '12px', background: '#f0fdf4', border: '1px solid #dcfce7' }}>
+              <div style={{ fontSize: 12, color: '#166534', fontWeight: 600, marginBottom: 4 }}>💵 Efectivo</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#14532d' }}>{fmt(finance.cashRevenue)}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: '140px', padding: '16px', borderRadius: '12px', background: '#eff6ff', border: '1px solid #dbeafe' }}>
+              <div style={{ fontSize: 12, color: '#1e40af', fontWeight: 600, marginBottom: 4 }}>📲 Transferencia</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a' }}>{fmt(finance.transferRevenue)}</div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ACCESOS RÁPIDOS */}

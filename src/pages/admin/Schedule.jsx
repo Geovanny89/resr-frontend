@@ -28,7 +28,13 @@ export default function Schedule() {
   const [saving, setSaving]             = useState(false);
   const [showModal, setShowModal]       = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [toast, setToast]               = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const itemsPerPage = 7;
 
   const load = async () => {
@@ -75,8 +81,9 @@ export default function Schedule() {
       await load();
       resetForm();
       setShowModal(false);
+      showToast(editingSchedule ? 'Horario actualizado' : 'Horario creado');
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al guardar horario');
+      showToast(e.response?.data?.error || 'Error al guardar horario', 'error');
     } finally {
       setSaving(false);
     }
@@ -87,8 +94,9 @@ export default function Schedule() {
     try {
       await api.delete(`/schedules/${id}`);
       await load();
+      showToast('Horario eliminado');
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al eliminar');
+      showToast(e.response?.data?.error || 'Error al eliminar', 'error');
     }
   };
 
@@ -124,7 +132,32 @@ export default function Schedule() {
   const totalPages = Math.ceil(employees.length / itemsPerPage);
 
   return (
-    <AdminLayout title="Horarios" subtitle="Configura la disponibilidad de tu equipo">
+    <AdminLayout title="Horarios" subtitle="Gestiona las jornadas laborales y descansos">
+      <style>{`
+        .sched-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; }
+        @media (max-width: 900px) { .sched-grid { grid-template-columns: 1fr; } }
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      {/* Toast sutil */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: toast.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: toast.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {toast.type === 'error' ? <X size={16} /> : <Plus size={16} style={{ transform: 'rotate(45deg)' }} />}
+          {toast.msg}
+        </div>
+      )}
 
       {/* Cabecera de página */}
       <div className="page-header">

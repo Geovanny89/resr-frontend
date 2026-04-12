@@ -14,16 +14,48 @@ export default function SuperAdminHome() {
   const [businesses, setBusinesses] = useState([]);
   const [businessTypes, setBusinessTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [globalNotif, setGlobalNotif] = useState({ value: '', isActive: false });
+  const [savingNotif, setSavingNotif] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     Promise.all([
       api.get('/businesses'),
       api.get('/business-types/all'),
-    ]).then(([bRes, tRes]) => {
-      setBusinesses(bRes.data);
-      setBusinessTypes(tRes.data);
-    }).catch(() => {}).finally(() => setLoading(false));
+      api.get('/system-settings/global_notification'),
+    ]).then(([bRes, tRes, nRes]) => {
+      setBusinesses(bRes.data || []);
+      setBusinessTypes(tRes.data || []);
+      // Si la API devuelve un objeto con value y isActive, lo usamos.
+      // Si devuelve algo con message (porque es el endpoint público), ajustamos.
+      setGlobalNotif(nRes.data || { value: '', isActive: false });
+    }).catch((err) => {
+      console.error('Error loading SuperAdmin stats:', err);
+    }).finally(() => setLoading(false));
   }, []);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const saveGlobalNotification = async () => {
+    setSavingNotif(true);
+    try {
+      // Ajustar estructura según el modelo SystemSetting
+      const payload = { 
+        value: globalNotif.value || '', 
+        isActive: globalNotif.isActive || false 
+      };
+      const res = await api.put('/system-settings/global_notification', payload);
+      setGlobalNotif(res.data);
+      showToast('Notificación actualizada correctamente');
+    } catch (e) {
+      showToast('Error al guardar: ' + e.message, 'error');
+    } finally {
+      setSavingNotif(false);
+    }
+  };
 
   const totalBusinesses   = businesses.length;
   const activeBusinesses  = businesses.filter(b => b.status === 'active').length;
@@ -33,7 +65,12 @@ export default function SuperAdminHome() {
   const overduePayment    = businesses.filter(b => b.subscriptionStatus === 'overdue').length;
   const activeTypes       = businessTypes.filter(t => t.active).length;
   
-  const pendingScreenshots = businesses.filter(b => b.paymentScreenshot && !b.paymentScreenshotViewed && b.subscriptionStatus === 'pending').length;
+  const pendingScreenshots = businesses.filter(b => 
+    (b.paymentScreenshot && !b.paymentScreenshotViewed && b.subscriptionStatus === 'pending') ||
+    (b.branchPaymentScreenshot && b.branchStatus === 'pending_approval')
+  ).length;
+
+  const pendingBranches = businesses.filter(b => b.isBranch && b.branchStatus === 'pending_approval').length;
 
   // Datos para gráficos
   const subscriptionData = [
@@ -79,30 +116,129 @@ export default function SuperAdminHome() {
   return (
     <SuperAdminLayout title="Dashboard" subtitle="Resumen general del sistema">
       <style>{`
-        @media (max-width: 900px) {
-          .sa-home-two-col { grid-template-columns: 1fr !important; }
+        @media (max-width: 1024px) {
+          .sa-home-two-col { 
+            grid-template-columns: 1fr !important; 
+            gap: 16px !important;
+          }
+          .sa-home-stats-summary {
+            display: none;
+          }
+        }
+        @media (max-width: 640px) {
+          .stat-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      {/* Alerta de comprobantes pendientes */}
-      {pendingScreenshots > 0 && (
+
+      {/* Toast sutil */}
+      {toast && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '14px 18px', borderRadius: 12, marginBottom: 24,
-          background: 'var(--warning-bg)',
-          border: '1px solid var(--warning-border)', color: 'var(--warning-text)'
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: toast.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: toast.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
         }}>
-          <AlertTriangle size={18} color="var(--warning)" />
-          <div>
-            <strong>{pendingScreenshots} comprobante{pendingScreenshots > 1 ? 's' : ''} de pago</strong> pendiente{pendingScreenshots > 1 ? 's' : ''} de revisión.
-            <a href="/superadmin/businesses" style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700, textDecoration: 'underline' }}>
-              Revisar ahora →
-            </a>
-          </div>
+          {toast.type === 'error' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+          {toast.msg}
         </div>
       )}
+      {/* Alerta de comprobantes pendientes */}
+      <div className="sa-home-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24, marginBottom: 24 }}>
+        <div>
+          {pendingScreenshots > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 18px', borderRadius: 12, marginBottom: 12,
+              background: 'var(--warning-bg)',
+              border: '1px solid var(--warning-border)', color: 'var(--warning-text)'
+            }}>
+              <AlertTriangle size={18} color="var(--warning)" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700 }}>{pendingScreenshots} solicitud(es) pendiente(s)</div>
+                <div style={{ fontSize: 13, opacity: 0.9 }}>
+                  {pendingBranches > 0 && <span>• {pendingBranches} sucursal(es) esperando aprobación. <br/></span>}
+                  • {pendingScreenshots - pendingBranches} pago(s) de suscripción por revisar.
+                </div>
+              </div>
+              <a href={pendingBranches > 0 ? "/superadmin/branches" : "/superadmin/businesses"} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13, textDecoration: 'none' }}>
+                Revisar ahora
+              </a>
+            </div>
+          )}
+
+          {/* Gestión de Notificación Global */}
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ fontSize: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Activity size={18} color="var(--primary)" /> Notificación Global del Sistema
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+              Este mensaje aparecerá en el dashboard de todos los administradores de negocios.
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <textarea 
+                className="input" 
+                rows="3" 
+                placeholder="Ej: Mantenimiento programado hoy a las 10:00 PM..."
+                value={globalNotif.value}
+                onChange={(e) => setGlobalNotif({ ...globalNotif, value: e.target.value })}
+                style={{ width: '100%', borderRadius: 8, resize: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={globalNotif.isActive}
+                  onChange={(e) => setGlobalNotif({ ...globalNotif, isActive: e.target.checked })}
+                  style={{ width: 18, height: 18 }}
+                />
+                Activar mensaje para todos
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button 
+                  className="btn-primary" 
+                  onClick={saveGlobalNotification}
+                  disabled={savingNotif}
+                  style={{ padding: '8px 20px', fontSize: 14 }}
+                >
+                  {savingNotif ? 'Guardando...' : 'Guardar '}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card sa-home-stats-summary" style={{ padding: 20 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 16 }}>Resumen Rápido</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Negocios totales:</span>
+              <strong>{totalBusinesses}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Suscripciones pagas:</span>
+              <strong style={{ color: 'var(--success)' }}>{paidBusinesses}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Vencimientos:</span>
+              <strong style={{ color: 'var(--danger)' }}>{overduePayment}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Stats principales */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
         <StatCard
           icon={<Building2 size={22} />}
           color="purple"

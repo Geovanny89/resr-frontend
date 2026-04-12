@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 /**
  * Componente ResponsiveTable
  * 
  * Convierte tablas en cards en móviles automáticamente.
- * En desktop: muestra tabla tradicional
+ * En desktop: muestra tabla tradicional con barra de acciones inferior opcional.
  * En móvil: muestra cards expandibles
  * 
  * Props:
  * - columns: Array de { key, label, render?, width? }
  * - data: Array de objetos con datos
  * - onRowClick?: Función al hacer clic en una fila
- * - actions?: Array de { label, onClick, icon?, color? }
+ * - actions?: Función o Array de acciones
+ * - fullWidthActions?: Boolean (En desktop, muestra acciones en una fila completa debajo de los datos)
  */
 export default function ResponsiveTable({ 
   columns, 
@@ -20,7 +21,8 @@ export default function ResponsiveTable({
   onRowClick,
   actions = [],
   loading = false,
-  emptyMessage = 'No hay datos'
+  emptyMessage = 'No hay datos',
+  fullWidthActions = true
 }) {
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [isMobile, setIsMobile] = useState(false);
@@ -58,7 +60,7 @@ export default function ResponsiveTable({
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
@@ -87,51 +89,125 @@ export default function ResponsiveTable({
                   {col.label}
                 </th>
               ))}
-              {actions && <th style={{ width: '100px' }}>Acciones</th>}
+              {actions && !fullWidthActions && <th style={{ width: '100px' }}>Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {data.map((row, idx) => {
               const rowActions = getRowActions(row, idx);
               return (
-                <tr key={idx} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? 'pointer' : 'default' }}>
-                  {columns.map(col => (
-                    <td key={col.key}>
-                      {col.render ? col.render(row[col.key], row) : row[col.key]}
-                    </td>
-                  ))}
-                  {actions && (
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {rowActions && rowActions.map((action, i) => (
-                          <button
-                            key={i}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              action.onClick(row);
-                            }}
-                            style={{
-                              background: action.color || 'var(--primary)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--radius-sm)',
-                              padding: '6px 10px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                          >
-                            {action.icon && <span style={{ fontSize: 12 }}>{action.icon}</span>}
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
+                <Fragment key={idx}>
+                  <tr 
+                    onClick={() => onRowClick?.(row)} 
+                    style={{ 
+                      cursor: onRowClick ? 'pointer' : 'default',
+                      borderBottom: fullWidthActions && rowActions?.length > 0 ? 'none' : undefined,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!onRowClick) e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
+                    }}
+                    onMouseOut={(e) => {
+                      if (!onRowClick) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    {columns.map(col => (
+                      <td key={col.key}>
+                        {col.render ? col.render(row[col.key], row) : row[col.key]}
+                      </td>
+                    ))}
+                    {actions && !fullWidthActions && (
+                      <td>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {rowActions && rowActions.map((action, i) => (
+                            <button
+                              key={i}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                action.onClick(row);
+                              }}
+                              style={{
+                                background: action.color || 'var(--primary)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '6px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              {action.icon && <span style={{ fontSize: 12 }}>{action.icon}</span>}
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                  
+                  {/* Barra de acciones inferior en Desktop si fullWidthActions está activado */}
+                  {actions && fullWidthActions && rowActions && rowActions.length > 0 && (
+                    <tr style={{ borderTop: 'none', background: 'transparent' }}>
+                      <td colSpan={columns.length} style={{ padding: '0 16px 16px' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: 8, 
+                          flexWrap: 'wrap', 
+                          padding: '10px 14px', 
+                          background: 'rgba(0,0,0,0.02)', 
+                          borderRadius: '10px',
+                          border: '1px solid rgba(0,0,0,0.05)',
+                          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
+                        }}>
+                          {rowActions.map((action, i) => (
+                            <button
+                              key={i}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                action.onClick(row);
+                              }}
+                              title={action.title || action.label}
+                              style={{
+                                background: action.color || 'var(--primary)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '8px 16px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                transition: 'all 0.2s',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.3px'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.filter = 'brightness(1.1)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.filter = 'brightness(1)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+                              }}
+                            >
+                              {action.icon}
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </tr>
+                </Fragment>
               );
             })}
           </tbody>

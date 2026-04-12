@@ -307,13 +307,20 @@ function getDateRange(period, customStart, customEnd) {
 }
 
 export default function Reports() {
-  const { business } = useAuth();
+  const { business, mainBusiness, branches: authBranches } = useAuth();
   const [period, setPeriod]         = useState('month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd]     = useState('');
   const [showRangeCalendar, setShowRangeCalendar] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading]           = useState(false);
+  const [toast, setToast]               = useState(null);
+  const [selectedBranchId, setSelectedBranchId] = useState('active');
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const [error, setError]               = useState('');
   const [activeTab, setActiveTab]       = useState('overview');
   const [isMobile, setIsMobile]         = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 480 : false);
@@ -321,20 +328,9 @@ export default function Reports() {
   const [businessWithLogo, setBusinessWithLogo] = useState(business); // Negocio con logoUrl
   const ITEMS_PER_PAGE = 5; // 5 citas por página
 
-  // Cargar negocio completo con logoUrl
   useEffect(() => {
-    const loadBusiness = async () => {
-      try {
-        const r = await api.get('/businesses/my/business');
-        setBusinessWithLogo(r.data);
-        console.log('✅ Negocio cargado con logoUrl:', r.data?.logoUrl);
-      } catch (e) {
-        console.log('❌ Error cargando negocio:', e);
-        setBusinessWithLogo(business);
-      }
-    };
-    loadBusiness();
-  }, [business?.id]);
+    setBusinessWithLogo(business);
+  }, [business]);
 
   const range = getDateRange(period, customStart, customEnd);
 
@@ -343,7 +339,19 @@ export default function Reports() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get(`/appointments?businessId=${business.id}`);
+      let url = `/appointments?businessId=${business.id}`;
+      
+      // Si el usuario quiere ver todas las sucursales (consolidado)
+      if (selectedBranchId === 'all') {
+        url = `/appointments/consolidated`;
+      } else if (selectedBranchId === 'main') {
+        url = `/appointments?businessId=${mainBusiness.id}`;
+      } else if (selectedBranchId !== 'active') {
+        // Por si acaso se elige una sucursal específica desde el selector interno de reportes
+        url = `/appointments?businessId=${selectedBranchId}`;
+      }
+
+      const res = await api.get(url);
       const all = res.data;
       const filtered = all.filter(a => {
         const d = new Date(a.startTime);
@@ -357,7 +365,7 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => { loadData(); }, [business, period, customStart, customEnd]);
+  useEffect(() => { loadData(); }, [business, period, customStart, customEnd, selectedBranchId]);
   
   // Reset página cuando cambian las citas
   useEffect(() => { setDetailPage(1); }, [appointments]);
@@ -372,14 +380,16 @@ export default function Reports() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Estadísticas - CORREGIDO: calcular ganancia correctamente
+  // Estadísticas - CORREGIDO: calcular ganancia correctamente incluyendo cargos adicionales
   const done       = appointments.filter(a => a.status === 'done');
-  const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0), 0);
+  const totalRev   = done.reduce((s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0), 0);
   // La ganancia del dueño es lo que queda después de pagar al empleado
   const empRev     = done.reduce((s, a) => {
-    const price = parseFloat(a.Service?.price || 0);
+    const basePrice = parseFloat(a.Service?.price || 0);
+    const additional = parseFloat(a.additionalAmount || 0);
+    const totalPrice = basePrice + additional;
     const commPct = parseFloat(a.Employee?.commissionPct || 0);
-    const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (price * commPct / 100);
+    const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (totalPrice * commPct / 100);
     return s + (isNaN(earned) ? 0 : earned);
   }, 0);
   const ownerRev   = totalRev - empRev; // Ganancia real del negocio
@@ -401,7 +411,7 @@ export default function Reports() {
       const name = a.Employee?.User?.name || 'Sin asignar';
       if (!acc[name]) acc[name] = { name, citas: 0, ingresos: 0 };
       acc[name].citas++;
-      acc[name].ingresos += parseFloat(a.Service?.price || 0);
+      acc[name].ingresos += (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
       return acc;
     }, {})
   ).map(([, v]) => v);
@@ -411,7 +421,7 @@ export default function Reports() {
       const name = a.Service?.name || 'Sin servicio';
       if (!acc[name]) acc[name] = { name, count: 0, revenue: 0 };
       acc[name].count++;
-      acc[name].revenue += parseFloat(a.Service?.price || 0);
+      acc[name].revenue += (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
       return acc;
     }, {})
   ).map(([, v]) => v).sort((a, b) => b.revenue - a.revenue);
@@ -529,9 +539,11 @@ export default function Reports() {
     // Calcular cuánto se le debe pagar a cada empleado
     const employeePayments = done.reduce((acc, a) => {
       const name = a.Employee?.User?.name || 'Sin asignar';
-      const price = parseFloat(a.Service?.price || 0);
+      const basePrice = parseFloat(a.Service?.price || 0);
+      const additional = parseFloat(a.additionalAmount || 0);
+      const totalPrice = basePrice + additional;
       const commPct = parseFloat(a.Employee?.commissionPct || 0);
-      const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (price * commPct / 100);
+      const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (totalPrice * commPct / 100);
       
       if (!acc[name]) {
         acc[name] = { name, citas: 0, total: 0 };
@@ -610,7 +622,7 @@ export default function Reports() {
     
     const appointmentsHead = business?.isTechnicalServices
       ? [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Estado']]
-      : [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Estado']];
+      : [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Adicional', 'Pago', 'Estado']];
     
     const appointmentsBody = appointments.map(a => {
       const row = [
@@ -619,7 +631,15 @@ export default function Reports() {
         a.Service?.name || '',
         a.Employee?.User?.name || '',
       ];
-      if (!business?.isTechnicalServices) row.push(fmt(a.Service?.price));
+      if (!business?.isTechnicalServices) {
+        const base = parseFloat(a.Service?.price || 0);
+        const add = parseFloat(a.additionalAmount || 0);
+        row.push(fmt(base));
+        row.push(fmt(add));
+        // Traducir método de pago para el PDF
+        const pm = a.paymentMethod === 'cash' ? 'Efectivo' : a.paymentMethod === 'transfer' ? 'Transf.' : '-';
+        row.push(pm);
+      }
       row.push(STATUS_LABELS[a.status] || a.status);
       return row;
     });
@@ -633,10 +653,10 @@ export default function Reports() {
         fillColor: colors.light,
         textColor: colors.black,
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8,
       },
       bodyStyles: {
-        fontSize: 8,
+        fontSize: 7,
         textColor: colors.black,
       },
       columnStyles: business?.isTechnicalServices ? {
@@ -646,12 +666,14 @@ export default function Reports() {
         3: { cellWidth: 35 },
         4: { cellWidth: 25, halign: 'center' },
       } : {
-        0: { cellWidth: 28 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 32 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 25, halign: 'right' },
-        5: { cellWidth: 25, halign: 'center' },
+        0: { cellWidth: 24 },
+        1: { cellWidth: 26 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 26 },
+        4: { cellWidth: 22, halign: 'right' },
+        5: { cellWidth: 22, halign: 'right' },
+        6: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
+        7: { cellWidth: 20, halign: 'center' },
       },
       styles: {
         cellPadding: 4,
@@ -709,7 +731,12 @@ export default function Reports() {
           'Servicio': a.Service?.name || '',
           'Empleado': a.Employee?.User?.name || '',
         };
-        if (!business?.isTechnicalServices) row['Precio'] = parseFloat(a.Service?.price || 0);
+        if (!business?.isTechnicalServices) {
+          row['Precio Base'] = parseFloat(a.Service?.price || 0);
+          row['Adicional'] = parseFloat(a.additionalAmount || 0);
+          row['Total'] = parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+          row['Método de Pago'] = a.status === 'done' ? (a.paymentMethod === 'cash' ? 'Efectivo' : a.paymentMethod === 'transfer' ? 'Transferencia' : '—') : '—';
+        }
         row['Estado'] = STATUS_LABELS[a.status] || a.status;
         return row;
       });
@@ -719,12 +746,28 @@ export default function Reports() {
       saveExcel(wb, `informe-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (error) {
       console.error('Error generando Excel:', error);
-      alert('Error al generar Excel');
+      showToast('Error al generar Excel', 'error');
     }
   };
 
   return (
     <AdminLayout title="Informes" subtitle="Análisis de actividad y finanzas">
+      {/* Toast sutil */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: toast.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: toast.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {toast.type === 'error' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+          {toast.msg}
+        </div>
+      )}
       <style>{`
         .reports-page {
           width: 100%;
@@ -817,14 +860,16 @@ export default function Reports() {
         }
         @media (min-width: 641px) {
           .reports-tab-select { display: none !important; }
+          .reports-desktop-only { display: block !important; }
+          .reports-mobile-only { display: none !important; }
         }
         @media (max-width: 640px) {
           .reports-desktop-only { display: none !important; }
           .reports-mobile-only { display: block !important; }
         }
-        @media (min-width: 641px) {
-          .reports-desktop-only { display: block !important; }
-          .reports-mobile-only { display: none !important; }
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
       <div className="reports-page">
@@ -840,12 +885,13 @@ export default function Reports() {
                 { value: 'day',   label: 'Hoy' },
                 { value: 'week',  label: 'Semana' },
                 { value: 'month', label: 'Mes' },
-                { value: 'custom', label: 'Personalizado' },
+                { value: 'custom', label: 'Personalizado' }
               ].map(p => (
                 <button
                   key={p.value}
-                  className={period === p.value ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-                  onClick={() => { setPeriod(p.value); if (p.value === 'custom') setShowRangeCalendar(true); }}
+                  className={period === p.value ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: 13, minWidth: 80, whiteSpace: 'nowrap' }}
+                  onClick={() => setPeriod(p.value)}
                 >
                   {p.label}
                 </button>
@@ -853,16 +899,29 @@ export default function Reports() {
             </div>
           </div>
 
-          {period === 'custom' && (
-            <button
-              className="btn-outline btn-sm"
-              onClick={() => setShowRangeCalendar(!showRangeCalendar)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              📅 {customStart && customEnd ? `${formatDateES(customStart)} → ${formatDateES(customEnd)}` : 'Seleccionar rango'}
-            </button>
+          {/* FILTRO DE SUCURSALES (Solo si hay sucursales) */}
+          {authBranches.length > 0 && (
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--gray-700)' }}>
+                Sucursal
+              </label>
+              <select 
+                className="form-input" 
+                style={{ height: 42, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+              >
+                <option value="active">📍 Sede Actual ({business?.name})</option>
+                <option value="all">🌎 Todas las sucursales (Consolidado)</option>
+                <option value="main">🏠 Sede Principal ({mainBusiness?.name})</option>
+                {authBranches.map(b => (
+                  <option key={b.id} value={b.id}>🏢 {b.name}</option>
+                ))}
+              </select>
+            </div>
           )}
 
-          <button className="btn-ghost btn-sm" onClick={loadData} disabled={loading}>
+          <button className="btn-ghost btn-sm" onClick={loadData} disabled={loading} style={{ alignSelf: 'flex-end', height: 42 }}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             Actualizar
           </button>
@@ -876,9 +935,9 @@ export default function Reports() {
             </button>
           </div>
         </div>
-        </div>
+      </div>
 
-        {showRangeCalendar && period === 'custom' && (
+      {showRangeCalendar && period === 'custom' && (
         <div style={{ marginBottom: 20, padding: 16, background: 'var(--card-bg)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'center' }}>
           <RangeCalendarPicker
             startValue={customStart}
@@ -1112,7 +1171,14 @@ export default function Reports() {
                       <th>Cliente</th>
                       <th>Servicio</th>
                       <th>Empleado</th>
-                      {!business?.isTechnicalServices && <th>Precio</th>}
+                      {!business?.isTechnicalServices && (
+                        <>
+                          <th>Precio</th>
+                          <th>Adicional</th>
+                          <th>Pago</th>
+                          <th>Método</th>
+                        </>
+                      )}
                       <th>Estado</th>
                     </tr>
                   </thead>
@@ -1123,7 +1189,36 @@ export default function Reports() {
                         <td>{a.clientName}</td>
                         <td>{a.Service?.name}</td>
                         <td>{a.Employee?.User?.name}</td>
-                        {!business?.isTechnicalServices && <td><span className="money positive">{fmt(a.Service?.price)}</span></td>}
+                        {!business?.isTechnicalServices && (
+                          <>
+                            <td><span className="money">{fmt(a.Service?.price)}</span></td>
+                            <td><span className="money" style={{ color: '#d97706' }}>{fmt(a.additionalAmount)}</span></td>
+                            <td>
+                              <span className="money positive" style={{ fontWeight: 700 }}>{fmt(parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))}</span>
+                            </td>
+                            <td>
+                              {a.status === 'done' && a.paymentMethod ? (
+                                <span style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: a.paymentMethod === 'cash' ? '#059669' : '#0891b2',
+                                  textTransform: 'uppercase',
+                                  background: a.paymentMethod === 'cash' ? '#d1fae5' : '#cffafe',
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {a.paymentMethod === 'cash' ? '💵 Efectivo' : '📲 Transf.'}
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                              )}
+                            </td>
+                          </>
+                        )}
                         <td><span className={`badge badge-${a.status}`}>{STATUS_LABELS[a.status]}</span></td>
                       </tr>
                     ))}
@@ -1195,12 +1290,30 @@ export default function Reports() {
                             {a.Employee?.User?.name || '—'}
                           </span>
                         </div>
-                        {!business?.isTechnicalServices && (
+                        {a.status === 'done' && a.paymentMethod && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Precio</span>
-                            <span className="money positive" style={{ fontSize: 13 }}>
-                              {fmt(a.Service?.price)}
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Mtd. Pago</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
+                              {a.paymentMethod === 'cash' ? '💵 Efectivo' : '📲 Transf.'}
                             </span>
+                          </div>
+                        )}
+                        {!business?.isTechnicalServices && (
+                          <div style={{ display: 'grid', gap: 6, marginTop: 10, padding: 10, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Precio Base</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{fmt(a.Service?.price)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Adicional</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: '#d97706' }}>{fmt(a.additionalAmount)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 4, paddingTop: 4, borderTop: '1px dashed var(--border)' }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>TOTAL</span>
+                              <span className="money positive" style={{ fontSize: 13, fontWeight: 800 }}>
+                                {fmt(parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))}
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>

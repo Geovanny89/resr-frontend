@@ -35,9 +35,72 @@ export default function EmployeeDashboard() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
   });
 
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [completeAppointmentData, setCompleteAppointmentData] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [completing, setCompleting] = useState(false);
+
+  const [showAdditionalModal, setShowAdditionalModal] = useState(false);
+  const [selectedApt, setSelectedApt] = useState(null);
+  const [additionalForm, setAdditionalForm] = useState({
+    additionalAmount: '',
+    additionalNote: ''
+  });
+  const [savingAdditional, setSavingAdditional] = useState(false);
+
+  const [showExpressModal, setShowExpressModal] = useState(false);
+  const [expressForm, setExpressForm] = useState({
+    clientName: '',
+    clientPhone: '',
+    serviceId: ''
+  });
+  const [services, setServices] = useState([]);
+
   useEffect(() => {
     loadEmployeeInfo();
   }, []);
+
+  useEffect(() => {
+    if (employee?.businessId) {
+      loadServices(employee.businessId);
+    }
+  }, [employee]);
+
+  const loadServices = async (businessId) => {
+    try {
+      const res = await api.get('/services', { params: { businessId, active: true } });
+      setServices(res.data);
+    } catch (err) {
+      console.error('Error al cargar servicios');
+    }
+  };
+
+  const handleCreateExpress = async () => {
+    if (!expressForm.serviceId) {
+      alert('Por favor selecciona un servicio');
+      return;
+    }
+    setCompleting(true);
+    try {
+      const now = new Date();
+      await api.post('/appointments', {
+        businessId: employee.businessId,
+        serviceId: expressForm.serviceId,
+        employeeId: employee.id,
+        clientName: expressForm.clientName,
+        clientPhone: expressForm.clientPhone,
+        startTime: now.toISOString(),
+        status: 'attention'
+      });
+      loadAppointments();
+      setShowExpressModal(false);
+      setExpressForm({ clientName: '', clientPhone: '', serviceId: '' });
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al crear cita express');
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   const loadEmployeeInfo = async () => {
     try {
@@ -91,12 +154,73 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleStatusUpdate = async (id, status) => {
+  const handleStatusUpdate = async (id, status, apt = null) => {
+    if (status === 'done') {
+      setCompleteAppointmentData(apt || { id });
+      setPaymentMethod('cash');
+      setShowCompleteModal(true);
+      return;
+    }
     try {
       await api.patch(`/appointments/${id}/status`, { status });
       loadAppointments();
     } catch (e) {
       alert('Error al actualizar el estado de la cita');
+    }
+  };
+
+  const handleCompleteAppointment = async () => {
+    if (!completeAppointmentData) return;
+    setCompleting(true);
+    try {
+      // Si el empleado agregó información adicional en el modal de completado,
+      // primero actualizamos el cargo adicional
+      if (additionalForm.additionalAmount) {
+        await api.patch(`/appointments/${completeAppointmentData.id}/additional-charge`, {
+          additionalAmount: parseFloat(additionalForm.additionalAmount) || 0,
+          additionalNote: additionalForm.additionalNote
+        });
+      }
+
+      await api.patch(`/appointments/${completeAppointmentData.id}/status`, { 
+        status: 'done',
+        paymentMethod: paymentMethod 
+      });
+      loadAppointments();
+      setShowCompleteModal(false);
+      setCompleteAppointmentData(null);
+      setAdditionalForm({ additionalAmount: '', additionalNote: '' });
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al completar cita');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const handleOpenAdditionalModal = (apt) => {
+    setSelectedApt(apt);
+    setAdditionalForm({
+      additionalAmount: apt.additionalAmount || '',
+      additionalNote: apt.additionalNote || ''
+    });
+    setShowAdditionalModal(true);
+  };
+
+  const handleSaveAdditionalCharge = async () => {
+    if (!selectedApt) return;
+    setSavingAdditional(true);
+    try {
+      await api.patch(`/appointments/${selectedApt.id}/additional-charge`, {
+        additionalAmount: parseFloat(additionalForm.additionalAmount) || 0,
+        additionalNote: additionalForm.additionalNote
+      });
+      loadAppointments();
+      setShowAdditionalModal(false);
+      setSelectedApt(null);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al guardar cargo adicional');
+    } finally {
+      setSavingAdditional(false);
     }
   };
 
@@ -302,41 +426,73 @@ export default function EmployeeDashboard() {
           </div>
         )}
         
-        {/* Selector de fecha */}
+        {/* Selector de fecha y Botón Express */}
         <div style={{
-          background: colors.cardBg,
-          padding: 20,
-          borderRadius: 12,
-          marginBottom: 24,
-          boxShadow: `0 2px 8px ${colors.shadow}`,
-          border: `1px solid ${colors.border}`
+          display: 'flex',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 24
         }}>
-          <label style={{
-            display: 'block',
-            fontSize: 14,
-            fontWeight: 600,
-            marginBottom: 10,
-            color: colors.text
+          <div style={{
+            background: colors.cardBg,
+            padding: 20,
+            borderRadius: 12,
+            boxShadow: `0 2px 8px ${colors.shadow}`,
+            border: `1px solid ${colors.border}`,
+            flex: 2,
+            minWidth: 280
           }}>
-            Selecciona una fecha para ver tu agenda
-          </label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            style={{
-              padding: '10px 12px',
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: 6,
+            <label style={{
+              display: 'block',
               fontSize: 14,
-              fontFamily: 'inherit',
+              fontWeight: 600,
+              marginBottom: 10,
+              color: colors.text
+            }}>
+              Selecciona una fecha para ver tu agenda
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              style={{
+                padding: '10px 12px',
+                border: `1px solid ${colors.inputBorder}`,
+                borderRadius: 6,
+                fontSize: 14,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                background: colors.inputBg,
+                color: colors.text,
+                width: '100%'
+              }}
+            />
+          </div>
+
+          <button
+            onClick={() => setShowExpressModal(true)}
+            style={{
+              flex: 1,
+              minWidth: 150,
+              background: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: 12,
+              padding: '20px',
+              fontSize: 16,
+              fontWeight: 800,
               cursor: 'pointer',
-              background: colors.inputBg,
-              color: colors.text,
-              width: '100%',
-              maxWidth: 300
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8
             }}
-          />
+          >
+            <div style={{ fontSize: 24 }}>⚡</div>
+            Cita Express
+          </button>
         </div>
 
         {/* Citas del día */}
@@ -459,15 +615,23 @@ export default function EmployeeDashboard() {
                           <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
                             Iniciar Atención
                           </button>
-                          <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
+                          <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
                             Completar
+                          </button>
+                          <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                            Adicional
                           </button>
                         </>
                       )}
                       {apt.status === 'attention' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'done')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
-                          Terminar
-                        </button>
+                        <>
+                          <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
+                            Terminar
+                          </button>
+                          <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                            Adicional
+                          </button>
+                        </>
                       )}
                       {(apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'attention') && (
                         <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
@@ -482,6 +646,77 @@ export default function EmployeeDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal Cita Express */}
+      {showExpressModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', 
+          zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+        }}>
+          <div style={{
+            background: colors.cardBg, padding: 24, borderRadius: 16, 
+            maxWidth: 400, width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            border: `1px solid ${colors.border}`
+          }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: colors.text, marginBottom: 8 }}>⚡ Cita Express</h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 20 }}>
+              Registra un cliente que acaba de llegar para atenderlo de inmediato.
+            </p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Nombre del Cliente</label>
+              <input 
+                type="text"
+                value={expressForm.clientName}
+                onChange={e => setExpressForm({ ...expressForm, clientName: e.target.value })}
+                placeholder="Nombre completo"
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Teléfono del Cliente</label>
+              <input 
+                type="tel"
+                value={expressForm.clientPhone}
+                onChange={e => setExpressForm({ ...expressForm, clientPhone: e.target.value })}
+                placeholder="Ej: 3001234567"
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Servicio</label>
+              <select 
+                value={expressForm.serviceId}
+                onChange={e => setExpressForm({ ...expressForm, serviceId: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+              >
+                <option value="">Selecciona un servicio</option>
+                {services.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.durationMin} min)</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setShowExpressModal(false)}
+                style={{ flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: colors.bgSecondary, color: colors.text, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleCreateExpress}
+                disabled={completing}
+                style={{ flex: 1, padding: '12px', borderRadius: 8, border: 'none', background: '#f59e0b', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+              >
+                {completing ? 'Cargando...' : 'Atender Ya'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Cambiar Contraseña */}
       {showChangePwModal && (
@@ -596,6 +831,201 @@ export default function EmployeeDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para completar cita con método de pago */}
+      {showCompleteModal && completeAppointmentData && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 3000
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '28px',
+            maxWidth: '420px', width: '90%', border: `1px solid ${colors.border}`,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+          }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: colors.text }}>
+              ✅ Completar Cita
+            </h2>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: colors.textSecondary }}>
+              Selecciona el método de pago utilizado por <strong>{completeAppointmentData.clientName}</strong>.
+            </p>
+
+            <div style={{ marginBottom: '20px', padding: '12px', background: colors.bgSecondary, borderRadius: '8px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: colors.text, fontSize: '13px' }}>
+                ¿Hubo algún cargo adicional? (Opcional)
+              </label>
+              <input
+                type="number"
+                value={additionalForm.additionalAmount}
+                onChange={(e) => setAdditionalForm({...additionalForm, additionalAmount: e.target.value})}
+                placeholder="Monto adicional (ej: 5000)"
+                style={{
+                  width: '100%', padding: '10px', border: `1px solid ${colors.border}`,
+                  borderRadius: '6px', fontSize: '14px', background: colors.inputBg,
+                  color: colors.text, marginBottom: '10px'
+                }}
+              />
+              <textarea
+                value={additionalForm.additionalNote}
+                onChange={(e) => setAdditionalForm({...additionalForm, additionalNote: e.target.value})}
+                placeholder="¿Qué se hizo adicional? (ej: diseño extra)"
+                rows={2}
+                style={{
+                  width: '100%', padding: '10px', border: `1px solid ${colors.border}`,
+                  borderRadius: '6px', fontSize: '14px', background: colors.inputBg,
+                  color: colors.text, resize: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+              <label 
+                onClick={() => setPaymentMethod('cash')}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '16px', 
+                  borderRadius: '12px', border: `2px solid ${paymentMethod === 'cash' ? colors.primary : colors.border}`,
+                  background: paymentMethod === 'cash' ? `${colors.primary}08` : 'transparent',
+                  cursor: 'pointer', transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ 
+                  width: 20, height: 20, borderRadius: '50%', border: `2px solid ${paymentMethod === 'cash' ? colors.primary : colors.textSecondary}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {paymentMethod === 'cash' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: colors.primary }} />}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>💵 Efectivo</div>
+                  <div style={{ fontSize: 12, color: colors.textSecondary }}>Pago recibido en físico</div>
+                </div>
+              </label>
+
+              <label 
+                onClick={() => setPaymentMethod('transfer')}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '16px', 
+                  borderRadius: '12px', border: `2px solid ${paymentMethod === 'transfer' ? colors.primary : colors.border}`,
+                  background: paymentMethod === 'transfer' ? `${colors.primary}08` : 'transparent',
+                  cursor: 'pointer', transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ 
+                  width: 20, height: 20, borderRadius: '50%', border: `2px solid ${paymentMethod === 'transfer' ? colors.primary : colors.textSecondary}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {paymentMethod === 'transfer' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: colors.primary }} />}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>📲 Transferencia</div>
+                  <div style={{ fontSize: 12, color: colors.textSecondary }}>Nequi, Daviplata o Banco</div>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'stretch' }}>
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                style={{
+                  flex: 1, background: 'transparent', color: colors.textSecondary,
+                  border: `1px solid ${colors.border}`, borderRadius: '10px',
+                  padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCompleteAppointment}
+                disabled={completing}
+                style={{
+                  flex: 2, background: colors.primary, color: 'white',
+                  border: 'none', borderRadius: '10px', padding: '12px',
+                  fontSize: '14px', fontWeight: 700, cursor: completing ? 'not-allowed' : 'pointer',
+                  boxShadow: `0 4px 12px ${colors.primary}40`
+                }}
+              >
+                {completing ? 'Procesando...' : 'Confirmar Pago'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para cargo adicional standalone */}
+      {showAdditionalModal && selectedApt && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 3000
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '28px',
+            maxWidth: '420px', width: '90%', border: `1px solid ${colors.border}`
+          }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 800, color: colors.text }}>
+              💰 Cargo Adicional
+            </h2>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: colors.text }}>
+                Monto Adicional ($)
+              </label>
+              <input
+                type="number"
+                value={additionalForm.additionalAmount}
+                onChange={(e) => setAdditionalForm({...additionalForm, additionalAmount: e.target.value})}
+                placeholder="Ej: 5000"
+                style={{
+                  width: '100%', padding: '12px', border: `1px solid ${colors.border}`,
+                  borderRadius: '10px', fontSize: '16px', background: colors.inputBg,
+                  color: colors.text, marginBottom: '20px'
+                }}
+              />
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: colors.text }}>
+                ¿Qué se hizo?
+              </label>
+              <textarea
+                value={additionalForm.additionalNote}
+                onChange={(e) => setAdditionalForm({...additionalForm, additionalNote: e.target.value})}
+                placeholder="Describe el trabajo extra realizado..."
+                rows={3}
+                style={{
+                  width: '100%', padding: '12px', border: `1px solid ${colors.border}`,
+                  borderRadius: '10px', fontSize: '16px', background: colors.inputBg,
+                  color: colors.text, resize: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setShowAdditionalModal(false);
+                  setSelectedApt(null);
+                  setAdditionalForm({ additionalAmount: '', additionalNote: '' });
+                }}
+                style={{
+                  flex: 1, background: 'transparent', color: colors.textSecondary,
+                  border: `1px solid ${colors.border}`, borderRadius: '10px',
+                  padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveAdditionalCharge}
+                disabled={savingAdditional}
+                style={{
+                  flex: 2, background: colors.primary, color: 'white',
+                  border: 'none', borderRadius: '10px', padding: '12px',
+                  fontSize: '14px', fontWeight: 700, cursor: savingAdditional ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {savingAdditional ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

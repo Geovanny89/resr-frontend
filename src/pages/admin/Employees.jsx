@@ -17,9 +17,11 @@ const BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-
 function getImgUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  // Asegurar que la URL comience con / si no lo tiene
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${BACKEND_URL}${cleanUrl}`;
+  const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/')) 
+    ? api.defaults.baseURL.replace('/api', '') 
+    : BACKEND_URL;
+  return `${base}${cleanUrl}`;
 }
 
 export default function Employees() {
@@ -33,7 +35,18 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editEmp, setEditEmp] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', commissionPct: 0, ownerPct: 100, photoUrl: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    commissionPct: 0, 
+    ownerPct: 100, 
+    photoUrl: '', 
+    description: '',
+    specialty: '',
+    isManager: false, 
+    role: 'employee' 
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,12 +56,22 @@ export default function Employees() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [branches, setBranches] = useState([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState('');
+
   const load = async () => {
     if (!business?.id) return;
     setLoading(true);
     try {
+      // 1. Cargar empleados del negocio actual (o sucursal si estamos en una)
       const res = await api.get(`/employees?businessId=${business.id}`);
       setEmployees(res.data);
+
+      // 2. Si es el negocio principal, cargar sucursales para poder asignar empleados/admins a ellas
+      if (!business.isBranch) {
+        const bRes = await api.get('/businesses/my/branches');
+        setBranches(bRes.data || []);
+      }
     } catch (e) {
       setError(e.response?.data?.error || 'Error al cargar empleados');
     } finally {
@@ -75,7 +98,19 @@ export default function Employees() {
 
   const openCreate = () => {
     setEditEmp(null);
-    setForm({ name: '', email: '', password: '', commissionPct: 0, ownerPct: 100, photoUrl: '' });
+    setForm({ 
+      name: '', 
+      email: '', 
+      password: '', 
+      commissionPct: 0, 
+      ownerPct: 100, 
+      photoUrl: '', 
+      description: '',
+      specialty: '',
+      isManager: false,
+      role: 'employee'
+    });
+    setSelectedBusinessId(business.id); // Por defecto el negocio actual
     setPhotoPreview(null);
     setError('');
     setSuccess('');
@@ -90,8 +125,13 @@ export default function Employees() {
       password: '',
       commissionPct: emp.commissionPct,
       ownerPct: emp.ownerPct,
-      photoUrl: emp.photoUrl || ''
+      photoUrl: emp.photoUrl || '',
+      description: emp.description || '',
+      specialty: emp.specialty || '',
+      isManager: emp.isManager || false,
+      role: emp.User?.role || 'employee'
     });
+    setSelectedBusinessId(emp.businessId);
     setPhotoPreview(emp.photoUrl ? getImgUrl(emp.photoUrl) : null);
     setError('');
     setSuccess('');
@@ -155,8 +195,13 @@ export default function Employees() {
           name: form.name,
           email: form.email,
           commissionPct: form.commissionPct,
-          ownerPct: form.ownerPct, // AGREGAR: enviar ownerPct también
-          photoUrl: form.photoUrl
+          ownerPct: form.ownerPct,
+          photoUrl: form.photoUrl,
+          description: form.description,
+          specialty: form.specialty,
+          isManager: form.isManager,
+          businessId: selectedBusinessId, // Permitir cambiar el negocio/sucursal asignado
+          role: form.role
         });
         setSuccess('Empleado actualizado');
       } else {
@@ -165,11 +210,16 @@ export default function Employees() {
           email: form.email,
           password: form.password,
           commissionPct: form.commissionPct,
-          ownerPct: form.ownerPct, // AGREGAR: enviar ownerPct también
-          businessId: business.id,
-          photoUrl: form.photoUrl
+          ownerPct: form.ownerPct,
+          businessId: selectedBusinessId, // Usar el negocio/sucursal seleccionado
+          photoUrl: form.photoUrl,
+          description: form.description,
+          specialty: form.specialty,
+          isManager: form.isManager,
+          role: form.role
         });
-        setSuccess('Empleado creado');
+        const roleLabel = form.role === 'admin_suc' ? 'Administrador de Sucursal' : form.role === 'admin' ? 'Administrador' : 'Empleado';
+        setSuccess(`✅ Usuario ${roleLabel.toLowerCase()} creado exitosamente`);
       }
       setShowModal(false);
       load();
@@ -244,6 +294,7 @@ export default function Employees() {
             { label: '✏️ Editar', onClick: openEdit, color: 'var(--primary)' },
             { label: '🗑️ Eliminar', onClick: handleDelete, color: 'var(--danger)' }
           ]}
+          fullWidthActions={false}
           loading={loading}
           emptyMessage="No hay empleados. ¡Crea uno para empezar!"
         />
@@ -284,7 +335,7 @@ export default function Employees() {
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
@@ -361,6 +412,27 @@ export default function Employees() {
                     fullWidth: true
                   },
                   {
+                    name: 'specialty',
+                    label: 'Especialidad / Cargo',
+                    type: 'text',
+                    placeholder: 'Ej: Manicurista, Barbero, Estilista...',
+                    value: form.specialty,
+                    onChange: e => setForm({ ...form, specialty: e.target.value }),
+                    fullWidth: true,
+                    hint: 'Este título aparecerá debajo del nombre del empleado en la página pública.'
+                  },
+                  {
+                    name: 'description',
+                    label: 'Perfil Profesional / Descripción',
+                    type: 'textarea',
+                    placeholder: 'Ej: Profesional en uñas estéticas con 4 años de experiencia...',
+                    value: form.description,
+                    onChange: e => setForm({ ...form, description: e.target.value }),
+                    fullWidth: true,
+                    rows: 3,
+                    hint: 'Esta descripción aparecerá en la página pública para que los clientes conozcan al profesional.'
+                  },
+                  {
                     name: 'email',
                     label: 'Email',
                     type: 'email',
@@ -396,13 +468,64 @@ export default function Employees() {
                     },
                     {
                       name: 'ownerPct',
-                      label: 'Para el negocio (%)',
+                      label: 'Ganancia Negocio (%)',
                       type: 'number',
-                      disabled: true,
                       value: form.ownerPct,
+                      onChange: () => {}, // Read-only field, calculated from commissionPct
+                      disabled: true,
                       fullWidth: true
                     }
-                  ] : [])
+                  ] : []),
+                  {
+                    name: 'role',
+                    label: 'Rol del Usuario',
+                    type: 'select',
+                    options: [
+                      { value: 'employee', label: '👷 Empleado' },
+                      { value: 'admin_suc', label: '👔 Administrador de Sucursal' },
+                      { value: 'admin', label: '👑 Administrador Principal' }
+                    ],
+                    value: form.role,
+                    onChange: e => setForm({ ...form, role: e.target.value }),
+                    fullWidth: true,
+                    hint: 'El rol determina los permisos del usuario en el sistema.'
+                  },
+                  {
+                    name: 'isManager',
+                    label: '¿Es el Administrador de la sede?',
+                    type: 'select',
+                    options: [
+                      { value: 'false', label: 'No, es solo empleado' },
+                      { value: 'true', label: 'Sí, es el administrador encargado' }
+                    ],
+                    value: String(form.isManager),
+                    onChange: e => {
+                      const isMgr = e.target.value === 'true';
+                      setForm({ 
+                        ...form, 
+                        isManager: isMgr,
+                        // Si es administrador, la comisión suele ser 0 o diferente
+                        commissionPct: isMgr ? 0 : form.commissionPct,
+                        ownerPct: isMgr ? 100 : form.ownerPct
+                      });
+                    },
+                    fullWidth: true,
+                    hint: 'Si activas esto, este usuario podrá administrar toda la sede (ver informes, gestionar empleados, etc.) y entrará directamente al Dashboard administrativo.'
+                  },
+                  // NUEVO: Selección de negocio/sucursal para asignar
+                  ...(!business.isBranch && branches.length > 0 ? [{
+                    name: 'businessId',
+                    label: 'Asignar a Negocio/Sucursal',
+                    type: 'select',
+                    options: [
+                      { value: business.id, label: `📍 Principal: ${business.name}` },
+                      ...branches.map(b => ({ value: b.id, label: `🏢 Sucursal: ${b.name}` }))
+                    ],
+                    value: selectedBusinessId,
+                    onChange: e => setSelectedBusinessId(e.target.value),
+                    fullWidth: true,
+                    hint: 'Selecciona en qué sucursal trabajará y/o administrará este usuario.'
+                  }] : [])
                 ]}
                 onSubmit={handleSave}
                 submitText={editEmp ? '💾 Actualizar' : '✅ Crear empleado'}
