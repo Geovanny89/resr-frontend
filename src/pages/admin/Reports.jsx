@@ -626,7 +626,7 @@ export default function Reports() {
     
     const appointmentsBody = appointments.map(a => {
       const row = [
-        new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
+        new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Bogota' }),
         a.clientName || '',
         a.Service?.name || '',
         a.Employee?.User?.name || '',
@@ -1185,7 +1185,7 @@ export default function Reports() {
                   <tbody>
                     {paginatedAppointments.map(a => (
                       <tr key={a.id}>
-                        <td style={{ fontSize: 13 }}>{new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                        <td style={{ fontSize: 13 }}>{new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Bogota' })}</td>
                         <td>{a.clientName}</td>
                         <td>{a.Service?.name}</td>
                         <td>{a.Employee?.User?.name}</td>
@@ -1269,7 +1269,7 @@ export default function Reports() {
                             {a.clientName || 'Cliente'}
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                            {new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                            {new Date(a.startTime).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Bogota' })}
                           </div>
                         </div>
                         <span className={`badge badge-${a.status}`} style={{ flexShrink: 0 }}>

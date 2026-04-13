@@ -504,7 +504,8 @@ export default function Appointments() {
     return new Date(dateStr).toLocaleTimeString('es-CO', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'America/Bogota'
     });
   };
 

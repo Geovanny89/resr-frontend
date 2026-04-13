@@ -16,7 +16,7 @@ const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
 
 const fmtDate = (d) =>
-  new Date(d).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+  new Date(d).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Bogota' });
 
 // Extraer la URL base del backend desde el cliente API
 const API_BASE_URL = api.defaults.baseURL || '';

@@ -297,9 +297,10 @@ export default function BookAppointment() {
     setSubmitting(true);
     setError('');
     try {
-      // Asegurar que el startTime esté en formato ISO string para el backend
-      const startTimeIso = selected.slot.startTime 
-        ? new Date(selected.slot.startTime).toISOString()
+      // Construir fecha ISO con zona horaria Colombia explícita
+      // Usar selected.date (YYYY-MM-DD) + slot.localTime (HH:MM) + offset Colombia (-05:00)
+      const startTimeIso = selected.slot.localTime 
+        ? `${selected.date}T${selected.slot.localTime}:00-05:00`
         : null;
       
       console.log('[BookAppointment] Enviando cita:', {
