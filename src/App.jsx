@@ -11,6 +11,7 @@ import RegisterClient   from './pages/RegisterClient';
 import RegisterVendor   from './pages/RegisterVendor';
 import BusinessLanding  from './pages/public/BusinessLanding';
 import BookAppointment  from './pages/public/BookAppointment';
+import RateEmployee     from './pages/public/RateEmployee';
 import MyAppointments   from './pages/client/MyAppointments';
 import Dashboard    from './pages/admin/Dashboard';
 import MyBusiness   from './pages/admin/MyBusiness';
@@ -23,6 +24,7 @@ import Ratings      from './pages/admin/Ratings';
 import Reports      from './pages/admin/Reports';
 import Payments     from './pages/admin/Payments';
 import SubmitPayment from './pages/admin/SubmitPayment';
+import Clients      from './pages/admin/Clients';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Landing from './pages/Landing';
 import DownloadAPK from './pages/admin/DownloadAPK';
@@ -177,6 +179,7 @@ export default function App() {
             <Route path="reports"      element={<Reports />} />
             <Route path="payments"     element={<Payments />} />
             <Route path="submit-payment" element={<SubmitPayment />} />
+            <Route path="clients"      element={<Clients />} />
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
@@ -192,6 +195,9 @@ export default function App() {
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>
             <Route index element={<MyAppointments />} />
           </Route>
+          
+          {/* ===== RUTA PARA CALIFICAR EMPLEADO ===== */}
+          <Route path="/rate/:appointmentId" element={<RateEmployee />} />
           
           {/* ===== RUTAS PÚBLICAS DE NEGOCIOS (SLUG) ===== */}
           <Route path="/:slug" element={<BusinessLanding />} />

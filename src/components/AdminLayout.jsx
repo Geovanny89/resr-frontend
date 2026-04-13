@@ -9,7 +9,7 @@ import BranchSelector from './BranchSelector';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
-  MessageCircle, RefreshCw, Smartphone, Tag
+  MessageCircle, RefreshCw, Smartphone, Tag, UserCircle
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
     items: [
       { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
       { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
+      { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
       { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
       { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
     ]

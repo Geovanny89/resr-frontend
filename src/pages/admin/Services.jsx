@@ -39,6 +39,17 @@ export default function Services() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [expandedDesc, setExpandedDesc] = useState(new Set());
+
+  const toggleDesc = (id) => {
+    const newSet = new Set(expandedDesc);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedDesc(newSet);
+  };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -321,8 +332,90 @@ export default function Services() {
                   </div>
                 )
               },
-              { key: 'name', label: 'Nombre' },
-              { key: 'description', label: 'Descripción', render: v => v || '—' },
+              { 
+                key: 'name', 
+                label: 'Nombre',
+                render: (v, row) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>{v}</span>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {row.isTechnicalService && (
+                        <span style={{ 
+                          background: '#e0f2fe', 
+                          color: '#0369a1', 
+                          padding: '1px 6px', 
+                          borderRadius: 3, 
+                          fontSize: 10,
+                          fontWeight: 600
+                        }}>
+                          Técnico
+                        </span>
+                      )}
+                      {!row.hasEmployeeCommission && (
+                        <span style={{ 
+                          background: '#fef3c7', 
+                          color: '#92400e', 
+                          padding: '1px 6px', 
+                          borderRadius: 3, 
+                          fontSize: 10,
+                          fontWeight: 600
+                        }}>
+                          Sin comisión
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              },
+              { 
+                key: 'description', 
+                label: 'Descripción',
+                width: '250px',
+                render: (v, row) => {
+                  if (!v) return <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>;
+                  const isExpanded = expandedDesc.has(row.id);
+                  const shouldTruncate = v.length > 80;
+                  
+                  return (
+                    <div style={{ maxWidth: 250 }}>
+                      <div
+                        style={{ 
+                          display: isExpanded ? 'block' : '-webkit-box',
+                          WebkitLineClamp: isExpanded ? 'unset' : 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          lineHeight: '1.4',
+                          fontSize: 13,
+                          color: 'var(--text-muted)'
+                        }}
+                      >
+                        {v}
+                      </div>
+                      {shouldTruncate && (
+                        <button
+                          onClick={() => toggleDesc(row.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '4px 0 0',
+                            fontSize: 11,
+                            color: 'var(--primary)',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          {isExpanded ? 'Ver menos' : 'Ver más'}
+                          <span style={{ fontSize: 10 }}>{isExpanded ? '▲' : '▼'}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+              },
               // Mostrar columna de precio solo si NO es empresa de servicios técnicos
               ...(!isTechnicalBusiness ? [
                 { 
@@ -338,41 +431,6 @@ export default function Services() {
                 }
               ]),
               { key: 'durationMin', label: 'Duración', render: v => `${v} min` },
-              // Solo mostrar columna de tipo si NO es empresa de servicios técnicos
-              ...(!isTechnicalBusiness ? [
-                { 
-                  key: 'type', 
-                  label: 'Tipo', 
-                  render: (v, row) => (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {row.isTechnicalService && (
-                        <span style={{ 
-                          background: '#e0f2fe', 
-                          color: '#0369a1', 
-                          padding: '2px 8px', 
-                          borderRadius: 4, 
-                          fontSize: 11,
-                          fontWeight: 600
-                        }}>
-                          Técnico
-                        </span>
-                      )}
-                      {!row.hasEmployeeCommission && (
-                        <span style={{ 
-                          background: '#fef3c7', 
-                          color: '#92400e', 
-                          padding: '2px 8px', 
-                          borderRadius: 4, 
-                          fontSize: 11,
-                          fontWeight: 600
-                        }}>
-                          Sin comisión
-                        </span>
-                      )}
-                    </div>
-                  )
-                }
-              ] : [])
             ]}
             data={paginatedServices}
             actions={[
