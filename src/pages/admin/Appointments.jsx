@@ -386,16 +386,18 @@ export default function Appointments() {
     setTransferring(true);
     setTransferConflictError(null);
     try {
+      // Construir fecha con zona horaria Colombia explícita
+      const dateStr = new Date(selectedTransferAppointment.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       const payload = {
         newEmployeeId: transferEmployeeId,
-        newStartTime: transferSelectedSlot ? `${new Date(selectedTransferAppointment.startTime).toISOString().split('T')[0]}T${transferSelectedSlot}` : undefined
+        newStartTime: transferSelectedSlot ? `${dateStr}T${transferSelectedSlot}:00-05:00` : undefined
       };
 
       await api.patch(`/appointments/${selectedTransferAppointment.id}/transfer`, payload);
       
       setShowTransferModal(false);
       showStatus(transferSelectedSlot 
-        ? `Cita transferida a ${new Date(`${new Date(selectedTransferAppointment.startTime).toISOString().split('T')[0]}T${transferSelectedSlot}`).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}` 
+        ? `Cita transferida a ${transferSelectedSlot}` 
         : 'Cita transferida exitosamente'
       );
       loadAppointments();
