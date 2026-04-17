@@ -6,7 +6,7 @@ import AdminLayout from '../../components/AdminLayout';
 import {
   BarChart3, Download, FileText, Table2, RefreshCw,
   TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, FileSpreadsheet,
-  Clock, XCircle
+  Clock, XCircle, Car, MapPin, Wrench, Package
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -877,6 +877,55 @@ export default function Reports() {
     }
   };
 
+  // Función para descargar reporte de seguimiento de técnicos
+  const downloadTrackingReport = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      
+      // Datos de seguimiento
+      const trackingData = appointments
+        .filter(a => a.technicianStatus && a.technicianStatus !== 'not_started')
+        .sort((a, b) => new Date(b.travelStartTime || b.startTime) - new Date(a.travelStartTime || a.startTime))
+        .map(apt => ({
+          'Fecha Cita': new Date(apt.startTime).toLocaleString('es-CO', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          'Cliente': apt.clientName,
+          'Teléfono': apt.clientPhone,
+          'Servicio': apt.Service?.name || '-',
+          'Empleado': apt.Employee?.User?.name || '-',
+          'Estado': STATUS_LABELS[apt.status]?.label || apt.status,
+          '🚗 En Camino': apt.travelStartTime 
+            ? new Date(apt.travelStartTime).toLocaleString('es-CO', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })
+            : '-',
+          '📍 Llegada': apt.arrivalTime 
+            ? new Date(apt.arrivalTime).toLocaleString('es-CO', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })
+            : '-',
+          '🔧 Inicio Servicio': apt.serviceStartTime 
+            ? new Date(apt.serviceStartTime).toLocaleString('es-CO', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })
+            : '-',
+          '✅ Completado': apt.status === 'done' ? 'Sí' : 'No',
+          '❌ Cancelado': apt.status === 'cancelled' ? 'Sí' : 'No',
+          'Insumos': apt.workReport?.partsUsed?.map(p => `${p.name}: ${p.quantity} ${p.unit}`).join(', ') || '-',
+          'Diagnóstico': apt.workReport?.diagnosis || '-',
+          'Solución': apt.workReport?.solution || '-',
+        }));
+
+      const wsTracking = XLSX.utils.json_to_sheet(trackingData);
+      XLSX.utils.book_append_sheet(wb, wsTracking, 'Seguimiento Técnicos');
+
+      saveExcel(wb, `seguimiento-tecnicos-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      showToast('Reporte de seguimiento descargado', 'success');
+    } catch (error) {
+      console.error('Error generando reporte de seguimiento:', error);
+      showToast('Error al generar reporte', 'error');
+    }
+  };
+
   return (
     <AdminLayout title="Informes" subtitle="Análisis de actividad y finanzas">
       {/* Toast sutil */}
@@ -1472,7 +1521,7 @@ export default function Reports() {
             </div>
 
             <div className="reports-tabs-row" style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
-              {['overview', 'employees', 'services'].map(tab => (
+              {['overview', 'employees', 'services', ...(business?.hasFieldTechnicians ? ['tracking'] : [])].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -1485,6 +1534,7 @@ export default function Reports() {
                   {tab === 'overview' && 'Resumen'}
                   {tab === 'employees' && 'Por empleado'}
                   {tab === 'services' && 'Por servicio'}
+                  {tab === 'tracking' && '📍 Seguimiento'}
                 </button>
               ))}
             </div>
@@ -1600,6 +1650,298 @@ export default function Reports() {
                   </div>
                 ) : (
                   <p style={{ textAlign: 'center', color: '#a0aec0' }}>Sin datos para mostrar</p>
+                )}
+              </div>
+            )}
+
+            {/* TAB SEGUIMIENTO TÉCNICOS - Solo para negocios con técnicos de campo */}
+            {activeTab === 'tracking' && business?.hasFieldTechnicians && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>📍 Seguimiento de Técnicos</h3>
+                  <button
+                    onClick={downloadTrackingReport}
+                    className="btn-outline btn-sm"
+                    disabled={appointments.length === 0}
+                  >
+                    <Download size={16} /> Descargar Reporte
+                  </button>
+                </div>
+                
+                {appointments.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {appointments
+                      .filter(a => a.technicianStatus && a.technicianStatus !== 'not_started')
+                      .sort((a, b) => new Date(b.travelStartTime || b.startTime) - new Date(a.travelStartTime || a.startTime))
+                      .map(apt => (
+                      <div key={apt.id} style={{ 
+                        border: '1px solid var(--border)', 
+                        borderRadius: 12, 
+                        padding: 16,
+                        background: 'var(--surface)'
+                      }}>
+                        {/* Header de la cita */}
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'flex-start',
+                          marginBottom: 12,
+                          paddingBottom: 12,
+                          borderBottom: '1px solid var(--border)'
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                              {apt.clientName}
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                              {new Date(apt.startTime).toLocaleString('es-CO', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: STATUS_LABELS[apt.status]?.bg || '#f3f4f6',
+                              color: STATUS_LABELS[apt.status]?.color || '#374151',
+                            }}>
+                              {STATUS_LABELS[apt.status]?.label || apt.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Timeline de seguimiento */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {/* En Camino */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: apt.travelStartTime ? '#3b82f6' : '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <Car size={14} color="white" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                🚗 En Camino
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                {apt.travelStartTime 
+                                  ? new Date(apt.travelStartTime).toLocaleString('es-CO', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })
+                                  : 'No registrado'
+                                }
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Llegada */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: apt.arrivalTime ? '#06b6d4' : '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <MapPin size={14} color="white" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                📍 Llegada al Destino
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                {apt.arrivalTime 
+                                  ? new Date(apt.arrivalTime).toLocaleString('es-CO', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })
+                                  : 'No llegó aún'
+                                }
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Inicio Servicio */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: apt.serviceStartTime ? '#ec4899' : '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <Wrench size={14} color="white" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                🔧 Inicio del Servicio
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                {apt.serviceStartTime 
+                                  ? new Date(apt.serviceStartTime).toLocaleString('es-CO', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })
+                                  : 'No iniciado'
+                                }
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Completado */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: apt.status === 'done' ? '#10b981' : '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <CheckCircle size={14} color="white" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                ✅ Servicio Completado
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                {apt.status === 'done' ? 'Completada' : 'Pendiente'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Insumos utilizados */}
+                        {apt.workReport?.partsUsed && apt.workReport.partsUsed.length > 0 && (
+                          <div style={{ 
+                            marginTop: 16, 
+                            padding: 12, 
+                            background: 'var(--bg-secondary)', 
+                            borderRadius: 8 
+                          }}>
+                            <div style={{ 
+                              fontSize: 13, 
+                              fontWeight: 700, 
+                              color: 'var(--text)',
+                              marginBottom: 8,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6
+                            }}>
+                              <Package size={16} />
+                              Insumos Utilizados
+                            </div>
+                            <div style={{ display: 'grid', gap: 6 }}>
+                              {apt.workReport.partsUsed.map((part, idx) => (
+                                <div key={idx} style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between',
+                                  fontSize: 12,
+                                  color: 'var(--text-secondary)'
+                                }}>
+                                  <span>{part.name}</span>
+                                  <span style={{ fontWeight: 600 }}>
+                                    {part.quantity} {part.unit}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Diagnóstico */}
+                        {apt.workReport?.diagnosis && (
+                          <div style={{ 
+                            marginTop: 12, 
+                            padding: 12, 
+                            background: '#fef3c7', 
+                            borderRadius: 8,
+                            borderLeft: '3px solid #f59e0b'
+                          }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>
+                              📝 Diagnóstico
+                            </div>
+                            <div style={{ fontSize: 12, color: '#78350f' }}>
+                              {apt.workReport.diagnosis}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Solución */}
+                        {apt.workReport?.solution && (
+                          <div style={{ 
+                            marginTop: 8, 
+                            padding: 12, 
+                            background: '#d1fae5', 
+                            borderRadius: 8,
+                            borderLeft: '3px solid #10b981'
+                          }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#065f46', marginBottom: 4 }}>
+                              🔧 Solución Aplicada
+                            </div>
+                            <div style={{ fontSize: 12, color: '#14532d' }}>
+                              {apt.workReport.solution}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Cancelación */}
+                        {apt.status === 'cancelled' && (
+                          <div style={{ 
+                            marginTop: 12, 
+                            padding: 12, 
+                            background: '#fee2e2', 
+                            borderRadius: 8,
+                            borderLeft: '3px solid #ef4444'
+                          }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b' }}>
+                              ❌ CITA CANCELADA
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 40 }}>
+                    <Package size={40} color="#cbd5e1" />
+                    <p style={{ color: '#94a3b8', marginTop: 12 }}>
+                      No hay citas con seguimiento de técnico en este período
+                    </p>
+                  </div>
                 )}
               </div>
             )}

@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
   MessageCircle, RefreshCw, Smartphone, Tag, UserCircle,
-  TrendingDown, Package, PiggyBank
+  TrendingDown, Package, PiggyBank, CalendarDays, CalendarX
 } from 'lucide-react';
 
 // Función para obtener items de navegación según módulos habilitados
@@ -22,6 +22,7 @@ const getNavItems = (business) => {
       section: 'Principal',
       items: [
         { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
+        ...(business?.hasFieldTechnicians ? [{ to: '/admin/agenda', icon: CalendarDays, label: 'Agenda' }] : []),
         { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
         { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
         { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
@@ -34,6 +35,7 @@ const getNavItems = (business) => {
         { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
         { to: '/admin/employees', icon: Users,    label: 'Empleados' },
         { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
+        { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
         { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
       ]
     },

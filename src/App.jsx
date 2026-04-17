@@ -18,6 +18,7 @@ import MyBusiness   from './pages/admin/MyBusiness';
 import Services     from './pages/admin/Services';
 import Employees    from './pages/admin/Employees';
 import Schedule     from './pages/admin/Schedule';
+import SpecialSchedule from './pages/admin/SpecialSchedule';
 import Appointments from './pages/admin/Appointments';
 import Promotions   from './pages/admin/Promotions';
 import Ratings      from './pages/admin/Ratings';
@@ -28,6 +29,7 @@ import Clients      from './pages/admin/Clients';
 import Expenses     from './pages/admin/Expenses';
 import Inventory    from './pages/admin/Inventory';
 import Deposits     from './pages/admin/Deposits';
+import Agenda       from './pages/admin/Agenda';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import EmployeeCommissions from './pages/employee/EmployeeCommissions';
 import EmployeeProfile from './pages/employee/EmployeeProfile';
@@ -180,6 +182,7 @@ export default function App() {
             <Route path="services"     element={<Services />} />
             <Route path="employees"    element={<Employees />} />
             <Route path="schedule"     element={<Schedule />} />
+            <Route path="special-schedules" element={<SpecialSchedule />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="promotions"   element={<Promotions />} />
             <Route path="ratings"      element={<Ratings />} />
@@ -190,6 +193,7 @@ export default function App() {
             <Route path="expenses"     element={<Expenses />} />
             <Route path="inventory"    element={<Inventory />} />
             <Route path="deposits"     element={<Deposits />} />
+            <Route path="agenda"       element={<Agenda />} />
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>

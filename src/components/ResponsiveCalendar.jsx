@@ -50,27 +50,7 @@ export default function ResponsiveCalendar({
     const isInDisabled = disabledDates.includes(dateStr);
     const isBeforeMin = minDate && date < minDate;
     const isAfterMax = maxDate && date > maxDate;
-    
-    // DEBUG: Verificar comparación de fechas
-    const dayNum = date.getDate();
-    if (dayNum <= 5 || isInDisabled || isBeforeMin || isAfterMax) {
-      console.log('[ResponsiveCalendar DEBUG]', {
-        day: dayNum,
-        date: dateStr,
-        dateObj: date.toISOString(),
-        minDate: minDate?.toISOString(),
-        maxDate: maxDate?.toISOString(),
-        isBeforeMin,
-        isAfterMax,
-        isInDisabled,
-        disabledDates
-      });
-    }
-    
-    if (isInDisabled) return true;
-    if (isBeforeMin) return true;
-    if (isAfterMax) return true;
-    return false;
+    return isInDisabled || isBeforeMin || isAfterMax;
   };
 
   const isDateSelected = (date) => {

@@ -316,10 +316,24 @@ export default function Appointments() {
       });
 
       let slots = res.data.availableSlots || [];
+      console.log('[loadAvailableSlots] Slots recibidos del backend:', slots.length);
+      
+      // Eliminar duplicados (misma hora)
+      const seenTimes = new Set();
+      slots = slots.filter(slot => {
+        if (seenTimes.has(slot.time)) {
+          return false;
+        }
+        seenTimes.add(slot.time);
+        return true;
+      });
+      console.log('[loadAvailableSlots] Slots únicos después de eliminar duplicados:', slots.length);
       
       // Solo filtramos si es hoy para no mostrar horas pasadas
       if (date === todayStr) {
+        const beforeFilter = slots.length;
         slots = slots.filter(slot => slot.time >= nowTimeStr);
+        console.log(`[loadAvailableSlots] Filtrados ${beforeFilter - slots.length} slots pasados. Quedan: ${slots.length}`);
       }
       
       setAvailableSlots(slots);
@@ -1547,7 +1561,7 @@ export default function Appointments() {
             {selectedDateModal && createForm.employeeId && createForm.serviceId && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
-                  ⏰ Horarios disponibles ({availableSlots.length})
+                  ⏰ Horarios disponibles
                 </label>
                 <div style={{ 
                   display: 'grid', 
@@ -1563,7 +1577,7 @@ export default function Appointments() {
                   {availableSlots.length > 0 ? (
                     availableSlots.map((slot, index) => (
                       <button
-                        key={index}
+                        key={`${slot.time}-${index}`}
                         type="button"
                         onClick={() => {
                           setCreateForm({...createForm, startTime: slot.startTime});
