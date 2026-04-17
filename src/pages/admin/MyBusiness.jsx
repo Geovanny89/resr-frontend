@@ -33,6 +33,7 @@ const TABS = [
   { id: 'mission-vision', icon: Store, label: 'Mision y Vision' },
   { id: 'design',  icon: Palette, label: 'Diseno' },
   { id: 'hours',   icon: Clock,   label: 'Horarios' },
+  { id: 'modules', icon: Store,   label: 'Modulos' },
 ];
 
 export default function MyBusiness() {
@@ -56,6 +57,9 @@ export default function MyBusiness() {
   const [branchScreenshot, setBranchScreenshot] = useState(null);
   const [submittingBranch, setSubmittingBranch] = useState(false);
   const [showWhatsAppReconnect, setShowWhatsAppReconnect] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState(null);
+  const MAX_GALLERY_IMAGES = 20;
   const logoRef    = useRef();
   const bannerRef  = useRef();
   const galleryRef = useRef();
@@ -107,6 +111,7 @@ export default function MyBusiness() {
         businessHours: biz.businessHours || '',
         metaDescription: biz.metaDescription || '',
         isTechnicalServices: biz.isTechnicalServices || false,
+        hasFieldTechnicians: biz.hasFieldTechnicians || false,
         whatsapp: biz.whatsapp || '',
         whatsappCatalog: biz.whatsappCatalog || '',
         instagram: biz.instagram || '',
@@ -126,6 +131,15 @@ export default function MyBusiness() {
         showMissionVision: biz.showMissionVision || false,
         useParentWhatsApp: biz.useParentWhatsApp !== undefined ? biz.useParentWhatsApp : true,
         googleMapsUrl: biz.googleMapsUrl || '',
+        enabledModules: biz.enabledModules || { expenses: false, inventory: false, deposits: false },
+        depositConfig: biz.depositConfig || {
+          required: false,
+          amount: 0,
+          percentage: 30,
+          cancelationHours: 24,
+          penaltyEnabled: true,
+          termsText: 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'
+        }
       });
     } catch(e) {
       if (e.response?.status !== 404) {
@@ -254,6 +268,22 @@ export default function MyBusiness() {
 
   const handleGalleryUpload = async (files) => {
     if (!files || files.length === 0) return;
+    
+    // Verificar límite de 20 fotos
+    const currentCount = gallery.length;
+    const newCount = currentCount + files.length;
+    
+    if (currentCount >= MAX_GALLERY_IMAGES) {
+      showToast(`Solo puedes subir ${MAX_GALLERY_IMAGES} fotos. Elimina algunas para subir más.`, 'error');
+      return;
+    }
+    
+    if (newCount > MAX_GALLERY_IMAGES) {
+      const allowed = MAX_GALLERY_IMAGES - currentCount;
+      showToast(`Solo puedes subir ${allowed} foto(s) más. Límite: ${MAX_GALLERY_IMAGES} fotos.`, 'error');
+      return;
+    }
+    
     setUploadingGallery(true);
     try {
       const fd = new FormData();
@@ -268,14 +298,22 @@ export default function MyBusiness() {
     }
   };
 
-  const handleRemoveGalleryImage = async (url) => {
-    if (!confirm('Eliminar esta imagen de la galeria?')) return;
+  const handleRemoveGalleryImage = (url) => {
+    setImageToDelete(url);
+    setShowDeleteConfirm(true);
+  };
+  
+  const confirmDeleteImage = async () => {
+    if (!imageToDelete) return;
     try {
-      await api.delete('/upload/gallery/remove', { data: { url } });
-      setGallery(g => g.filter(u => u !== url));
-      showToast('Imagen eliminada');
+      await api.delete('/upload/gallery/remove', { data: { url: imageToDelete } });
+      setGallery(g => g.filter(u => u !== imageToDelete));
+      showToast('Imagen eliminada correctamente');
     } catch(e) {
       showToast('Error al eliminar imagen', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
+      setImageToDelete(null);
     }
   };
 
@@ -485,9 +523,26 @@ export default function MyBusiness() {
                         style={{ width: 20, height: 20, cursor: 'pointer' }}
                       />
                       <div>
-                        <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15 }}>Empresa de Servicios Técnicos</div>
+                        <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15 }}>Empresa de Servicios Especializados</div>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, marginTop: 4 }}>
-                          Activa esta opción si tu negocio es de soporte técnico, reparaciones o revisiones. Esto ocultará los precios de los servicios y permitirá cotizar en sitio.
+                          Activa esta opción si tu negocio es de  servicios epecializados, soporte técnico, reparaciones o revisiones. Esto ocultará los precios de los servicios y permitirá cotizar en sitio.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: '1/-1', marginTop: 10, padding: 20, background: 'rgba(245, 158, 11, 0.05)', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={form.hasFieldTechnicians} 
+                        onChange={e => setForm({ ...form, hasFieldTechnicians: e.target.checked })}
+                        style={{ width: 20, height: 20, cursor: 'pointer' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#f59e0b', fontSize: 15 }}>🔧 Técnicos a Domicilio (Seguimiento en Campo)</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, marginTop: 4 }}>
+                          Activa esta opción si envías técnicos a domicilio. Deshabilita recordatorios WhatsApp (el técnico los recibe por la app), habilita botones de seguimiento "En Camino", "Llegué", registro de insumos y reporte técnico.
                         </div>
                       </div>
                     </label>
@@ -987,6 +1042,289 @@ export default function MyBusiness() {
                 </button>
               </div>
             )}
+
+            {/* TAB: Modulos */}
+            {tab === 'modules' && (
+              <div className="card">
+                <h3 style={{fontSize:16,fontWeight:700,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
+                  <Store size={18} style={{color:'var(--primary)'}}/> Modulos Opcionales
+                </h3>
+                <p style={{fontSize:13,color:'var(--text-muted)',marginBottom:20}}>
+                  Activa o desactiva los modulos adicionales segun las necesidades de tu negocio.
+                </p>
+
+                <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                  {/* Gastos */}
+                  <div style={{
+                    display:'flex',alignItems:'center',justifyContent:'space-between',
+                    padding:16,background:'var(--bg-secondary)',borderRadius:12,
+                    border:'1px solid var(--border)'
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{
+                        width:44,height:44,borderRadius:10,background:'#fef2f2',
+                        display:'flex',alignItems:'center',justifyContent:'center'
+                      }}>
+                        <span style={{fontSize:20}}>📉</span>
+                      </div>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:15}}>Gastos / Egresos</div>
+                        <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>
+                          Registra arriendo, servicios, insumos, nomina y otros gastos
+                        </div>
+                      </div>
+                    </div>
+                    <label style={{
+                      position:'relative',display:'inline-block',width:50,height:26,
+                      cursor:'pointer'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={form.enabledModules?.expenses || false}
+                        onChange={(e) => setForm({
+                          ...form,
+                          enabledModules: {...form.enabledModules, expenses: e.target.checked}
+                        })}
+                        style={{opacity:0,width:0,height:0}}
+                      />
+                      <span style={{
+                        position:'absolute',cursor:'pointer',top:0,left:0,right:0,bottom:0,
+                        backgroundColor: form.enabledModules?.expenses ? '#10b981' : '#d1d5db',
+                        borderRadius:26,transition:'0.4s'
+                      }}/>
+                      <span style={{
+                        position:'absolute',content:'""',height:20,width:20,left:3,bottom:3,
+                        backgroundColor:'white',borderRadius:'50%',transition:'0.4s',
+                        transform: form.enabledModules?.expenses ? 'translateX(24px)' : 'translateX(0)'
+                      }}/>
+                    </label>
+                  </div>
+
+                  {/* Insumos */}
+                  <div style={{
+                    display:'flex',alignItems:'center',justifyContent:'space-between',
+                    padding:16,background:'var(--bg-secondary)',borderRadius:12,
+                    border:'1px solid var(--border)'
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{
+                        width:44,height:44,borderRadius:10,background:'#eff6ff',
+                        display:'flex',alignItems:'center',justifyContent:'center'
+                      }}>
+                        <span style={{fontSize:20}}>📦</span>
+                      </div>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:15}}>Control de Insumos</div>
+                        <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>
+                          Gestiona materiales, stock y registro de consumo (no es para ventas)
+                        </div>
+                      </div>
+                    </div>
+                    <label style={{
+                      position:'relative',display:'inline-block',width:50,height:26,
+                      cursor:'pointer'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={form.enabledModules?.inventory || false}
+                        onChange={(e) => setForm({
+                          ...form,
+                          enabledModules: {...form.enabledModules, inventory: e.target.checked}
+                        })}
+                        style={{opacity:0,width:0,height:0}}
+                      />
+                      <span style={{
+                        position:'absolute',cursor:'pointer',top:0,left:0,right:0,bottom:0,
+                        backgroundColor: form.enabledModules?.inventory ? '#10b981' : '#d1d5db',
+                        borderRadius:26,transition:'0.4s'
+                      }}/>
+                      <span style={{
+                        position:'absolute',content:'""',height:20,width:20,left:3,bottom:3,
+                        backgroundColor:'white',borderRadius:'50%',transition:'0.4s',
+                        transform: form.enabledModules?.inventory ? 'translateX(24px)' : 'translateX(0)'
+                      }}/>
+                    </label>
+                  </div>
+
+                  {/* Depositos / Anticipos */}
+                  <div style={{
+                    padding:16,background:'var(--bg-secondary)',borderRadius:12,
+                    border:'1px solid var(--border)'
+                  }}>
+                    {/* Header del módulo */}
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom: form.enabledModules?.deposits ? 16 : 0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:12}}>
+                        <div style={{
+                          width:44,height:44,borderRadius:10,background:'#fff7ed',
+                          display:'flex',alignItems:'center',justifyContent:'center'
+                        }}>
+                          <span style={{fontSize:20}}>🏦</span>
+                        </div>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:15}}>Depositos / Anticipos</div>
+                          <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>
+                            Gestiona anticipos de clientes para reducir citas fantasma
+                          </div>
+                        </div>
+                      </div>
+                      <label style={{
+                        position:'relative',display:'inline-block',width:50,height:26,
+                        cursor:'pointer'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={form.enabledModules?.deposits || false}
+                          onChange={(e) => setForm({
+                            ...form,
+                            enabledModules: {...form.enabledModules, deposits: e.target.checked}
+                          })}
+                          style={{opacity:0,width:0,height:0}}
+                        />
+                        <span style={{
+                          position:'absolute',cursor:'pointer',top:0,left:0,right:0,bottom:0,
+                          backgroundColor: form.enabledModules?.deposits ? '#10b981' : '#d1d5db',
+                          borderRadius:26,transition:'0.4s'
+                        }}/>
+                        <span style={{
+                          position:'absolute',content:'""',height:20,width:20,left:3,bottom:3,
+                          backgroundColor:'white',borderRadius:'50%',transition:'0.4s',
+                          transform: form.enabledModules?.deposits ? 'translateX(24px)' : 'translateX(0)'
+                        }}/>
+                      </label>
+                    </div>
+
+                    {/* Configuración de anticipos (solo si está habilitado) */}
+                    {form.enabledModules?.deposits && (
+                      <div style={{borderTop:'1px solid var(--border)',paddingTop:16}}>
+                        <div style={{fontWeight:600,fontSize:14,marginBottom:12,color:'var(--primary)'}}>
+                          ⚙️ Configuración de Anticipos
+                        </div>
+
+                        {/* Anticipo obligatorio */}
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                          <label style={{fontSize:13,fontWeight:500}}>
+                            🔒 Anticipo obligatorio para agendar
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={form.depositConfig?.required || false}
+                            onChange={(e) => setForm({
+                              ...form,
+                              depositConfig: {...(form.depositConfig || {}), required: e.target.checked}
+                            })}
+                            style={{width:18,height:18,cursor:'pointer'}}
+                          />
+                        </div>
+
+                        {/* Monto del anticipo */}
+                        <div style={{display:'flex',gap:12,marginBottom:12}}>
+                          <div style={{flex:1}}>
+                            <label style={{display:'block',fontSize:12,color:'var(--text-muted)',marginBottom:4}}>
+                              💰 Monto fijo ($)
+                            </label>
+                            <input
+                              type="number"
+                              value={form.depositConfig?.amount || 0}
+                              onChange={(e) => setForm({
+                                ...form,
+                                depositConfig: {...(form.depositConfig || {}), amount: parseInt(e.target.value) || 0}
+                              })}
+                              placeholder="Ej: 20000"
+                              style={{
+                                width:'100%',padding:'8px 12px',borderRadius:8,border:'1px solid var(--border)',
+                                fontSize:13,background:'var(--bg)',color:'var(--text)'
+                              }}
+                            />
+                          </div>
+                          <div style={{flex:1}}>
+                            <label style={{display:'block',fontSize:12,color:'var(--text-muted)',marginBottom:4}}>
+                              📊 O porcentaje (%)
+                            </label>
+                            <input
+                              type="number"
+                              value={form.depositConfig?.percentage ?? 30}
+                              onChange={(e) => setForm({
+                                ...form,
+                                depositConfig: {...(form.depositConfig || {}), percentage: parseInt(e.target.value) ?? 30}
+                              })}
+                              placeholder="Ej: 30"
+                              min="0"
+                              max="100"
+                              style={{
+                                width:'100%',padding:'8px 12px',borderRadius:8,border:'1px solid var(--border)',
+                                fontSize:13,background:'var(--bg)',color:'var(--text)'
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:16,marginTop:-8}}>
+                          💡 Si dejas el monto en $0, se calculará el porcentaje sobre el precio del servicio
+                        </div>
+
+                        {/* Horas para cancelar */}
+                        <div style={{marginBottom:12}}>
+                          <label style={{display:'block',fontSize:12,color:'var(--text-muted)',marginBottom:4}}>
+                            ⏰ Horas antes para cancelar sin penalidad
+                          </label>
+                          <input
+                            type="number"
+                            value={form.depositConfig?.cancelationHours || 24}
+                            onChange={(e) => setForm({
+                              ...form,
+                              depositConfig: {...(form.depositConfig || {}), cancelationHours: parseInt(e.target.value) || 0}
+                            })}
+                            placeholder="Ej: 24"
+                            style={{
+                              width:'100%',padding:'8px 12px',borderRadius:8,border:'1px solid var(--border)',
+                              fontSize:13,background:'var(--bg)',color:'var(--text)'
+                            }}
+                          />
+                        </div>
+
+                        {/* Penalidad habilitada */}
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                          <label style={{fontSize:13,fontWeight:500}}>
+                            ⚠️ Penalidad por no asistir / cancelar tarde
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={form.depositConfig?.penaltyEnabled !== false}
+                            onChange={(e) => setForm({
+                              ...form,
+                              depositConfig: {...(form.depositConfig || {}), penaltyEnabled: e.target.checked}
+                            })}
+                            style={{width:18,height:18,cursor:'pointer'}}
+                          />
+                        </div>
+
+                        {/* Texto de términos */}
+                        <div style={{marginBottom:8}}>
+                          <label style={{display:'block',fontSize:12,color:'var(--text-muted)',marginBottom:4}}>
+                            📝 Términos y condiciones (que verá el cliente)
+                          </label>
+                          <textarea
+                            value={form.depositConfig?.termsText || 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'}
+                            onChange={(e) => setForm({
+                              ...form,
+                              depositConfig: {...(form.depositConfig || {}), termsText: e.target.value}
+                            })}
+                            rows={3}
+                            style={{
+                              width:'100%',padding:'8px 12px',borderRadius:8,border:'1px solid var(--border)',
+                              fontSize:13,background:'var(--bg)',color:'var(--text)',resize:'vertical'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={saving} style={{marginTop:24}}>
+                  {saving ? 'Guardando...' : '💾 Guardar configuracion'}
+                </button>
+              </div>
+            )}
           </form>
         </div>
 
@@ -1065,6 +1403,92 @@ export default function MyBusiness() {
         </div>
       </div>
 
+      {showDeleteConfirm && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.6)', 
+            zIndex: 2000, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: 20,
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="card" 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              maxWidth: 400, 
+              width: '100%', 
+              textAlign: 'center',
+              padding: '32px 28px',
+              borderRadius: 20,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              animation: 'modalSlideUp 0.3s ease'
+            }}
+          >
+            <div 
+              style={{ 
+                width: 64, 
+                height: 64, 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #f56565 0%, #e53e3e 100%)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '0 auto 20px',
+                boxShadow: '0 10px 25px rgba(245, 101, 101, 0.4)'
+              }}
+            >
+              <Trash2 size={28} color="white" />
+            </div>
+            
+            <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 12px 0', color: 'var(--text-primary)' }}>
+              ¿Eliminar esta imagen?
+            </h3>
+            
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 28px 0', lineHeight: 1.5 }}>
+              Esta acción no se puede deshacer. La imagen se eliminará permanentemente de tu galería.
+            </p>
+            
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                style={{ flex: 1, padding: '12px 20px', borderRadius: 12, fontWeight: 600 }}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                style={{ 
+                  flex: 1, 
+                  padding: '12px 20px', 
+                  borderRadius: 12, 
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #f56565 0%, #e53e3e 100%)',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 15px rgba(245, 101, 101, 0.4)',
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={confirmDeleteImage}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showBranchModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div className="card" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1100,7 +1524,7 @@ export default function MyBusiness() {
                     onChange={e => setBranchForm({ ...branchForm, isTechnicalServices: e.target.checked })}
                     style={{ width: 18, height: 18 }}
                   />
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Es empresa de servicios técnicos</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Es empresa de servicios Especializados</span>
                 </label>
               </div>
 

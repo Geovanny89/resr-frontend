@@ -76,7 +76,9 @@ export default function ResponsiveForm({
               {field.required && <span style={{ color: 'var(--danger)' }}> *</span>}
             </label>
 
-            {field.type === 'textarea' ? (
+            {field.type === 'custom' && field.render ? (
+              field.render()
+            ) : field.type === 'textarea' ? (
               <textarea
                 name={field.name}
                 value={field.value || ''}

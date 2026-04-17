@@ -340,31 +340,38 @@ function MonthYearPicker({ value, onChange, onClose }) {
 export default function Payments() {
   const { business } = useAuth();
   
-  // Bloquear vista si es empresa de servicios técnicos
-  if (business?.isTechnicalServices) {
+  // Bloquear vista si es empresa de servicios técnicos o técnicos de campo
+  if (business?.isTechnicalServices || business?.hasFieldTechnicians) {
+    const modeText = business?.hasFieldTechnicians ? 'Técnicos a Domicilio' : 'Servicios Técnicos';
+    const modeIcon = business?.hasFieldTechnicians ? '🏠' : '🔧';
+    
     return (
       <AdminLayout title="Pagos" subtitle="Gestión de comisiones">
         <div className="card" style={{ 
           textAlign: 'center', 
-          padding: '60px 20px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '60vh'
+          padding: '60px 20px',
+          maxWidth: 600,
+          margin: '0 auto'
         }}>
-          <div style={{ fontSize: 64, marginBottom: 20 }}>🛠️</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>
-            Módulo no disponible
-          </h2>
-          <p style={{ 
-            color: 'var(--text-muted)', 
-            maxWidth: 450, 
-            margin: '0 auto 24px', 
-            lineHeight: 1.6,
-            fontSize: 15
+          <div style={{ 
+            width: 80, 
+            height: 80, 
+            borderRadius: '50%', 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            fontSize: 36
           }}>
-            Has configurado tu empresa como <strong>Servicios Técnicos</strong>. En este modo, el sistema no gestiona pagos ni comisiones por servicio, ya que las visitas se cotizan directamente en el sitio.
+            {modeIcon}
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, color: 'var(--text)' }}>
+            {modeText}
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+            Has configurado tu empresa como <strong>{modeText}</strong>. En este modo, el sistema no gestiona pagos ni comisiones por servicio.
+            {business?.hasFieldTechnicians && ' El seguimiento se realiza por citas atendidas, no por ingresos monetarios.'}
           </p>
           <Link to="/admin/business" className="btn-primary" style={{ padding: '12px 24px' }}>
             Cambiar configuración del negocio
@@ -454,7 +461,7 @@ export default function Payments() {
       console.log('PDF Base64 length:', pdfBase64?.length);
       console.log('PDF Base64 starts with:', pdfBase64?.substring(0, 50));
 
-      await api.post('/notifications/payment-summary', {
+      const response = await api.post('/notifications/payment-summary', {
         businessId: business.id,
         employeeName,
         month,
@@ -462,10 +469,19 @@ export default function Payments() {
         appointmentsCount: empData.appointments.length,
         pdfBase64, // Adjuntar PDF
       });
-      setEmailResult(p => ({ ...p, [employeeName]: 'sent' }));
-      setTimeout(() => setEmailResult(p => ({ ...p, [employeeName]: null })), 4000);
+      
+      // Manejar diferentes estados de respuesta
+      if (response.data.simulated) {
+        setEmailResult(p => ({ ...p, [employeeName]: 'simulated' }));
+      } else if (response.data.partial) {
+        setEmailResult(p => ({ ...p, [employeeName]: 'partial' }));
+      } else {
+        setEmailResult(p => ({ ...p, [employeeName]: 'sent' }));
+      }
+      setTimeout(() => setEmailResult(p => ({ ...p, [employeeName]: null })), 5000);
     } catch (e) {
-      setEmailResult(p => ({ ...p, [employeeName]: 'error' }));
+      const errorMsg = e.response?.data?.error || 'Error al enviar el email';
+      setEmailResult(p => ({ ...p, [employeeName]: `error: ${errorMsg}` }));
       setTimeout(() => setEmailResult(p => ({ ...p, [employeeName]: null })), 4000);
     } finally {
       setSendingEmail(p => ({ ...p, [employeeName]: false }));
@@ -974,12 +990,18 @@ export default function Payments() {
                         className="btn-outline btn-sm"
                         onClick={e => { e.stopPropagation(); sendPaymentEmail(emp.name); }}
                         disabled={sendingEmail[emp.name]}
-                        title="Enviar resumen por email"
+                        title={
+                          emailResult[emp.name] === 'partial' 
+                            ? 'Email enviado sin PDF adjunto (restricción del servidor)' 
+                            : 'Enviar resumen por email'
+                        }
                       >
                         <Mail size={14} />
                         {sendingEmail[emp.name] ? 'Enviando...' :
                           emailResult[emp.name] === 'sent' ? '✅ Enviado' :
-                          emailResult[emp.name] === 'error' ? '❌ Error' : 'Email'}
+                          emailResult[emp.name] === 'simulated' ? '⚠️ Simulado' :
+                          emailResult[emp.name] === 'partial' ? '✉️ Enviado (sin PDF)' :
+                          emailResult[emp.name]?.startsWith('error') ? '❌ Error' : 'Email'}
                       </button>
                       <ChevronDown
                         size={18}

@@ -25,7 +25,14 @@ import Reports      from './pages/admin/Reports';
 import Payments     from './pages/admin/Payments';
 import SubmitPayment from './pages/admin/SubmitPayment';
 import Clients      from './pages/admin/Clients';
+import Expenses     from './pages/admin/Expenses';
+import Inventory    from './pages/admin/Inventory';
+import Deposits     from './pages/admin/Deposits';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
+import EmployeeCommissions from './pages/employee/EmployeeCommissions';
+import EmployeeProfile from './pages/employee/EmployeeProfile';
+import EmployeeRatings from './pages/employee/EmployeeRatings';
+import EmployeeClients from './pages/employee/EmployeeClients';
 import Landing from './pages/Landing';
 import DownloadAPK from './pages/admin/DownloadAPK';
 import ChangePassword from './pages/admin/ChangePassword';
@@ -180,10 +187,17 @@ export default function App() {
             <Route path="payments"     element={<Payments />} />
             <Route path="submit-payment" element={<SubmitPayment />} />
             <Route path="clients"      element={<Clients />} />
+            <Route path="expenses"     element={<Expenses />} />
+            <Route path="inventory"    element={<Inventory />} />
+            <Route path="deposits"     element={<Deposits />} />
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
             <Route index element={<EmployeeDashboard />} />
+            <Route path="commissions" element={<EmployeeCommissions />} />
+            <Route path="profile" element={<EmployeeProfile />} />
+            <Route path="ratings" element={<EmployeeRatings />} />
+            <Route path="clients" element={<EmployeeClients />} />
           </Route>
           {/* ===== PANEL SUPER ADMIN (INDEPENDIENTE) ===== */}
           <Route path="/superadmin" element={<ProtectedRoute roles={['superadmin']} />}>

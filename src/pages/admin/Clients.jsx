@@ -51,6 +51,12 @@ export default function Clients() {
   const [editingTag, setEditingTag] = useState(null);
   const [tagForm, setTagForm] = useState({ name: '', color: TAG_COLORS[0], description: '' });
 
+  // Estado para editar cliente
+  const [showEditClient, setShowEditClient] = useState(false);
+  const [clientForEdit, setClientForEdit] = useState(null);
+  const [editClientForm, setEditClientForm] = useState({ name: '', phone: '', email: '' });
+  const [updatingClient, setUpdatingClient] = useState(false);
+
   const loadClients = async () => {
     setLoading(true);
     try {
@@ -139,6 +145,43 @@ export default function Clients() {
       }
     } catch (e) {
       console.error('Error removing tag:', e);
+    }
+  };
+
+  // Funciones para editar cliente
+  const openEditClient = (client) => {
+    setClientForEdit(client);
+    setEditClientForm({
+      name: client.name || '',
+      phone: client.phone || '',
+      email: client.email || ''
+    });
+    setShowEditClient(true);
+  };
+
+  const saveClientEdit = async (e) => {
+    e.preventDefault();
+    if (!clientForEdit) return;
+
+    setUpdatingClient(true);
+    try {
+      await api.put(`/appointments/clients?businessId=${business.id}`, {
+        originalPhone: clientForEdit.phone,
+        originalEmail: clientForEdit.email,
+        newName: editClientForm.name,
+        newPhone: editClientForm.phone,
+        newEmail: editClientForm.email
+      });
+
+      setShowEditClient(false);
+      setClientForEdit(null);
+      loadClients();
+      alert('Datos del cliente actualizados correctamente');
+    } catch (e) {
+      console.error('Error updating client:', e);
+      alert(e.response?.data?.error || 'Error al actualizar los datos del cliente');
+    } finally {
+      setUpdatingClient(false);
     }
   };
 
@@ -289,6 +332,14 @@ export default function Clients() {
           >
             <Tag size={14} />
             Etiquetas
+          </button>
+          <button
+            className="btn-outline btn-sm"
+            onClick={() => openEditClient(row)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Edit2 size={14} />
+            Editar
           </button>
         </div>
       )
@@ -1100,6 +1151,169 @@ export default function Clients() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar cliente */}
+      {showEditClient && clientForEdit && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowEditClient(false);
+            setClientForEdit(null);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20
+          }}
+        >
+          <div
+            className="modal"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 450, width: '100%' }}
+          >
+            <div style={{
+              padding: '20px 24px',
+              background: colors?.primary || '#667eea',
+              color: 'white',
+              borderRadius: '16px 16px 0 0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
+                  <Edit2 size={22} style={{ display: 'inline', marginRight: 10, verticalAlign: 'middle' }} />
+                  Editar Cliente
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditClient(false);
+                  setClientForEdit(null);
+                }}
+                className="btn-ghost btn-icon"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 36,
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={saveClientEdit} style={{ padding: 24 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={editClientForm.name}
+                  onChange={(e) => setEditClientForm({ ...editClientForm, name: e.target.value })}
+                  placeholder="Nombre del cliente"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    border: '2px solid var(--border)',
+                    fontSize: 15,
+                    background: 'var(--bg)',
+                    color: 'var(--text)'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  value={editClientForm.phone}
+                  onChange={(e) => setEditClientForm({ ...editClientForm, phone: e.target.value })}
+                  placeholder="Teléfono del cliente"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    border: '2px solid var(--border)',
+                    fontSize: 15,
+                    background: 'var(--bg)',
+                    color: 'var(--text)'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editClientForm.email}
+                  onChange={(e) => setEditClientForm({ ...editClientForm, email: e.target.value })}
+                  placeholder="Email del cliente"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    border: '2px solid var(--border)',
+                    fontSize: 15,
+                    background: 'var(--bg)',
+                    color: 'var(--text)'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={updatingClient}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8
+                  }}
+                >
+                  {updatingClient ? 'Guardando...' : '💾 Guardar Cambios'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowEditClient(false);
+                    setClientForEdit(null);
+                  }}
+                  style={{ padding: '12px 20px', borderRadius: 10 }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

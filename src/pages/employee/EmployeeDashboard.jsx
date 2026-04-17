@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import ThemeToggle from '../../components/ThemeToggle';
+import EmployeeLayout from '../../components/EmployeeLayout';
 import api from '../../api/client';
 import { Capacitor } from '@capacitor/core';
 import notificationService from '../../services/notificationService';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Timer, MessageSquare, Car, MapPin, Package, CheckCircle2, Play } from 'lucide-react';
 
 const STATUS_LABELS = { 
   pending: 'Pendiente', 
-  confirmed: 'Confirmada', 
+  confirmed: 'Confirmada',
+  on_the_way: 'En Camino',
+  arrived: 'Llegó',
   attention: 'En Atención', 
   done: 'Terminado', 
   cancelled: 'Cancelada' 
@@ -18,13 +20,15 @@ const STATUS_LABELS = {
 const STATUS_COLORS = { 
   pending: '#f6ad55', 
   confirmed: '#68d391', 
+  on_the_way: '#3b82f6',
+  arrived: '#06b6d4',
   attention: '#63b3ed', 
-  done: '#4fd1c5', 
-  cancelled: '#fc8181' 
+  done: '#48bb78',
+  cancelled: '#fc8181'
 };
 
 export default function EmployeeDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const [employee, setEmployee] = useState(null);
   const [business, setBusiness] = useState(null);
@@ -55,6 +59,31 @@ export default function EmployeeDashboard() {
     serviceId: ''
   });
   const [services, setServices] = useState([]);
+
+  // Estados para extender tiempo
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendingAppointment, setExtendingAppointment] = useState(null);
+  const [extendMinutes, setExtendMinutes] = useState(15);
+  const [savingExtend, setSavingExtend] = useState(false);
+  const [showExtendConfirm, setShowExtendConfirm] = useState(false);
+
+  // Estados para notas
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [notesAppointment, setNotesAppointment] = useState(null);
+  const [notes, setNotes] = useState([]);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
+
+  // Estados para seguimiento de técnicos de campo (flujo de insumos)
+  const [showInsumosModal, setShowInsumosModal] = useState(false);
+  const [insumosAppointment, setInsumosAppointment] = useState(null);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [selectedInsumos, setSelectedInsumos] = useState([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [savingInsumos, setSavingInsumos] = useState(false);
+  const [workNotes, setWorkNotes] = useState('');
+  const [statusMsg, setStatusMsg] = useState(null);
 
   useEffect(() => {
     loadEmployeeInfo();
@@ -162,10 +191,16 @@ export default function EmployeeDashboard() {
       return;
     }
     try {
-      await api.patch(`/appointments/${id}/status`, { status });
+      // Para técnicos de campo, usar endpoint específico para estados de seguimiento
+      const isTechnicianStatus = ['on_the_way', 'arrived', 'in_progress'].includes(status);
+      if (business?.hasFieldTechnicians && isTechnicianStatus) {
+        await api.patch(`/appointments/${id}/technician-status`, { status });
+      } else {
+        await api.patch(`/appointments/${id}/status`, { status });
+      }
       loadAppointments();
     } catch (e) {
-      alert('Error al actualizar el estado de la cita');
+      alert(e.response?.data?.error || 'Error al actualizar el estado de la cita');
     }
   };
 
@@ -253,8 +288,208 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleExtendConfirm = async () => {
+    if (!extendingAppointment || !extendMinutes) return;
+    
+    setSavingExtend(true);
+    try {
+      await api.patch(`/appointments/${extendingAppointment.id}/extend-time`, {
+        additionalMinutes: parseInt(extendMinutes)
+      });
+      
+      setShowExtendConfirm(false);
+      setShowExtendModal(false);
+      setExtendingAppointment(null);
+      setExtendMinutes(15);
+      loadAppointments();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al extender tiempo');
+    } finally {
+      setSavingExtend(false);
+    }
+  };
+
+  // Handlers para notas
+  const loadNotes = async (appointmentId) => {
+    setLoadingNotes(true);
+    try {
+      const res = await api.get(`/appointments/${appointmentId}/notes`);
+      setNotes(res.data || []);
+    } catch (e) {
+      console.error('Error loading notes:', e);
+      setNotes([]);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const handleOpenNotesModal = (appointment) => {
+    setNotesAppointment(appointment);
+    setNewNoteContent('');
+    loadNotes(appointment.id);
+    setShowNotesModal(true);
+  };
+
+  const handleAddNote = async () => {
+    if (!notesAppointment || !newNoteContent.trim()) return;
+    
+    setSavingNote(true);
+    try {
+      await api.post(`/appointments/${notesAppointment.id}/notes`, {
+        content: newNoteContent.trim()
+      });
+      setNewNoteContent('');
+      loadNotes(notesAppointment.id);
+    } catch (e) {
+      alert('Error al agregar nota');
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  // ============ HANDLERS PARA TÉCNICOS DE CAMPO ============
+
+  // Mostrar mensaje de estado
+  const showStatus = (text, type = 'success') => {
+    setStatusMsg({ text, type });
+    setTimeout(() => setStatusMsg(null), 3000);
+  };
+
+  // Cargar inventario para seleccionar insumos
+  const loadInventory = async () => {
+    if (!employee?.businessId) return;
+    setLoadingInventory(true);
+    try {
+      const res = await api.get('/inventory/items', { params: { businessId: employee.businessId } });
+      setInventoryItems(res.data || []);
+    } catch (e) {
+      console.error('Error loading inventory:', e);
+      setInventoryItems([]);
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  // Iniciar trabajo directamente sin modal (para técnicos de campo)
+  const handleStartWorkDirectly = async (appointment) => {
+    try {
+      // Cambiar estado a in_progress usando el endpoint de técnico
+      await api.patch(`/appointments/${appointment.id}/technician-status`, { status: 'in_progress' });
+      loadAppointments();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al iniciar trabajo');
+    }
+  };
+
+  // Abrir modal de insumos
+  const handleOpenInsumosModal = async (appointment) => {
+    setInsumosAppointment(appointment);
+    setSelectedInsumos([]);
+    setWorkNotes(appointment.workNotes || '');
+    await loadInventory();
+    setShowInsumosModal(true);
+  };
+
+  // Agregar insumo seleccionado
+  const handleAddInsumo = (itemId, quantity) => {
+    const item = inventoryItems.find(i => i.id === itemId);
+    if (!item || !quantity) return;
+    
+    setSelectedInsumos(prev => {
+      const existing = prev.find(i => i.itemId === itemId);
+      if (existing) {
+        return prev.map(i => i.itemId === itemId ? { ...i, quantity: parseFloat(quantity) } : i);
+      }
+      return [...prev, { itemId, quantity: parseFloat(quantity), name: item.name, unit: item.unit }];
+    });
+  };
+
+  // Remover insumo
+  const handleRemoveInsumo = (itemId) => {
+    setSelectedInsumos(prev => prev.filter(i => i.itemId !== itemId));
+  };
+
+  // Guardar insumos e iniciar trabajo
+  const handleSaveInsumosAndStart = async () => {
+    if (!insumosAppointment) return;
+    setSavingInsumos(true);
+    try {
+      // Guardar insumos usados
+      for (const insumo of selectedInsumos) {
+        await api.post('/inventory/usages', {
+          itemId: insumo.itemId,
+          quantity: insumo.quantity,
+          date: new Date().toISOString().split('T')[0],
+          notes: `Usado en cita #${insumosAppointment.id} - ${insumosAppointment.clientName || insumosAppointment.client}`,
+          businessId: employee.businessId,
+          appointmentId: insumosAppointment.id
+        });
+      }
+      
+      // Guardar notas del trabajo y cambiar estado a "en atención"
+      await api.patch(`/appointments/${insumosAppointment.id}/start-work`, {
+        workNotes: workNotes,
+        status: 'attention'
+      });
+      
+      showStatus('Insumos registrados y trabajo iniciado');
+      setShowInsumosModal(false);
+      setInsumosAppointment(null);
+      setSelectedInsumos([]);
+      setWorkNotes('');
+      loadAppointments();
+    } catch (e) {
+      showStatus(e.response?.data?.error || 'Error al guardar insumos', 'error');
+    } finally {
+      setSavingInsumos(false);
+    }
+  };
+
+  // Agregar insumo al reporte
+  const handleAddPart = (itemId, quantity) => {
+    const item = inventoryItems.find(i => i.id === itemId);
+    if (!item || quantity <= 0) return;
+    
+    setTechnicalReport(prev => ({
+      ...prev,
+      partsUsed: [...prev.partsUsed, {
+        itemId: item.id,
+        name: item.name,
+        quantity: parseFloat(quantity),
+        unit: item.unit
+      }]
+    }));
+  };
+
+  // Remover insumo del reporte
+  const handleRemovePart = (index) => {
+    setTechnicalReport(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Guardar reporte técnico
+  const handleSaveTechnicalReport = async () => {
+    if (!technicalReportAppointment) return;
+    
+    setSavingTechnicalReport(true);
+    try {
+      await api.post(`/appointments/${technicalReportAppointment.id}/technical-report`, {
+        diagnosis: technicalReport.diagnosis,
+        solution: technicalReport.solution,
+        recommendations: technicalReport.recommendations,
+        partsUsed: technicalReport.partsUsed
+      });
+      
+      loadAppointments();
+      setShowTechnicalReportModal(false);
+      setTechnicalReportAppointment(null);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al guardar reporte');
+    } finally {
+      setSavingTechnicalReport(false);
+    }
   };
 
   const getImgUrl = (url) => {
@@ -290,116 +525,14 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg }}>
-      {/* Header */}
-      <div className="employee-header" style={{
-        background: colors.gradient,
-        color: 'white',
-        padding: '16px'
-      }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div className="employee-header-content" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 12
-          }}>
-            {/* Logo y nombre del negocio */}
-            <div className="employee-brand" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-              {business?.logoUrl ? (
-                <img 
-                  src={getImgUrl(business.logoUrl)} 
-                  alt={business?.name}
-                  className="employee-logo"
-                  style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}
-                />
-              ) : (
-                <div className="employee-logo" style={{ 
-                  width: 44, 
-                  height: 44, 
-                  borderRadius: '50%', 
-                  background: 'rgba(255,255,255,0.2)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontSize: 16,
-                  fontWeight: 700,
-                  flexShrink: 0
-                }}>
-                  {getInitials(business?.name)}
-                </div>
-              )}
-              <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                <h1 className="employee-business-name" style={{ fontSize: 18, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {business?.name || 'Negocio'}
-                </h1>
-                <p className="employee-employee-name" style={{ opacity: 0.9, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {employee?.User?.name} • {business?.type || 'Empleado'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="employee-header-buttons" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-              <ThemeToggle />
-              <button
-                onClick={() => setShowChangePwModal(true)}
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Cambiar Clave
-              </button>
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Salir
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <EmployeeLayout>
       {/* Contenido */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
+      <div>
         <style>{`
           @media (max-width: 640px) {
-            .employee-header { padding: 12px !important; }
-            .employee-header-content { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
-            .employee-brand { width: 100%; }
-            .employee-business-name { font-size: 16px !important; }
-            .employee-employee-name { font-size: 11px !important; }
-            .employee-logo { width: 36px !important; height: 36px !important; font-size: 14px !important; }
-            .employee-header-buttons { width: 100%; justify-content: center; gap: 6px; }
-            .employee-header-buttons button { font-size: 12px !important; padding: 6px 10px !important; flex: 1; }
             .employee-appointment-card { padding: 16px !important; }
             .employee-appointment-actions { flex-direction: column; }
             .employee-appointment-actions button { width: 100%; justify-content: center; }
-          }
-          @media (max-width: 480px) {
-            .employee-business-name { font-size: 15px !important; max-width: 200px; }
-            .employee-employee-name { font-size: 10px !important; }
-            .employee-logo { width: 32px !important; height: 32px !important; }
           }
         `}</style>
         
@@ -469,30 +602,32 @@ export default function EmployeeDashboard() {
             />
           </div>
 
-          <button
-            onClick={() => setShowExpressModal(true)}
-            style={{
-              flex: 1,
-              minWidth: 150,
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              borderRadius: 12,
-              padding: '20px',
-              fontSize: 16,
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8
-            }}
-          >
-            <div style={{ fontSize: 24 }}>⚡</div>
-            Cita Express
-          </button>
+          {!business?.hasFieldTechnicians && (
+            <button
+              onClick={() => setShowExpressModal(true)}
+              style={{
+                flex: 1,
+                minWidth: 150,
+                background: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: 12,
+                padding: '20px',
+                fontSize: 16,
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8
+              }}
+            >
+              <div style={{ fontSize: 24 }}>⚡</div>
+              Cita Express
+            </button>
+          )}
         </div>
 
         {/* Citas del día */}
@@ -604,39 +739,144 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
 
+                    {/* Indicador de estado del técnico (solo para negocios con técnicos de campo) */}
+                    {business?.hasFieldTechnicians && apt.technicianStatus && apt.technicianStatus !== 'not_started' && (
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 8, 
+                        padding: '8px 12px', 
+                        background: apt.technicianStatus === 'on_the_way' ? '#fef3c7' : apt.technicianStatus === 'arrived' ? '#dbeafe' : '#d1fae5',
+                        borderRadius: 8,
+                        marginBottom: 12,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: apt.technicianStatus === 'on_the_way' ? '#92400e' : apt.technicianStatus === 'arrived' ? '#1e40af' : '#065f46'
+                      }}>
+                        {apt.technicianStatus === 'on_the_way' && '🚗 En Camino'}
+                        {apt.technicianStatus === 'arrived' && '📍 Llegó al Destino'}
+                        {apt.technicianStatus === 'in_progress' && '🔧 En Atención'}
+                        {apt.travelStartTime && apt.technicianStatus === 'on_the_way' && (
+                          <span style={{ fontWeight: 400, marginLeft: 8 }}>
+                            (Salió: {new Date(apt.travelStartTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        )}
+                        {apt.arrivalTime && apt.technicianStatus === 'arrived' && (
+                          <span style={{ fontWeight: 400, marginLeft: 8 }}>
+                            (Llegó: {new Date(apt.arrivalTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div className="employee-appointment-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
-                      {apt.status === 'pending' && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'confirmed')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, flex: 1, minWidth: 100 }}>
-                          Confirmar
-                        </button>
-                      )}
-                      {apt.status === 'confirmed' && (
+                      {/* ========== UI PARA TÉCNICOS DE CAMPO ========== */}
+                      {business?.hasFieldTechnicians ? (
                         <>
-                          <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
-                            Iniciar Atención
-                          </button>
-                          <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
-                            Completar
-                          </button>
-                          <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
-                            Adicional
-                          </button>
+                          {/* Flujo estricto: confirmed → on_the_way → arrived → attention → done */}
+                          {/* Botón En Camino - solo si está confirmada y no ha iniciado viaje */}
+                          {apt.status === 'confirmed' && (!apt.technicianStatus || apt.technicianStatus === 'not_started') && (
+                            <button
+                              onClick={() => handleStatusUpdate(apt.id, 'on_the_way')}
+                              style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            >
+                              <Car size={14} /> En Camino
+                            </button>
+                          )}
+                          {/* Botón Llegué - cuando está en camino */}
+                          {apt.technicianStatus === 'on_the_way' && (
+                            <button
+                              onClick={() => handleStatusUpdate(apt.id, 'arrived')}
+                              style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#06b6d4', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            >
+                              <MapPin size={14} /> Llegué
+                            </button>
+                          )}
+                          {/* Botones cuando llegó al destino: Iniciar Trabajo e Insumos lado a lado */}
+                          {apt.technicianStatus === 'arrived' && apt.status !== 'attention' && (
+                            <>
+                              <button
+                                onClick={() => handleStartWorkDirectly(apt)}
+                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#8b5cf6', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                              >
+                                <Play size={14} /> Iniciar Trabajo
+                              </button>
+                              <button
+                                onClick={() => handleOpenInsumosModal(apt)}
+                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#f59e0b', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                              >
+                                <Package size={14} /> Insumos
+                              </button>
+                            </>
+                          )}
+                          {apt.status === 'attention' && (
+                            <>
+                              <button
+                                onClick={() => handleOpenInsumosModal(apt)}
+                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#f59e0b', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                              >
+                                <Package size={14} /> Insumos
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(apt.id, 'done', apt)}
+                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                              >
+                                <CheckCircle2 size={14} /> Completar
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* Botón Cancelar siempre disponibles para técnicos de campo */}
+                          {(apt.status === 'confirmed' || apt.status === 'attention') && (
+                            <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                              Cancelar
+                            </button>
+                          )}
                         </>
-                      )}
-                      {apt.status === 'attention' && (
+                      ) : (
                         <>
-                          <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
-                            Terminar
+                          {/* ========== UI NORMAL (NO TÉCNICOS DE CAMPO) ========== */}
+                          {apt.status === 'pending' && (
+                            <button onClick={() => handleStatusUpdate(apt.id, 'confirmed')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, flex: 1, minWidth: 100 }}>
+                              Confirmar
+                            </button>
+                          )}
+                          {apt.status === 'confirmed' && (
+                            <>
+                              <button onClick={() => handleStatusUpdate(apt.id, 'attention')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.attention, flex: 1, minWidth: 100 }}>
+                                Iniciar Atención
+                              </button>
+                              <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
+                                Completar
+                              </button>
+                              <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                                Adicional
+                              </button>
+                            </>
+                          )}
+                          {apt.status === 'attention' && (
+                            <>
+                              <button onClick={() => handleStatusUpdate(apt.id, 'done', apt)} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, background: STATUS_COLORS.done, flex: 1, minWidth: 100 }}>
+                                Terminar
+                              </button>
+                              <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                                Adicional
+                              </button>
+                              <button onClick={() => { setExtendingAppointment(apt); setExtendMinutes(15); setShowExtendModal(true); }} style={{ padding: '8px 14px', fontSize: 13, background: '#f97316', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                <Timer size={14} /> Extender
+                              </button>
+                            </>
+                          )}
+                          {/* Botón Notas - disponible en todos los estados */}
+                          <button onClick={() => handleOpenNotesModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#14b8a6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <MessageSquare size={14} /> Notas
                           </button>
-                          <button onClick={() => handleOpenAdditionalModal(apt)} style={{ padding: '8px 14px', fontSize: 13, background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
-                            Adicional
-                          </button>
+                          {(apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'attention') && (
+                            <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                              Cancelar
+                            </button>
+                          )}
                         </>
-                      )}
-                      {(apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'attention') && (
-                        <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
-                          Cancelar
-                        </button>
                       )}
                     </div>
                   </div>
@@ -1029,6 +1269,459 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Modal para extender tiempo */}
+      {showExtendModal && extendingAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 3000
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '28px',
+            maxWidth: '400px', width: '90%', border: `1px solid ${colors.border}`
+          }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, color: colors.text }}>
+              ⏱️ Extender Tiempo
+            </h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 20 }}>
+              Cliente: <strong>{extendingAppointment.clientName}</strong>
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: colors.text }}>
+                Minutos adicionales
+              </label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[5, 10, 15, 20, 30].map(min => (
+                  <button
+                    key={min}
+                    type="button"
+                    onClick={() => setExtendMinutes(min)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 8,
+                      border: extendMinutes === min ? '2px solid #f97316' : `1px solid ${colors.border}`,
+                      background: extendMinutes === min ? '#fff7ed' : colors.inputBg,
+                      color: extendMinutes === min ? '#f97316' : colors.text,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      flex: 1,
+                      minWidth: 60
+                    }}
+                  >
+                    +{min}m
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => { setShowExtendModal(false); setExtendingAppointment(null); }} 
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: `1px solid ${colors.border}`, 
+                  background: 'none', 
+                  color: colors.text,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleExtendTimeRequest} 
+                disabled={savingExtend}
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: 'none', 
+                  background: '#f97316', 
+                  color: 'white', 
+                  fontWeight: 700, 
+                  cursor: savingExtend ? 'not-allowed' : 'pointer',
+                  opacity: savingExtend ? 0.7 : 1
+                }}
+              >
+                {savingExtend ? 'Guardando...' : 'Extender'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para extender tiempo */}
+      {showExtendConfirm && extendingAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.4)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 3500
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '28px',
+            maxWidth: '380px', width: '90%', textAlign: 'center',
+            border: `1px solid ${colors.border}`,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <Timer size={28} color="#f97316" />
+            </div>
+            
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: colors.text }}>
+              ¿Extender tiempo?
+            </h3>
+            
+            <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
+              Cliente: <strong>{extendingAppointment.clientName}</strong>
+            </p>
+            
+            <p style={{ fontSize: 16, color: '#f97316', fontWeight: 700, marginBottom: 20 }}>
+              +{extendMinutes} minutos
+            </p>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setShowExtendConfirm(false)} 
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: `1px solid ${colors.border}`, 
+                  background: 'none', 
+                  color: colors.text,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                No, volver
+              </button>
+              <button 
+                onClick={handleConfirmExtend} 
+                disabled={savingExtend}
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: 'none', 
+                  background: '#f97316', 
+                  color: 'white', 
+                  fontWeight: 700, 
+                  cursor: savingExtend ? 'not-allowed' : 'pointer',
+                  opacity: savingExtend ? 0.7 : 1
+                }}
+              >
+                {savingExtend ? 'Guardando...' : 'Sí, extender'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Notas */}
+      {showNotesModal && notesAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 3000
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '28px',
+            maxWidth: '480px', width: '90%', maxHeight: '70vh', overflowY: 'auto',
+            border: `1px solid ${colors.border}`
+          }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, color: colors.text }}>
+              📝 Notas de la Cita
+            </h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 20 }}>
+              {notesAppointment.clientName} • {notesAppointment.Service?.name}
+            </p>
+
+            {/* Lista de notas */}
+            <div style={{ marginBottom: 20, maxHeight: 200, overflowY: 'auto' }}>
+              {loadingNotes ? (
+                <div style={{ textAlign: 'center', padding: 20, color: colors.textSecondary }}>Cargando...</div>
+              ) : notes.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 20, color: colors.textSecondary, fontStyle: 'italic' }}>
+                  No hay notas registradas
+                </div>
+              ) : (
+                notes.map((note) => (
+                  <div key={note.id} style={{
+                    background: colors.bgSecondary,
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 8
+                  }}>
+                    <p style={{ margin: 0, fontSize: 14, color: colors.text, whiteSpace: 'pre-wrap' }}>{note.content}</p>
+                    <div style={{ marginTop: 6, fontSize: 11, color: colors.textMuted }}>
+                      {note.authorName || 'Sistema'} • {new Date(note.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Agregar nueva nota */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: colors.text }}>
+                Agregar nota
+              </label>
+              <textarea
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                placeholder="Escribe una nota..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.inputBg,
+                  color: colors.text,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => { setShowNotesModal(false); setNotesAppointment(null); setNotes([]); }} 
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: `1px solid ${colors.border}`, 
+                  background: 'none', 
+                  color: colors.text,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cerrar
+              </button>
+              <button 
+                onClick={handleAddNote} 
+                disabled={savingNote || !newNoteContent.trim()}
+                style={{ 
+                  flex: 1, padding: '12px', borderRadius: 10, 
+                  border: 'none', 
+                  background: '#14b8a6', 
+                  color: 'white', 
+                  fontWeight: 700, 
+                  cursor: (savingNote || !newNoteContent.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: (savingNote || !newNoteContent.trim()) ? 0.7 : 1
+                }}
+              >
+                {savingNote ? 'Guardando...' : 'Agregar Nota'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de mensajes */}
+      {statusMsg && (
+        <div style={{
+          position: 'fixed',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          padding: '12px 24px',
+          borderRadius: 8,
+          fontWeight: 600,
+          fontSize: 14,
+          background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          {statusMsg.text}
+        </div>
+      )}
+
+      {/* Modal de Insumos para Técnicos de Campo */}
+      {showInsumosModal && insumosAppointment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 20
+        }}>
+          <div style={{
+            background: colors.cardBg, borderRadius: '16px', padding: '24px',
+            maxWidth: '500px', width: '100%', maxHeight: '80vh',
+            overflowY: 'auto',
+            border: `1px solid ${colors.border}`
+          }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package size={24} color={colors.primary} />
+              Iniciar Trabajo - Registrar Insumos
+            </h2>
+            
+            <div style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 20 }}>
+              Cliente: <strong>{insumosAppointment.clientName || insumosAppointment.client}</strong> • {' '}
+              Servicio: <strong>{insumosAppointment.service || insumosAppointment.Service?.name}</strong>
+            </div>
+
+            {/* Lista de insumos disponibles */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                Seleccionar Insumos Usados:
+              </label>
+              
+              {loadingInventory ? (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                  <div className="spinner" />
+                  <p style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8 }}>
+                    Cargando insumos...
+                  </p>
+                </div>
+              ) : inventoryItems.length === 0 ? (
+                <div style={{ 
+                  padding: 16, 
+                  background: colors.bgSecondary, 
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: colors.textSecondary
+                }}>
+                  No hay insumos registrados en el inventario.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {inventoryItems.map(item => (
+                    <div 
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: 12,
+                        background: colors.bgSecondary,
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedInsumos.some(i => i.itemId === item.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            handleAddInsumo(item.id, 1);
+                          } else {
+                            handleRemoveInsumo(item.id);
+                          }
+                        }}
+                        style={{ width: 18, height: 18 }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{item.name}</div>
+                        <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                          Stock: {item.currentStock} {item.unit}
+                        </div>
+                      </div>
+                      {selectedInsumos.some(i => i.itemId === item.id) && (
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={selectedInsumos.find(i => i.itemId === item.id)?.quantity || 1}
+                          onChange={(e) => handleAddInsumo(item.id, e.target.value)}
+                          style={{
+                            width: 70,
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            border: `1px solid ${colors.border}`,
+                            fontSize: 14,
+                            textAlign: 'center'
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Resumen de insumos seleccionados */}
+            {selectedInsumos.length > 0 && (
+              <div style={{ 
+                marginBottom: 20, 
+                padding: 12, 
+                background: '#f0fdf4', 
+                borderRadius: 8,
+                border: '1px solid #86efac'
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#166534', marginBottom: 6 }}>
+                  📦 Insumos seleccionados ({selectedInsumos.length}):
+                </div>
+                <div style={{ fontSize: 12, color: '#166534' }}>
+                  {selectedInsumos.map(i => `${i.name}: ${i.quantity} ${i.unit}`).join(', ')}
+                </div>
+              </div>
+            )}
+
+            {/* Notas del trabajo */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                Notas del Trabajo Realizado:
+              </label>
+              <textarea
+                value={workNotes}
+                onChange={(e) => setWorkNotes(e.target.value)}
+                placeholder="Describe el trabajo realizado, diagnóstico, reparaciones, etc."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Botones */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowInsumosModal(false);
+                  setInsumosAppointment(null);
+                  setSelectedInsumos([]);
+                  setWorkNotes('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveInsumosAndStart}
+                disabled={savingInsumos}
+                style={{
+                  flex: 2,
+                  padding: '12px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: colors.primary,
+                  color: 'white',
+                  fontWeight: 700,
+                  cursor: savingInsumos ? 'not-allowed' : 'pointer',
+                  opacity: savingInsumos ? 0.7 : 1
+                }}
+              >
+                {savingInsumos ? 'Guardando...' : 'Iniciar Trabajo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </EmployeeLayout>
   );
 }

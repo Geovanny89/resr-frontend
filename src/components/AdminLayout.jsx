@@ -9,44 +9,53 @@ import BranchSelector from './BranchSelector';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
-  MessageCircle, RefreshCw, Smartphone, Tag, UserCircle
+  MessageCircle, RefreshCw, Smartphone, Tag, UserCircle,
+  TrendingDown, Package, PiggyBank
 } from 'lucide-react';
 
-const NAV_ITEMS = [
-  {
-    section: 'Principal',
-    items: [
-      { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
-      { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
-      { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
-      { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
-      { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
-    ]
-  },
-  {
-    section: 'Gestión',
-    items: [
-      { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
-      { to: '/admin/employees', icon: Users,    label: 'Empleados' },
-      { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
-      { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
-    ]
-  },
-  {
-    section: 'Finanzas',
-    items: [
-      { to: '/admin/reports',  icon: BarChart3,  label: 'Informes' },
-      { to: '/admin/payments', icon: DollarSign, label: 'Pagos' },
-      { to: '/admin/submit-payment', icon: CreditCard, label: 'Enviar Pago' },
-    ]
-  },
-  {
-    section: 'Configuración',
-    items: [
-      { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
-    ]
-  }
-];
+// Función para obtener items de navegación según módulos habilitados
+const getNavItems = (business) => {
+  const enabledModules = business?.enabledModules || {};
+  
+  return [
+    {
+      section: 'Principal',
+      items: [
+        { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
+        { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
+        { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
+        { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
+        { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
+      ]
+    },
+    {
+      section: 'Gestión',
+      items: [
+        { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
+        { to: '/admin/employees', icon: Users,    label: 'Empleados' },
+        { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
+        { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
+      ]
+    },
+    {
+      section: 'Finanzas',
+      items: [
+        { to: '/admin/reports',  icon: BarChart3,  label: 'Informes' },
+        { to: '/admin/payments', icon: DollarSign, label: 'Pagos' },
+        { to: '/admin/submit-payment', icon: CreditCard, label: 'Enviar Pago' },
+        ...(enabledModules.expenses ? [{ to: '/admin/expenses', icon: TrendingDown, label: 'Gastos' }] : []),
+        ...(enabledModules.inventory ? [{ to: '/admin/inventory', icon: Package, label: 'Insumos' }] : []),
+        ...(enabledModules.deposits ? [{ to: '/admin/deposits', icon: PiggyBank, label: 'Depósitos' }] : []),
+      ]
+    },
+    {
+      section: 'Configuración',
+      items: [
+        { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
+      ]
+    }
+  ];
+};
 
 export default function AdminLayout({ children, title, subtitle }) {
   const { user, business, logout } = useAuth();
@@ -95,7 +104,7 @@ export default function AdminLayout({ children, title, subtitle }) {
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'AD';
 
-  const currentItem = NAV_ITEMS.flatMap(s => s.items).find(item =>
+  const currentItem = getNavItems(business).flatMap(s => s.items).find(item =>
     item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to)
   );
   const pageTitle = title || currentItem?.label || 'Panel';
@@ -128,7 +137,7 @@ export default function AdminLayout({ children, title, subtitle }) {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(section => {
+          {getNavItems(business).map(section => {
             // Filtrar items según configuración del negocio
             const filteredItems = section.items.filter(item => {
               // Si es empresa técnica, ocultar el módulo de Pagos (comisiones)
@@ -188,6 +197,7 @@ export default function AdminLayout({ children, title, subtitle }) {
             {user?.role === 'admin' && <BranchSelector />}
 
             {/* Indicador de WhatsApp Global */}
+            {/* Si hay sesión guardada o conectada, mostrar como 'Conectado' permanentemente */}
             {['admin', 'admin_suc'].includes(user?.role) && (
               <div 
                 style={{ 
@@ -196,29 +206,46 @@ export default function AdminLayout({ children, title, subtitle }) {
                   gap: 8, 
                   padding: '6px 12px', 
                   borderRadius: 20, 
-                  background: whatsappStatus === 'connected' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                  border: `1px solid ${whatsappStatus === 'connected' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                  // Si está conectado O tiene sesión guardada, mostrar verde
+                  background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                    ? 'rgba(16, 185, 129, 0.1)' 
+                    : 'rgba(245, 158, 11, 0.1)',
+                  border: `1px solid ${(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                    ? 'rgba(16, 185, 129, 0.2)' 
+                    : 'rgba(245, 158, 11, 0.2)'}`,
                   marginRight: 8,
                   cursor: 'pointer'
                 }}
-                onClick={() => navigate('/admin')} // Ir al dashboard para reconectar si es necesario
-                title={whatsappStatus === 'connected' ? 'WhatsApp Conectado' : 'WhatsApp Desconectado - Clic para conectar'}
+                onClick={() => navigate('/admin')} // Ir al dashboard para gestionar
+                title={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                  ? 'WhatsApp configurado correctamente' 
+                  : 'WhatsApp Desconectado - Clic para vincular'}
               >
                 <div style={{ 
                   width: 8, 
                   height: 8, 
                   borderRadius: '50%', 
-                  background: whatsappStatus === 'connected' ? '#10b981' : '#f59e0b',
-                  boxShadow: whatsappStatus === 'connected' ? '0 0 8px #10b981' : 'none'
+                  background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                    ? '#10b981' 
+                    : '#f59e0b',
+                  boxShadow: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved') 
+                    ? '0 0 8px #10b981' 
+                    : 'none'
                 }} />
-                <MessageCircle size={16} color={whatsappStatus === 'connected' ? '#10b981' : '#f59e0b'} />
+                <MessageCircle size={16} color={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                  ? '#10b981' 
+                  : '#f59e0b'} />
                 {!isMobile && (
                   <span style={{ 
                     fontSize: 12, 
                     fontWeight: 700, 
-                    color: whatsappStatus === 'connected' ? '#065f46' : '#92400e' 
+                    color: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? '#065f46' 
+                      : '#92400e'
                   }}>
-                    {whatsappStatus === 'connected' ? 'WhatsApp Activo' : 'WhatsApp Offline'}
+                    {(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? 'WhatsApp Activo' 
+                      : 'WhatsApp Offline'}
                   </span>
                 )}
               </div>

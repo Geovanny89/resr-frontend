@@ -15,7 +15,8 @@ import {
   Star,
   Users,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  FolderOpen
 } from 'lucide-react';
 import api from '../../api/client';
 import { useTheme } from '../../context/ThemeContext';
@@ -223,12 +224,17 @@ export default function BusinessLanding() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = '';
   const [galleryModal, setGalleryModal] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
   const [employeeModal, setEmployeeModal] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [servicesPage, setServicesPage] = useState(0);
   const [expandedServices, setExpandedServices] = useState({});
   const [expandedMission, setExpandedMission] = useState(false);
   const [expandedVision, setExpandedVision] = useState(false);
+  const [selectedServiceGroup, setSelectedServiceGroup] = useState(null);
+  const [groupServicesPage, setGroupServicesPage] = useState(0);
   const servicesPerPage = 10;
 
   // Estado para formulario de reseñas
@@ -254,6 +260,70 @@ export default function BusinessLanding() {
       ...prev,
       [svcId]: !prev[svcId]
     }));
+  };
+
+  // Render a service card
+  const renderServiceCard = (svc) => {
+    const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
+    const basePrice = Number(svc.price);
+    let finalPrice = basePrice;
+    if (promo) {
+      const discount = promo.discountType === 'percentage' ? basePrice * (Number(promo.discountValue) / 100) : Number(promo.discountValue);
+      finalPrice = basePrice - discount;
+    }
+
+    return (
+      <div key={svc.id} className="service-card">
+        <div className="service-img-container">
+          {svc.imageUrl ? (
+            <img src={getImgUrl(svc.imageUrl)} alt={svc.name} className="service-img" />
+          ) : (
+            <div className="service-img" style={{ background: '#3b82f610', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', fontSize: 40 }}><Zap size={48} /></div>
+          )}
+          {promo && <div className="service-promo-tag">-{promo.discountType === 'percentage' ? `${Math.round(promo.discountValue)}%` : 'PROMO'}</div>}
+        </div>
+        <div className="service-content">
+          <h3 className="service-title">{svc.name}</h3>
+          <p className={`service-description ${expandedServices[svc.id] ? 'expanded' : ''}`}>
+            {svc.description}
+          </p>
+          
+          {svc.description && svc.description.length > 80 && (
+            <button 
+              className="service-ver-mas" 
+              onClick={() => toggleServiceDescription(svc.id)}
+            >
+              {expandedServices[svc.id] ? 'Ver menos' : 'Ver más'}
+            </button>
+          )}
+          
+          <div className="service-footer">
+            <div className="service-price-row">
+              <div>
+                {svc.priceOptional ? (
+                  <span className="service-price" style={{ fontSize: 14 }}>A cotizar</span>
+                ) : (
+                  <div>
+                    {promo && <span className="service-old-price">${basePrice.toLocaleString()}</span>}
+                    <span className="service-price">${finalPrice.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+              <div className="service-meta-text">
+                <Clock size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} /> {svc.durationMin} min
+              </div>
+            </div>
+
+            <button 
+              className="service-reserve-btn-small" 
+              onClick={() => navigate(`/${slug}/book?serviceId=${svc.id}`)}
+            >
+              {business.isTechnicalServices ? 'Solicitar ahora' : 'Reservar Cita'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Función para enviar reseña
@@ -361,7 +431,8 @@ export default function BusinessLanding() {
     const lower = (name || '').toLowerCase();
     if (lower.includes('nequi')) return '/nequi.png';
     if (lower.includes('daviplata')) return '/daviplat.png';
-    if (lower.includes('llave')) return '/Bre-B.png';
+    if (lower.includes(lower.includes('llave') || lower.includes('breb-b') ||
+       lower.includes('bre-b') || lower.includes('breb'))) return '/Bre-B.png';
     if (lower.includes('davivienda')) return '/davivienda.png';
     if (lower.includes('bancolombia')) return '/bancolombia.png';
     if (lower.includes('banco')) return '/banco.png';
@@ -1398,6 +1469,289 @@ export default function BusinessLanding() {
           .gallery-item { border-radius: 18px; }
         }
 
+        /* 3D CAROUSEL - STACK/COVERFLOW EFFECT */
+        .carousel-3d-container {
+          position: relative;
+          width: 100%;
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 30px 0 60px;
+          perspective: 1200px;
+          overflow: hidden;
+          user-select: none;
+        }
+
+        .carousel-3d-track {
+          position: relative;
+          width: 100%;
+          height: 400px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform-style: preserve-3d;
+        }
+
+        .carousel-3d-card {
+          position: absolute;
+          width: 280px;
+          height: 360px;
+          border-radius: 18px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+          box-shadow: 0 15px 35px -8px rgba(0,0,0,0.3);
+          background: ${isDark ? '#1e293b' : '#ffffff'};
+          border: 2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+          /* Default for offset 0 (center) */
+          transform: translateX(0) translateZ(0) rotateY(0) scale(1);
+          opacity: 1;
+          filter: blur(0);
+        }
+
+        /* Cards behind (-1, -2, -3...) - más cercanas y visibles */
+        .carousel-3d-card[data-offset="-1"] {
+          transform: translateX(-140px) translateZ(-60px) rotateY(20deg) scale(0.88);
+          opacity: 0.75;
+          filter: blur(0.5px);
+        }
+        .carousel-3d-card[data-offset="-2"] {
+          transform: translateX(-260px) translateZ(-120px) rotateY(30deg) scale(0.75);
+          opacity: 0.45;
+          filter: blur(1px);
+        }
+        .carousel-3d-card[data-offset="-3"],
+        .carousel-3d-card[data-offset="-4"],
+        .carousel-3d-card[data-offset="-5"] {
+          transform: translateX(-340px) translateZ(-160px) rotateY(40deg) scale(0.6);
+          opacity: 0.2;
+          filter: blur(2px);
+        }
+
+        /* Cards ahead (1, 2, 3...) - más cercanas y visibles */
+        .carousel-3d-card[data-offset="1"] {
+          transform: translateX(140px) translateZ(-60px) rotateY(-20deg) scale(0.88);
+          opacity: 0.75;
+          filter: blur(0.5px);
+        }
+        .carousel-3d-card[data-offset="2"] {
+          transform: translateX(260px) translateZ(-120px) rotateY(-30deg) scale(0.75);
+          opacity: 0.45;
+          filter: blur(1px);
+        }
+        .carousel-3d-card[data-offset="3"],
+        .carousel-3d-card[data-offset="4"],
+        .carousel-3d-card[data-offset="5"] {
+          transform: translateX(340px) translateZ(-160px) rotateY(-40deg) scale(0.6);
+          opacity: 0.2;
+          filter: blur(2px);
+        }
+
+        /* Active card (offset 0) */
+        .carousel-3d-card[data-offset="0"] {
+          transform: translateX(0) translateZ(0) rotateY(0) scale(1);
+          opacity: 1;
+          filter: blur(0);
+          box-shadow: 0 30px 60px -15px rgba(0,0,0,0.4);
+          z-index: 100;
+        }
+
+        .carousel-3d-card:hover {
+          box-shadow: 0 40px 80px -15px rgba(0,0,0,0.4);
+        }
+
+        .carousel-3d-card[data-offset="0"]:hover {
+          transform: translateX(0) translateZ(30px) rotateY(0) scale(1.03);
+        }
+
+        .carousel-3d-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          pointer-events: none;
+        }
+
+        .carousel-3d-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.5) 100%);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding-bottom: 25px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .carousel-3d-card[data-offset="0"]:hover .carousel-3d-overlay {
+          opacity: 1;
+        }
+
+        .carousel-view-btn {
+          background: white;
+          color: var(--brand-primary);
+          padding: 10px 20px;
+          border-radius: 50px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-weight: 700;
+          font-size: 13px;
+          transform: translateY(15px);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .carousel-3d-card[data-offset="0"]:hover .carousel-view-btn {
+          transform: translateY(0);
+        }
+
+        /* Navigation Buttons */
+        .carousel-nav-btn {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: ${isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.98)'};
+          border: 2px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'};
+          color: var(--brand-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          z-index: 200;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .carousel-nav-btn:hover {
+          background: var(--brand-primary);
+          color: white;
+          transform: translateY(-50%) scale(1.1);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+        }
+
+        .carousel-nav-btn.prev { left: 15px; }
+        .carousel-nav-btn.next { right: 15px; }
+
+        /* Progress Dots */
+        .carousel-dots {
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 8px;
+          z-index: 200;
+          padding: 8px 16px;
+          background: ${isDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.7)'};
+          border-radius: 20px;
+          backdrop-filter: blur(10px);
+        }
+
+        .carousel-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          border: none;
+          background: ${isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.25)'};
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .carousel-dot.active {
+          background: var(--brand-primary);
+          width: 24px;
+          border-radius: 4px;
+        }
+
+        .carousel-dot:hover {
+          background: ${isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'};
+        }
+
+        /* Counter */
+        .carousel-counter {
+          position: absolute;
+          top: 10px;
+          right: 20px;
+          background: ${isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.9)'};
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 13px;
+          color: ${isDark ? '#fff' : '#1e293b'};
+          backdrop-filter: blur(10px);
+          z-index: 200;
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+        }
+
+        .carousel-counter .current {
+          color: var(--brand-primary);
+          font-size: 16px;
+        }
+
+        .carousel-counter .separator {
+          margin: 0 4px;
+          opacity: 0.5;
+        }
+
+        .carousel-counter .total {
+          opacity: 0.6;
+        }
+
+        /* Responsive 3D Carousel */
+        @media (max-width: 768px) {
+          .carousel-3d-track { height: 340px; }
+          .carousel-3d-card { width: 240px; height: 300px; }
+          .carousel-3d-card[data-offset="-1"] { transform: translateX(-120px) translateZ(-50px) rotateY(22deg) scale(0.86); opacity: 0.7; }
+          .carousel-3d-card[data-offset="1"] { transform: translateX(120px) translateZ(-50px) rotateY(-22deg) scale(0.86); opacity: 0.7; }
+          .carousel-3d-card[data-offset="-2"] { transform: translateX(-220px) translateZ(-100px) rotateY(32deg) scale(0.72); opacity: 0.4; }
+          .carousel-3d-card[data-offset="2"] { transform: translateX(220px) translateZ(-100px) rotateY(-32deg) scale(0.72); opacity: 0.4; }
+        }
+
+        @media (max-width: 640px) {
+          .carousel-3d-container { padding: 20px 0 50px; }
+          .carousel-3d-track { height: 320px; }
+          .carousel-3d-card { 
+            width: 220px; 
+            height: 280px; 
+            border-radius: 16px;
+          }
+          /* Mostrar tarjetas laterales más prominentes */
+          .carousel-3d-card[data-offset="-1"] { 
+            transform: translateX(-100px) translateZ(-40px) rotateY(25deg) scale(0.82); 
+            opacity: 0.6;
+          }
+          .carousel-3d-card[data-offset="1"] { 
+            transform: translateX(100px) translateZ(-40px) rotateY(-25deg) scale(0.82); 
+            opacity: 0.6;
+          }
+          .carousel-3d-card[data-offset="-2"] { 
+            transform: translateX(-160px) translateZ(-80px) rotateY(40deg) scale(0.65); 
+            opacity: 0.3; 
+          }
+          .carousel-3d-card[data-offset="2"] { 
+            transform: translateX(160px) translateZ(-80px) rotateY(-40deg) scale(0.65); 
+            opacity: 0.3; 
+          }
+          .carousel-nav-btn {
+            width: 36px;
+            height: 36px;
+          }
+          .carousel-nav-btn.prev { left: 8px; }
+          .carousel-nav-btn.next { right: 8px; }
+          .carousel-nav-btn svg { width: 20px; height: 20px; }
+          .carousel-counter {
+            top: 8px;
+            right: 12px;
+            font-size: 12px;
+            padding: 5px 12px;
+          }
+        }
+
         /* WHATSAPP FLOAT */
         .whatsapp-float {
           position: fixed;
@@ -1666,103 +2020,125 @@ export default function BusinessLanding() {
           </section>
         )}
 
-        {/* SERVICES */}
-        {business.Services && business.Services.length > 0 && (
+        {/* SERVICES - Groups First */}
+        {(business.ServiceGroups?.length > 0 || business.Services?.length > 0) && (
           <section style={{ marginBottom: 100 }}>
             <div className="section-header">
               <span className="section-label">NUESTROS SERVICIOS</span>
-              <h2 className="section-title">Experiencias Diseñadas</h2>
+              <h2 className="section-title">
+                {selectedServiceGroup ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+                    <button 
+                      onClick={() => {
+                        setSelectedServiceGroup(null);
+                        setGroupServicesPage(0);
+                      }}
+                      style={{
+                        background: 'var(--glass-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '50%',
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: primary
+                      }}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    {selectedServiceGroup.name}
+                  </span>
+                ) : (
+                  'Experiencias Diseñadas'
+                )}
+              </h2>
             </div>
-            <div className="services-grid">
-              {business.Services
-                .filter(s => s.active !== false)
-                .slice(servicesPage * servicesPerPage, (servicesPage + 1) * servicesPerPage)
-                .map(svc => {
-                const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
-                const basePrice = Number(svc.price);
-                let finalPrice = basePrice;
-                if (promo) {
-                  const discount = promo.discountType === 'percentage' ? basePrice * (Number(promo.discountValue) / 100) : Number(promo.discountValue);
-                  finalPrice = basePrice - discount;
-                }
 
-                return (
-                  <div key={svc.id} className="service-card">
+            {/* Show Groups Grid when no group selected */}
+            {!selectedServiceGroup && business.ServiceGroups?.length > 0 && (
+              <div className="services-grid">
+                {business.ServiceGroups.map(group => (
+                  <div 
+                    key={group.id} 
+                    className="service-card"
+                    onClick={() => {
+                      setSelectedServiceGroup(group);
+                      setGroupServicesPage(0);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="service-img-container">
-                      {svc.imageUrl ? (
-                        <img src={getImgUrl(svc.imageUrl)} alt={svc.name} className="service-img" />
+                      {group.imageUrl ? (
+                        <img src={getImgUrl(group.imageUrl)} alt={group.name} className="service-img" />
                       ) : (
-                        <div className="service-img" style={{ background: '#3b82f610', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', fontSize: 40 }}><Zap size={48} /></div>
+                        <div className="service-img" style={{ 
+                          background: `linear-gradient(135deg, ${primary}20, ${secondary}20)`, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: primary,
+                          fontSize: 40 
+                        }}>
+                          <FolderOpen size={48} />
+                        </div>
                       )}
-                      {promo && <div className="service-promo-tag">-{promo.discountType === 'percentage' ? `${Math.round(promo.discountValue)}%` : 'PROMO'}</div>}
+                      <div className="service-promo-tag" style={{ background: primary }}>
+                        {group.Services?.length || 0} servicios
+                      </div>
                     </div>
                     <div className="service-content">
-                      <h3 className="service-title">{svc.name}</h3>
-                      <p className={`service-description ${expandedServices[svc.id] ? 'expanded' : ''}`}>
-                        {svc.description}
-                      </p>
-                      
-                      {svc.description && svc.description.length > 80 && (
-                        <button 
-                          className="service-ver-mas" 
-                          onClick={() => toggleServiceDescription(svc.id)}
-                        >
-                          {expandedServices[svc.id] ? 'Ver menos' : 'Ver más'}
-                        </button>
+                      <h3 className="service-title">{group.name}</h3>
+                      {group.description && (
+                        <p className="service-description">
+                          {group.description}
+                        </p>
                       )}
-                      
                       <div className="service-footer">
-                        <div className="service-price-row">
-                          <div>
-                            {svc.priceOptional ? (
-                              <span className="service-price" style={{ fontSize: 14 }}>A cotizar</span>
-                            ) : (
-                              <div>
-                                {promo && <span className="service-old-price">${basePrice.toLocaleString()}</span>}
-                                <span className="service-price">${finalPrice.toLocaleString()}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="service-meta-text">
-                            <Clock size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} /> {svc.durationMin} min
-                          </div>
-                        </div>
-
-                        <button 
-                          className="service-reserve-btn-small" 
-                          onClick={() => navigate(`/${slug}/book?serviceId=${svc.id}`)}
-                        >
-                          {business.isTechnicalServices ? 'Solicitar ahora' : 'Reservar Cita'}
-                        </button>
+                        <span style={{ color: primary, fontSize: 14, fontWeight: 600 }}>
+                          Ver servicios →
+                        </span>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-
-            {/* Pagination Controls */}
-            {business.Services.filter(s => s.active !== false).length > servicesPerPage && (
-              <div className="pagination-container">
-                <button 
-                  className="pagination-btn"
-                  onClick={() => setServicesPage(p => Math.max(0, p - 1))}
-                  disabled={servicesPage === 0}
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <span className="pagination-info">
-                  Página {servicesPage + 1} de {Math.ceil(business.Services.filter(s => s.active !== false).length / servicesPerPage)}
-                </span>
-                <button 
-                  className="pagination-btn"
-                  onClick={() => setServicesPage(p => p + 1)}
-                  disabled={(servicesPage + 1) * servicesPerPage >= business.Services.filter(s => s.active !== false).length}
-                >
-                  <ChevronRight size={20} />
-                </button>
+                ))}
               </div>
+            )}
+
+            {/* Show Services in selected Group with pagination */}
+            {selectedServiceGroup && (
+              <>
+                <div className="services-grid">
+                  {selectedServiceGroup.Services
+                    ?.filter(s => s.active !== false)
+                    .slice(groupServicesPage * servicesPerPage, (groupServicesPage + 1) * servicesPerPage)
+                    .map(svc => renderServiceCard(svc))}
+                </div>
+                
+                {/* Pagination for group services */}
+                {selectedServiceGroup.Services?.filter(s => s.active !== false).length > servicesPerPage && (
+                  <div className="pagination-container">
+                    <button 
+                      className="pagination-btn"
+                      onClick={() => setGroupServicesPage(p => Math.max(0, p - 1))}
+                      disabled={groupServicesPage === 0}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <span className="pagination-info">
+                      Página {groupServicesPage + 1} de {Math.ceil(selectedServiceGroup.Services.filter(s => s.active !== false).length / servicesPerPage)}
+                    </span>
+                    <button 
+                      className="pagination-btn"
+                      onClick={() => setGroupServicesPage(p => p + 1)}
+                      disabled={(groupServicesPage + 1) * servicesPerPage >= selectedServiceGroup.Services.filter(s => s.active !== false).length}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
@@ -2132,24 +2508,121 @@ export default function BusinessLanding() {
           )}
         </section>
 
-        {/* GALLERY */}
+        {/* GALLERY - 3D CAROUSEL */}
         {gallery.length > 0 && (
           <section style={{ marginBottom: 100 }}>
             <div className="section-header">
               <span className="section-label">PORTAFOLIO</span>
               <h2 className="section-title">Nuestros Resultados ✨</h2>
             </div>
-            <div className="gallery-grid">
-              {gallery.slice(0, 10).map((img, i) => (
-                <div key={i} className="gallery-item" onClick={() => setGalleryModal(i)}>
-                  <img src={getImgUrl(img)} alt={`Galería ${i}`} className="gallery-img" loading="lazy" />
-                  <div className="gallery-overlay">
-                    <div className="gallery-view-icon">
-                      <Zap size={24} />
+            
+            {/* 3D Stack Carousel */}
+            <div 
+              className="carousel-3d-container"
+              onMouseDown={(e) => {
+                setIsDragging(true);
+                setStartX(e.clientX);
+              }}
+              onMouseMove={(e) => {
+                if (!isDragging) return;
+                const diff = startX - e.clientX;
+                if (Math.abs(diff) > 50) {
+                  if (diff > 0) {
+                    // Siguiente (infinito)
+                    setCurrentSlide(prev => (prev + 1) % gallery.length);
+                  } else {
+                    // Anterior (infinito)
+                    setCurrentSlide(prev => (prev - 1 + gallery.length) % gallery.length);
+                  }
+                  setStartX(e.clientX);
+                  setIsDragging(false);
+                }
+              }}
+              onMouseUp={() => setIsDragging(false)}
+              onMouseLeave={() => setIsDragging(false)}
+              onTouchStart={(e) => {
+                setStartX(e.touches[0].clientX);
+              }}
+              onTouchMove={(e) => {
+                const diff = startX - e.touches[0].clientX;
+                if (Math.abs(diff) > 50) {
+                  if (diff > 0) {
+                    // Siguiente (infinito)
+                    setCurrentSlide(prev => (prev + 1) % gallery.length);
+                  } else {
+                    // Anterior (infinito)
+                    setCurrentSlide(prev => (prev - 1 + gallery.length) % gallery.length);
+                  }
+                  setStartX(e.touches[0].clientX);
+                }
+              }}
+            >
+              <div className="carousel-3d-track">
+                {gallery.map((img, i) => {
+                  // Calcular offset con carrusel infinito
+                  let offset = i - currentSlide;
+                  
+                  // Ajustar para carrusel infinito circular
+                  const len = gallery.length;
+                  if (offset > len / 2) offset -= len;
+                  if (offset < -len / 2) offset += len;
+                  
+                  const isActive = i === currentSlide;
+                  const isVisible = Math.abs(offset) <= 2; // Mostrar solo -2, -1, 0, 1, 2
+                  
+                  if (!isVisible) return null; // No renderizar tarjetas lejanas
+                  
+                  return (
+                    <div
+                      key={i}
+                      className={`carousel-3d-card ${isActive ? 'active' : ''}`}
+                      data-offset={offset}
+                      style={{
+                        zIndex: 100 - Math.abs(offset)
+                      }}
+                      onClick={() => isActive ? setGalleryModal(i) : setCurrentSlide(i)}
+                    >
+                      <img 
+                        src={getImgUrl(img)} 
+                        alt={`Galería ${i + 1}`} 
+                        className="carousel-3d-img"
+                        loading="lazy"
+                      />
+                      {isActive && (
+                        <div className="carousel-3d-overlay" onClick={() => setGalleryModal(i)}>
+                          <div className="carousel-view-btn">
+                            <Zap size={20} />
+                            <span>Ver</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+              
+              {/* Navigation Arrows */}
+              <button 
+                className="carousel-nav-btn prev"
+                onClick={() => setCurrentSlide(prev => (prev - 1 + gallery.length) % gallery.length)}
+                aria-label="Imagen anterior"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button 
+                className="carousel-nav-btn next"
+                onClick={() => setCurrentSlide(prev => (prev + 1) % gallery.length)}
+                aria-label="Siguiente imagen"
+              >
+                <ChevronRight size={24} />
+              </button>
+              
+              {/* Counter */}
+              <div className="carousel-counter">
+                <span className="current">{currentSlide + 1}</span>
+                <span className="separator">/</span>
+                <span className="total">{gallery.length}</span>
+              </div>
             </div>
           </section>
         )}
@@ -2162,9 +2635,9 @@ export default function BusinessLanding() {
               <span className="section-label">MÉTODOS DE PAGO</span>
               <h2 className="section-title">Facilidades para ti</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
               {paymentMethods.map((method, idx) => (
-                <div key={idx} style={{ padding: 28, borderRadius: 32, background: isDark ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease' }} className="payment-method-item">
+                <div key={idx} style={{ padding: 32, borderRadius: 24, background: isDark ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease', boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)' }} className="payment-method-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                     <div style={{ width: 56, height: 56, borderRadius: 16, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.05)' }}>
                       <img src={getPaymentMethodImage(method.name) || '/banco.png'} style={{ width: 36, height: 36, objectFit: 'contain' }} />

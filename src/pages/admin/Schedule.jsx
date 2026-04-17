@@ -455,20 +455,58 @@ export default function Schedule() {
                   <div className="form-group">
                     <label>Hora inicio *</label>
                     <input
-                      type="time"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="([0-1]?[0-9]|2[0-3]):[0-5][0-9]"
+                      placeholder="08:00"
                       value={form.startTime}
-                      onChange={e => setForm({ ...form, startTime: e.target.value })}
+                      onChange={e => {
+                        let val = e.target.value.replace(/[^0-9:]/g, '');
+                        // Auto-formatear: si escribe 4 numeros, agregar :
+                        if (val.length === 4 && !val.includes(':')) {
+                          val = val.slice(0, 2) + ':' + val.slice(2);
+                        }
+                        if (val.length <= 5) {
+                          setForm({ ...form, startTime: val });
+                        }
+                      }}
+                      onBlur={e => {
+                        // Validar y formatear al perder foco
+                        const val = e.target.value;
+                        if (val && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
+                          showToast('Formato de hora inválido. Use HH:MM (ej: 08:30)', 'error');
+                        }
+                      }}
                       required
                     />
+                    <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>Formato: HH:MM (ej: 08:30)</small>
                   </div>
                   <div className="form-group">
                     <label>Hora fin *</label>
                     <input
-                      type="time"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="([0-1]?[0-9]|2[0-3]):[0-5][0-9]"
+                      placeholder="17:00"
                       value={form.endTime}
-                      onChange={e => setForm({ ...form, endTime: e.target.value })}
+                      onChange={e => {
+                        let val = e.target.value.replace(/[^0-9:]/g, '');
+                        if (val.length === 4 && !val.includes(':')) {
+                          val = val.slice(0, 2) + ':' + val.slice(2);
+                        }
+                        if (val.length <= 5) {
+                          setForm({ ...form, endTime: val });
+                        }
+                      }}
+                      onBlur={e => {
+                        const val = e.target.value;
+                        if (val && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
+                          showToast('Formato de hora inválido. Use HH:MM (ej: 17:30)', 'error');
+                        }
+                      }}
                       required
                     />
+                    <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>Formato: HH:MM (ej: 17:30)</small>
                   </div>
                 </div>
 

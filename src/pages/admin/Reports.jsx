@@ -328,11 +328,25 @@ export default function Reports() {
   const [businessWithLogo, setBusinessWithLogo] = useState(business); // Negocio con logoUrl
   const ITEMS_PER_PAGE = 5; // 5 citas por página
 
+  // Estados para informe financiero completo
+  const [showFullFinancial, setShowFullFinancial] = useState(false);
+  const [financialReport, setFinancialReport] = useState(null);
+  const [loadingFinancial, setLoadingFinancial] = useState(false);
+  const [enabledModules, setEnabledModules] = useState({ expenses: false, inventory: false, deposits: false });
+
   useEffect(() => {
     setBusinessWithLogo(business);
   }, [business]);
 
   const range = getDateRange(period, customStart, customEnd);
+
+  // Cargar datos automáticamente cuando cambia el período o las fechas personalizadas
+  useEffect(() => {
+    if (business?.id && range && range.start && range.end) {
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, customStart, customEnd, selectedBranchId, business?.id]);
 
   const loadData = async () => {
     if (!business?.id || !range) return;
@@ -358,6 +372,11 @@ export default function Reports() {
         return d >= range.start && d <= range.end;
       });
       setAppointments(filtered);
+
+      // Si el modo financiero completo está activado, cargar el informe financiero
+      if (showFullFinancial && period === 'month') {
+        await loadFinancialReport();
+      }
     } catch (e) {
       setError(e.response?.data?.error || 'Error al cargar datos');
     } finally {
@@ -365,7 +384,33 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => { loadData(); }, [business, period, customStart, customEnd, selectedBranchId]);
+  // Función para cargar el informe financiero completo
+  const loadFinancialReport = async () => {
+    if (!business?.id || !range) return;
+    
+    setLoadingFinancial(true);
+    try {
+      const year = range.start.getFullYear();
+      const month = String(range.start.getMonth() + 1).padStart(2, '0');
+      
+      const res = await api.get('/financial-report', {
+        params: {
+          businessId: business.id,
+          year,
+          month
+        }
+      });
+      
+      setFinancialReport(res.data);
+      setEnabledModules(res.data.enabledModules || {});
+    } catch (e) {
+      console.error('Error cargando informe financiero:', e);
+    } finally {
+      setLoadingFinancial(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, [business, period, customStart, customEnd, selectedBranchId, showFullFinancial]);
   
   // Reset página cuando cambian las citas
   useEffect(() => { setDetailPage(1); }, [appointments]);
@@ -393,6 +438,14 @@ export default function Reports() {
     return s + (isNaN(earned) ? 0 : earned);
   }, 0);
   const ownerRev   = totalRev - empRev; // Ganancia real del negocio
+
+  // Si hay informe financiero completo, usar esos valores
+  const financialData = financialReport?.summary || {};
+  const displayIncome = showFullFinancial ? (financialData.totalIncome || 0) : totalRev;
+  const displayExpenses = showFullFinancial ? (financialData.totalExpenses || 0) : 0;
+  const displayInventory = showFullFinancial ? (financialData.inventoryCost || 0) : 0;
+  const displayNetProfit = showFullFinancial ? (financialData.netProfit || 0) : ownerRev;
+  const displayMargin = showFullFinancial ? (financialData.margin || 0) : (totalRev > 0 ? (ownerRev / totalRev) * 100 : 0);
 
   // PAGINACIÓN - Calcular citas a mostrar (5 por página)
   const totalPages = Math.ceil(appointments.length / ITEMS_PER_PAGE);
@@ -502,10 +555,31 @@ export default function Reports() {
       ['Citas canceladas', appointments.filter(a => a.status === 'cancelled').length.toString()],
     ];
 
-    if (!business?.isTechnicalServices) {
+    if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
       summaryBody.push(['Ingresos totales', fmt(totalRev)]);
       summaryBody.push(['Ganancia del negocio', fmt(ownerRev)]);
       summaryBody.push(['Pago a empleados', fmt(empRev)]);
+    }
+
+    // === SECCIÓN: INFORME FINANCIERO COMPLETO (si está activado) ===
+    if (showFullFinancial && period === 'month' && financialReport && !business?.isTechnicalServices) {
+      summaryBody.push(['', '']); // Fila vacía como separador
+      summaryBody.push(['─── INFORME FINANCIERO COMPLETO ───', '']);
+      summaryBody.push(['Ingresos por Citas', fmt(financialReport.summary.totalIncome || 0)]);
+      
+      if (enabledModules.inventory) {
+        summaryBody.push(['Costo de Insumos', fmt(financialReport.summary.inventoryCost || 0)]);
+      }
+      
+      if (enabledModules.expenses) {
+        summaryBody.push(['Gastos Operativos', fmt(financialReport.summary.totalExpenses || 0)]);
+      }
+      
+      summaryBody.push(['Utilidad Neta', fmt(financialReport.summary.netProfit || 0)]);
+      
+      if (enabledModules.deposits && financialReport?.details?.deposits?.totalHeld > 0) {
+        summaryBody.push(['Depósitos Retenidos', fmt(financialReport.details.deposits.totalHeld)]);
+      }
     }
 
     autoTable(doc, {
@@ -560,20 +634,20 @@ export default function Reports() {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
       doc.setTextColor(...colors.black);
-      doc.text(business?.isTechnicalServices ? 'Citas por Empleado' : 'Resumen de Pagos a Empleados', margin, yPos);
+      doc.text((business?.isTechnicalServices || business?.hasFieldTechnicians) ? 'Citas por Empleado' : 'Resumen de Pagos a Empleados', margin, yPos);
       
       yPos += 8;
-      const empHead = business?.isTechnicalServices 
+      const empHead = (business?.isTechnicalServices || business?.hasFieldTechnicians)
         ? [['Empleado', 'Citas completadas']]
         : [['Empleado', 'Citas completadas', 'Total a pagar']];
       
       const empBody = employeeList.map(emp => {
         const row = [emp.name, emp.citas.toString()];
-        if (!business?.isTechnicalServices) row.push(fmt(emp.total));
+        if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) row.push(fmt(emp.total));
         return row;
       });
 
-      const empFoot = business?.isTechnicalServices
+      const empFoot = (business?.isTechnicalServices || business?.hasFieldTechnicians)
         ? [['TOTAL', done.length.toString()]]
         : [['TOTAL', done.length.toString(), fmt(empRev)]];
 
@@ -600,9 +674,9 @@ export default function Reports() {
           fontSize: 10,
         },
         columnStyles: {
-          0: { cellWidth: business?.isTechnicalServices ? 130 : 80 },
-          1: { cellWidth: business?.isTechnicalServices ? 50 : 50, halign: 'center' },
-          ...(business?.isTechnicalServices ? {} : { 2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' } }),
+          0: { cellWidth: (business?.isTechnicalServices || business?.hasFieldTechnicians) ? 130 : 80 },
+          1: { cellWidth: 50, halign: 'center' },
+          ...((business?.isTechnicalServices || business?.hasFieldTechnicians) ? {} : { 2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' } }),
         },
         styles: {
           cellPadding: 5,
@@ -620,7 +694,7 @@ export default function Reports() {
     doc.setTextColor(...colors.black);
     doc.text('Detalle de Citas', margin, yPos);
     
-    const appointmentsHead = business?.isTechnicalServices
+    const appointmentsHead = (business?.isTechnicalServices || business?.hasFieldTechnicians)
       ? [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Estado']]
       : [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Adicional', 'Pago', 'Estado']];
     
@@ -631,7 +705,7 @@ export default function Reports() {
         a.Service?.name || '',
         a.Employee?.User?.name || '',
       ];
-      if (!business?.isTechnicalServices) {
+      if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
         const base = parseFloat(a.Service?.price || 0);
         const add = parseFloat(a.additionalAmount || 0);
         row.push(fmt(base));
@@ -714,7 +788,7 @@ export default function Reports() {
         { 'Métrica': 'Citas canceladas', 'Valor': appointments.filter(a => a.status === 'cancelled').length },
       ];
       
-      if (!business?.isTechnicalServices) {
+      if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
         summaryData.push({ 'Métrica': 'Ingresos totales', 'Valor': totalRev });
         summaryData.push({ 'Métrica': 'Ganancia del negocio', 'Valor': ownerRev });
         summaryData.push({ 'Métrica': 'Pago a empleados', 'Valor': empRev });
@@ -722,6 +796,59 @@ export default function Reports() {
 
       const wsSummary = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen');
+
+      // === HOJA: INFORME FINANCIERO COMPLETO (si está activado) ===
+      if (showFullFinancial && period === 'month' && financialReport && !business?.isTechnicalServices && !business?.hasFieldTechnicians) {
+        const financialData = [
+          { 'Concepto': 'Ingresos por Citas Completadas', 'Monto': financialReport.summary.totalIncome || 0 },
+          { 'Concepto': '', 'Monto': '' }, // Separador
+          { 'Concepto': 'COSTOS Y GASTOS:', 'Monto': '' },
+        ];
+        
+        if (enabledModules.inventory && financialReport.summary.inventoryCost > 0) {
+          financialData.push({ 'Concepto': '  - Costo de Insumos Consumidos', 'Monto': -(financialReport.summary.inventoryCost || 0) });
+        }
+        
+        if (enabledModules.expenses && financialReport.summary.totalExpenses > 0) {
+          financialData.push({ 'Concepto': '  - Gastos Operativos', 'Monto': -(financialReport.summary.totalExpenses || 0) });
+          
+          // Desglose de gastos por categoría
+          const expenseCategories = {
+            arriendo: '    🏠 Arriendo',
+            servicios: '    💡 Servicios',
+            insumos: '    📦 Insumos (compra)',
+            nomina: '    👥 Nómina',
+            marketing: '    📢 Marketing',
+            otros: '    📋 Otros'
+          };
+          
+          Object.entries(financialReport?.details?.expenses?.byCategory || {}).forEach(([category, amount]) => {
+            financialData.push({ 
+              'Concepto': expenseCategories[category] || `    ${category}`, 
+              'Monto': -(amount || 0) 
+            });
+          });
+        }
+        
+        financialData.push({ 'Concepto': '', 'Monto': '' }); // Separador
+        financialData.push({ 
+          'Concepto': 'UTILIDAD NETA', 
+          'Monto': financialReport.summary.netProfit || 0,
+          '_style': { font: { bold: true } }
+        });
+        
+        if (enabledModules.deposits && financialReport?.details?.deposits?.totalHeld > 0) {
+          financialData.push({ 'Concepto': '', 'Monto': '' }); // Separador
+          financialData.push({ 'Concepto': 'FLUJO DE CAJA:', 'Monto': '' });
+          financialData.push({ 
+            'Concepto': '+ Depósitos Retenidos (no aplicados)', 
+            'Monto': financialReport.details.deposits.totalHeld 
+          });
+        }
+        
+        const wsFinancial = XLSX.utils.json_to_sheet(financialData);
+        XLSX.utils.book_append_sheet(wb, wsFinancial, 'Informe Financiero');
+      }
 
       // Hoja de Detalle
       const detailData = appointments.map(a => {
@@ -731,7 +858,7 @@ export default function Reports() {
           'Servicio': a.Service?.name || '',
           'Empleado': a.Employee?.User?.name || '',
         };
-        if (!business?.isTechnicalServices) {
+        if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
           row['Precio Base'] = parseFloat(a.Service?.price || 0);
           row['Adicional'] = parseFloat(a.additionalAmount || 0);
           row['Total'] = parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
@@ -891,7 +1018,14 @@ export default function Reports() {
                   key={p.value}
                   className={period === p.value ? 'btn-primary' : 'btn-secondary'}
                   style={{ padding: '8px 16px', fontSize: 13, minWidth: 80, whiteSpace: 'nowrap' }}
-                  onClick={() => setPeriod(p.value)}
+                  onClick={() => {
+                    setPeriod(p.value);
+                    if (p.value === 'custom') {
+                      setShowRangeCalendar(true);
+                    } else {
+                      setShowRangeCalendar(false);
+                    }
+                  }}
                 >
                   {p.label}
                 </button>
@@ -937,6 +1071,38 @@ export default function Reports() {
         </div>
       </div>
 
+      {/* Indicador de fechas para período personalizado */}
+      {period === 'custom' && (customStart || customEnd) && !showRangeCalendar && (
+        <div 
+          onClick={() => setShowRangeCalendar(true)}
+          style={{ 
+            marginBottom: 16, 
+            padding: '12px 16px', 
+            background: 'var(--primary-light)', 
+            borderRadius: 8, 
+            border: '1px dashed var(--primary)',
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            gap: 12
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--primary)' }}>
+            <Calendar size={16} />
+            <span>
+              {customStart && customEnd 
+                ? `${formatDateES(customStart)} → ${formatDateES(customEnd)}`
+                : customStart 
+                  ? `Desde: ${formatDateES(customStart)} (selecciona fecha final)`
+                  : 'Haz clic para seleccionar fechas'
+              }
+            </span>
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 500 }}>Cambiar fechas →</span>
+        </div>
+      )}
+
       {showRangeCalendar && period === 'custom' && (
         <div style={{ marginBottom: 20, padding: 16, background: 'var(--card-bg)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'center' }}>
           <RangeCalendarPicker
@@ -955,58 +1121,341 @@ export default function Reports() {
           <div className="loading-page"><div className="spinner" /><span>Cargando datos...</span></div>
         ) : (
           <>
-            {/* KPIs */}
-            <div className="grid-stats mb-6">
-            <div className="stat-card">
-              <div className="stat-icon purple"><Calendar size={22} /></div>
-              <div className="stat-body">
-                <div className="stat-value">{appointments.length}</div>
-                <div className="stat-label">Total de citas</div>
+            {/* KPIs - DISEÑO COMPACTO */}
+            <div className="grid-stats mb-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              {/* Total citas */}
+              <div className="stat-card" style={{ padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Calendar size={16} color="#8b5cf6" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Total citas</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1f2937' }}>{appointments.length}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon green"><CheckCircle size={22} /></div>
-              <div className="stat-body">
-                <div className="stat-value">{done.length}</div>
-                <div className="stat-label">Citas completadas</div>
+
+              {/* Citas completadas */}
+              <div className="stat-card" style={{ padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle size={16} color="#10b981" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Completadas</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1f2937' }}>{done.length}</div>
+                  </div>
+                </div>
               </div>
+
+              {!business?.isTechnicalServices && !business?.hasFieldTechnicians ? (
+                <>
+                  {/* Ingresos totales */}
+                  <div className="stat-card" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <DollarSign size={16} color="#3b82f6" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Ingresos</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>{fmt(totalRev)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ganancia del negocio */}
+                  <div className="stat-card" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#ccfbf1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <TrendingUp size={16} color="#14b8a6" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Ganancia</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#14b8a6' }}>{fmt(ownerRev)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Citas pendientes */}
+                  <div className="stat-card" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Clock size={16} color="#f59e0b" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Pendientes</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1f2937' }}>{appointments.filter(a => a.status === 'pending').length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Citas canceladas */}
+                  <div className="stat-card" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <XCircle size={16} color="#ef4444" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Canceladas</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1f2937' }}>{appointments.filter(a => a.status === 'cancelled').length}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {!business?.isTechnicalServices ? (
-              <>
-                <div className="stat-card">
-                  <div className="stat-icon blue"><DollarSign size={22} /></div>
-                  <div className="stat-body">
-                    <div className="stat-value">{fmt(totalRev)}</div>
-                    <div className="stat-label">Ingresos totales</div>
+
+            {/* TOGGLE: Informe Financiero Completo (solo para periodo Mes) - DISEÑO COMPACTO */}
+            {period === 'month' && (
+              <div className="card mb-4" style={{ padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ 
+                      width: 32, height: 32, borderRadius: 8, 
+                      background: showFullFinancial ? '#ecfdf5' : '#f3f4f6',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <TrendingUp size={16} color={showFullFinancial ? '#10b981' : '#6b7280'} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                        {showFullFinancial ? '📊 Financiero Completo' : '📋 Solo Citas'}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {showFullFinancial 
+                          ? 'Incluye ingresos, gastos, insumos y depósitos'
+                          : 'Estadísticas de citas sin costos'
+                        }
+                      </div>
+                    </div>
                   </div>
+                  
+                  <label style={{
+                    position: 'relative', display: 'inline-block', width: 44, height: 24,
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={showFullFinancial}
+                      onChange={(e) => setShowFullFinancial(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: showFullFinancial ? '#10b981' : '#d1d5db',
+                      borderRadius: 24, transition: '0.3s'
+                    }}/>
+                    <span style={{
+                      position: 'absolute', height: 18, width: 18, left: 3, bottom: 3,
+                      backgroundColor: 'white', borderRadius: '50%', transition: '0.3s',
+                      transform: showFullFinancial ? 'translateX(20px)' : 'translateX(0)'
+                    }}/>
+                  </label>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-icon teal"><TrendingUp size={22} /></div>
-                  <div className="stat-body">
-                    <div className="stat-value">{fmt(ownerRev)}</div>
-                    <div className="stat-label">Ganancia del negocio</div>
+
+                {/* Mostrar estado de módulos - COMPACTO */}
+                {showFullFinancial && (
+                  <div style={{ marginTop: 10, padding: 8, background: '#f8fafc', borderRadius: 6 }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11 }}>
+                      <span style={{ color: enabledModules.expenses ? '#10b981' : '#9ca3af' }}>
+                        {enabledModules.expenses ? '✓' : '✗'} Gastos
+                      </span>
+                      <span style={{ color: enabledModules.inventory ? '#10b981' : '#9ca3af' }}>
+                        {enabledModules.inventory ? '✓' : '✗'} Insumos
+                      </span>
+                      <span style={{ color: enabledModules.deposits ? '#10b981' : '#9ca3af' }}>
+                        {enabledModules.deposits ? '✓' : '✗'} Depósitos
+                      </span>
+                    </div>
+                    {(!enabledModules.expenses && !enabledModules.inventory && !enabledModules.deposits) && (
+                      <div style={{ marginTop: 4, fontSize: 10, color: '#f59e0b' }}>
+                        ⚠️ Activa módulos en "Mi Negocio → Módulos"
+                      </div>
+                    )}
                   </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="stat-card">
-                  <div className="stat-icon yellow"><Clock size={22} /></div>
-                  <div className="stat-body">
-                    <div className="stat-value">{appointments.filter(a => a.status === 'pending').length}</div>
-                    <div className="stat-label">Citas pendientes</div>
-                  </div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon red"><XCircle size={22} /></div>
-                  <div className="stat-body">
-                    <div className="stat-value">{appointments.filter(a => a.status === 'cancelled').length}</div>
-                    <div className="stat-label">Citas canceladas</div>
-                  </div>
-                </div>
-              </>
+                )}
+              </div>
             )}
-          </div>
+
+            {/* KPIs FINANCIERAS - DISEÑO COMPACTO */}
+            {showFullFinancial && period === 'month' && (
+              <div className="grid-stats mb-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {/* Ingresos */}
+                <div className="stat-card" style={{ borderLeft: '3px solid #3b82f6', padding: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <DollarSign size={14} color="#3b82f6" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Ingresos</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#3b82f6' }}>{fmt(displayIncome)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Costo de Insumos */}
+                {enabledModules.inventory && (
+                  <div className="stat-card" style={{ borderLeft: '3px solid #8b5cf6', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                        📦
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Insumos</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#8b5cf6' }}>{fmt(displayInventory)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gastos Operativos */}
+                {enabledModules.expenses && (
+                  <div className="stat-card" style={{ borderLeft: '3px solid #ef4444', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                        📉
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Gastos</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>{fmt(financialReport?.details?.expenses?.total || 0)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Utilidad Neta */}
+                <div className="stat-card" style={{ borderLeft: '3px solid #10b981', padding: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <TrendingUp size={14} color="#10b981" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Utilidad Neta</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#10b981' }}>{fmt(displayNetProfit)}</div>
+                      <div style={{ fontSize: 10, color: '#9ca3af' }}>{(displayMargin || 0).toFixed(1)}% margen</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Depósitos Retenidos */}
+                {enabledModules.deposits && financialReport?.details?.deposits?.totalHeld > 0 && (
+                  <div className="stat-card" style={{ borderLeft: '3px solid #f59e0b', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                        🏦
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Depósitos</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{fmt(financialReport.details.deposits.totalHeld)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DETALLE FINANCIERO - DISEÑO COMPACTO */}
+            {showFullFinancial && period === 'month' && financialReport && (
+              <div className="card mb-4" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <TrendingUp size={16} color="#3b82f6" />
+                  Detalle Financiero - {MONTHS_ES[parseInt(financialReport.period.month) - 1]} {financialReport.period.year}
+                </h3>
+
+                {/* Tabla de resumen - COMPACTA */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Concepto</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, fontSize: 12 }}>Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '8px 10px' }}>
+                          <span style={{ color: '#3b82f6', fontWeight: 600 }}>+</span> Ingresos por Citas
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', color: '#3b82f6', fontWeight: 600 }}>
+                          {fmt(financialData.totalIncome)}
+                        </td>
+                      </tr>
+                      
+                      {enabledModules.inventory && financialData.inventoryCost > 0 && (
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '8px 10px', paddingLeft: 20 }}>
+                            <span style={{ color: '#8b5cf6' }}>-</span> Costo Insumos
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#8b5cf6' }}>
+                            -{fmt(financialData.inventoryCost)}
+                          </td>
+                        </tr>
+                      )}
+                      
+                      {enabledModules.expenses && financialData.totalExpenses > 0 && (
+                        <>
+                          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '6px 10px', paddingLeft: 20, color: 'var(--text-muted)', fontSize: 11 }}>
+                              <em>Gastos:</em>
+                            </td>
+                            <td style={{ padding: '6px 10px' }}></td>
+                          </tr>
+                          {Object.entries(financialReport?.details?.expenses?.byCategory || {}).map(([category, amount]) => {
+                            const categoryLabels = {
+                              arriendo: '🏠 Arriendo',
+                              servicios: '💡 Servicios',
+                              insumos: '📦 Insumos',
+                              nomina: '👥 Nómina',
+                              marketing: '📢 Marketing',
+                              otros: '📋 Otros'
+                            };
+                            return (
+                              <tr key={category} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '6px 10px', paddingLeft: 32, fontSize: 12 }}>
+                                  {categoryLabels[category] || category}
+                                </td>
+                                <td style={{ padding: '6px 10px', textAlign: 'right', fontSize: 12, color: '#ef4444' }}>
+                                  -{fmt(amount)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </>
+                      )}
+                      
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)' }}>
+                        <td style={{ padding: 10, fontWeight: 700, fontSize: 13 }}>
+                          = UTILIDAD NETA
+                        </td>
+                        <td style={{ padding: 10, textAlign: 'right', fontWeight: 700, fontSize: 14, 
+                          color: financialData.netProfit >= 0 ? '#10b981' : '#ef4444' }}>
+                          {fmt(financialData.netProfit)}
+                        </td>
+                      </tr>
+                      
+                      {enabledModules.deposits && financialReport?.details?.deposits?.totalHeld > 0 && (
+                        <tr style={{ borderTop: '1px dashed var(--border)' }}>
+                          <td style={{ padding: '8px 10px', color: '#f59e0b', fontSize: 12 }}>
+                            <span style={{ fontWeight: 600 }}>+</span> Depósitos Retenidos
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#f59e0b', fontWeight: 600, fontSize: 12 }}>
+                            {fmt(financialReport.details.deposits.totalHeld)}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Nota al pie - COMPACTA */}
+                <div style={{ marginTop: 12, padding: 8, background: '#f0f9ff', borderRadius: 6, fontSize: 11, color: '#0369a1' }}>
+                  💡 Utilidad neta = Ingresos - Gastos - Insumos. Depósitos retenidos = anticipos sin aplicar.
+                </div>
+              </div>
+            )}
 
             {/* TABS */}
             <div className="card mb-6">
@@ -1122,7 +1571,7 @@ export default function Reports() {
                         <Tooltip />
                         {!isMobile && <Legend />}
                         <Bar dataKey="citas" fill="#667eea" name="Citas" />
-                        {!business?.isTechnicalServices && <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />}
+                        {!business?.isTechnicalServices && !business?.hasFieldTechnicians && <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1143,7 +1592,7 @@ export default function Reports() {
                           <div style={{ fontWeight: 600, color: 'var(--text)' }}>{svc.name}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{svc.count} cita(s)</div>
                         </div>
-                        {!business?.isTechnicalServices && (
+                        {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
                           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{fmt(svc.revenue)}</div>
                         )}
                       </div>
@@ -1171,7 +1620,7 @@ export default function Reports() {
                       <th>Cliente</th>
                       <th>Servicio</th>
                       <th>Empleado</th>
-                      {!business?.isTechnicalServices && (
+                      {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
                         <>
                           <th>Precio</th>
                           <th>Adicional</th>
@@ -1189,7 +1638,7 @@ export default function Reports() {
                         <td>{a.clientName}</td>
                         <td>{a.Service?.name}</td>
                         <td>{a.Employee?.User?.name}</td>
-                        {!business?.isTechnicalServices && (
+                        {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
                           <>
                             <td><span className="money">{fmt(a.Service?.price)}</span></td>
                             <td><span className="money" style={{ color: '#d97706' }}>{fmt(a.additionalAmount)}</span></td>
@@ -1298,7 +1747,7 @@ export default function Reports() {
                             </span>
                           </div>
                         )}
-                        {!business?.isTechnicalServices && (
+                        {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
                           <div style={{ display: 'grid', gap: 6, marginTop: 10, padding: 10, background: 'var(--bg-secondary)', borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Precio Base</span>

@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [waError, setWaError] = useState(null);
   const [systemNotification, setSystemNotification] = useState(null);
   const [employeeRatings, setEmployeeRatings] = useState([]);
+  const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [showChangeNumberConfirm, setShowChangeNumberConfirm] = useState(false);
 
   // Calcular días restantes de suscripción
   const daysLeft = business?.subscriptionDaysLeft;
@@ -69,6 +71,17 @@ export default function Dashboard() {
     try {
       if (force) {
         await api.post(`/notifications/whatsapp/reset?businessId=${business.id}`);
+      }
+      
+      // Si hay sesión guardada, intentar conectar rápidamente sin QR
+      if (whatsappStatus === 'session_saved' && !force) {
+        const connectRes = await api.post(`/notifications/whatsapp/connect?businessId=${business.id}`);
+        if (connectRes.data.status === 'connected') {
+          setWhatsappStatus('connected');
+          setShowQRModal(false);
+          setCheckingWA(false);
+          return;
+        }
       }
       
       const res = await api.get(`/notifications/whatsapp/qr?businessId=${business.id}`);
@@ -213,40 +226,127 @@ export default function Dashboard() {
       )}
 
       {/* WHATSAPP STATUS BAR */}
-      <div className="card mb-6" style={{ background: whatsappStatus === 'connected' ? '#ecfdf5' : '#fff7ed', border: `1px solid ${whatsappStatus === 'connected' ? '#10b981' : '#f97316'}`, padding: '12px 20px', borderRadius: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontSize: 20 }}>{whatsappStatus === 'connected' ? '✅' : '📲'}</div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: whatsappStatus === 'connected' ? '#065f46' : '#9a3412' }}>
-                {whatsappStatus === 'connected' 
-                  ? (business?.isBranch && business?.useParentWhatsApp ? 'WhatsApp (Sede Principal)' : 'WhatsApp Conectado')
-                  : 'WhatsApp Desconectado'}
-              </div>
-              <div style={{ fontSize: 12, color: whatsappStatus === 'connected' ? '#059669' : '#c2410c' }}>
-                {whatsappStatus === 'connected' 
-                  ? 'Los recordatorios automáticos y calificaciones están activos' 
-                  : (business?.isBranch && business?.useParentWhatsApp 
-                      ? 'Usando conexión de la sede principal. Si quieres usar otro número, cámbialo en "Mi Negocio".' 
-                      : 'Conecta tu WhatsApp para enviar recordatorios y recibir calificaciones')}
+      {/* Si está conectado o tiene sesión guardada, mostrar como conectado permanentemente */}
+      {(whatsappStatus === 'connected' || whatsappStatus === 'session_saved') ? (
+        // Estado conectado/guardado - siempre verde con menú de opciones
+        <div className="card mb-6" style={{ 
+          background: '#ecfdf5', 
+          border: '1px solid #10b981', 
+          padding: '12px 20px', 
+          borderRadius: 12 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 20 }}>✅</div>
+              <div>
+                <div style={{ 
+                  fontWeight: 700, 
+                  fontSize: 14, 
+                  color: '#065f46'
+                }}>
+                  {business?.isBranch && business?.useParentWhatsApp ? 'WhatsApp (Sede Principal)' : 'WhatsApp Conectado'}
+                </div>
+                <div style={{ fontSize: 12, color: '#059669' }}>
+                  Los recordatorios automáticos y calificaciones están activos
+                </div>
               </div>
             </div>
+            {/* Menú de opciones para WhatsApp */}
+            {!business?.isBranch && (
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>⚙️</span>
+                  <span style={{ fontSize: 12, color: '#065f46', fontWeight: 500 }}>Opciones</span>
+                </button>
+                
+                {showWhatsAppMenu && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: 8,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 100,
+                    minWidth: 200
+                  }}>
+                    <button
+                      onClick={() => {
+                        setShowWhatsAppMenu(false);
+                        setShowChangeNumberConfirm(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: '#dc2626',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8
+                      }}
+                    >
+                      <span>📱</span> Cambiar número
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          {whatsappStatus === 'connected' ? (
-            <div style={{ display: 'flex', gap: 10 }}>
-              {/* Botones de control ocultos a petición del usuario */}
+        </div>
+      ) : (
+        // Estado desconectado - mostrar advertencia y botón para vincular
+        <div className="card mb-6" style={{ 
+          background: '#fff7ed', 
+          border: '1px solid #f97316', 
+          padding: '12px 20px', 
+          borderRadius: 12 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 20 }}>📲</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#9a3412' }}>
+                  WhatsApp Desconectado
+                </div>
+                <div style={{ fontSize: 12, color: '#c2410c' }}>
+                  {business?.isBranch && business?.useParentWhatsApp 
+                    ? 'Usando conexión de la sede principal.' 
+                    : 'Conecta tu WhatsApp para enviar recordatorios y recibir calificaciones'}
+                </div>
+              </div>
             </div>
-          ) : (
             <div style={{ display: 'flex', gap: 10 }}>
               {(!business?.isBranch || !business?.useParentWhatsApp) && (
-                <button onClick={() => { setShowQRModal(true); getWAQR(); }} className="btn-primary btn-sm" disabled={checkingWA}>
+                <button 
+                  onClick={() => { setShowQRModal(true); getWAQR(); }} 
+                  className="btn-primary btn-sm"
+                  disabled={checkingWA}
+                >
                   {checkingWA ? 'Generando...' : 'Vincular WhatsApp'}
                 </button>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MODAL QR WHATSAPP */}
       {showQRModal && (
@@ -340,7 +440,7 @@ export default function Dashboard() {
       </ResponsiveGrid>
 
       {/* FINANZAS DEL MES */}
-      {!business?.isTechnicalServices && (
+      {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
         <ResponsiveGrid gap={16} minWidth={140}>
           <div className="stat-card" style={{ height: '100%' }}>
             <div className="stat-icon teal"><DollarSign size={22} /></div>
@@ -367,7 +467,7 @@ export default function Dashboard() {
       )}
 
       {/* DESGLOSE POR MÉTODO DE PAGO */}
-      {!business?.isTechnicalServices && (
+      {!business?.isTechnicalServices && !business?.hasFieldTechnicians && (
         <div className="card mb-6" style={{ padding: '20px' }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={16} /> Desglose de Ingresos (Mes Actual)
@@ -462,6 +562,59 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN PARA CAMBIAR NÚMERO DE WHATSAPP */}
+      {showChangeNumberConfirm && (
+        <div className="modal-overlay" onClick={() => setShowChangeNumberConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📱</span> Cambiar número de WhatsApp
+              </h3>
+              <button className="btn-ghost" onClick={() => setShowChangeNumberConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                ¿Estás seguro de que deseas cambiar el número de WhatsApp?
+              </p>
+              <p style={{ margin: '12px 0 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
+                Se borrará la sesión actual y deberás escanear un nuevo código QR para vincular otro número.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button 
+                className="btn-ghost" 
+                onClick={() => setShowChangeNumberConfirm(false)}
+                disabled={checkingWA}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={async () => {
+                  try {
+                    setCheckingWA(true);
+                    await api.post(`/notifications/whatsapp/logout?businessId=${business.id}`);
+                    setWhatsappStatus('disconnected');
+                    setShowChangeNumberConfirm(false);
+                    setShowQRModal(true);
+                    getWAQR(true);
+                    showStatus('✅ Número desvinculado. Escanea el nuevo QR.', 'success');
+                  } catch (e) {
+                    console.error('Error desvinculando:', e);
+                    showStatus('❌ Error al desvincular. Intenta de nuevo.', 'error');
+                  } finally {
+                    setCheckingWA(false);
+                  }
+                }}
+                disabled={checkingWA}
+              >
+                {checkingWA ? 'Procesando...' : 'Sí, cambiar número'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

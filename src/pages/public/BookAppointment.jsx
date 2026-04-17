@@ -5,7 +5,8 @@ import ThemeToggle from '../../components/ThemeToggle';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
-const STEPS = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos'];
+const BASE_STEPS = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos'];
+const STEPS_WITH_DEPOSIT = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos', 'Anticipo'];
 
 const MONTHS_ES = [
   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -38,9 +39,14 @@ function formatDateES(dateStr) {
 
 function CalendarPicker({ value, onChange, minDate, colors }) {
   const today = minDate || todayColombia();
-  const [y, m] = today.split('-').map(Number);
+  const [y, m] = today.split('-').map(Number); // m viene como 1-12 de toLocaleDateString
   const [viewYear,  setViewYear]  = useState(value ? parseInt(value.split('-')[0]) : y);
+  // toLocaleDateString devuelve mes 1-12, pero JavaScript Date usa 0-11
+  // Por eso restamos 1 para obtener el mes correcto (ej: abril 4 → 3)
   const [viewMonth, setViewMonth] = useState(value ? parseInt(value.split('-')[1]) - 1 : m - 1);
+
+  // DEBUG: Verificar fechas
+  console.log('[Calendar DEBUG]', { today, y, m, viewYear, viewMonth, value });
 
   const days = useMemo(() => buildCalendarDays(viewYear, viewMonth), [viewYear, viewMonth]);
 
@@ -59,8 +65,13 @@ function CalendarPicker({ value, onChange, minDate, colors }) {
   const isPast = (day) => {
     if (!day) return true;
     const dayStr = toStr(day);
+    const result = dayStr < today;
+    // DEBUG: Verificar comparación
+    if (day <= 5) { // Solo logear los primeros días para no saturar
+      console.log('[isPast DEBUG]', { day, dayStr, today, result, viewYear, viewMonth });
+    }
     // Allow today and future dates (dayStr >= today)
-    return dayStr < today;
+    return result;
   };
   const isSelected = (day) => !!day && !!value && toStr(day) === value;
   const isToday    = (day) => !!day && toStr(day) === today;
@@ -166,7 +177,11 @@ export default function BookAppointment() {
   const [selected, setSelected] = useState({
     service: null, employee: null, date: '', slot: null,
     clientName: '', clientPhone: '', clientEmail: '', notes: '',
+    depositAccepted: false,  // Aceptó términos de anticipo
   });
+  
+  // Estado para anticipo
+  const [showDepositStep, setShowDepositStep] = useState(false);
   const [hasPreviousData, setHasPreviousData] = useState(false);
   const [loadingClientData, setLoadingClientData] = useState(true);
   
@@ -280,14 +295,20 @@ export default function BookAppointment() {
       setSlotsLoading(true);
       setSlots([]);
       const params = new URLSearchParams({ date: selected.date, serviceId: selected.service.id });
+      console.log('[Slots DEBUG] Consultando disponibilidad:', { date: selected.date, serviceId: selected.service.id, slug });
       api.get(`/businesses/${slug}/availability?${params}`)
         .then(r => {
+          console.log('[Slots DEBUG] Respuesta:', r.data);
           const filtered = selected.employee
             ? r.data.filter(s => s.employeeId === selected.employee.id)
             : r.data;
+          console.log('[Slots DEBUG] Slots filtrados:', filtered.length);
           setSlots(filtered);
         })
-        .catch(() => setSlots([]))
+        .catch((err) => {
+          console.error('[Slots DEBUG] Error:', err);
+          setSlots([]);
+        })
         .finally(() => setSlotsLoading(false));
     }
   }, [step, selected.date, selected.service, selected.employee]);
@@ -320,6 +341,8 @@ export default function BookAppointment() {
         clientEmail: selected.clientEmail,
         startTime:   startTimeIso,
         notes:       selected.notes,
+        depositAmount: isDepositRequired ? depositAmount : null,
+        depositAccepted: isDepositRequired ? selected.depositAccepted : false,
       });
       setConfirmed(true)
     } catch (e) {
@@ -338,6 +361,21 @@ export default function BookAppointment() {
   const primary   = business?.primaryColor   || '#4f46e5';
   const secondary = business?.secondaryColor || '#7c3aed';
   const gradient  = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`;
+  
+  // Calcular monto del anticipo
+  const depositConfig = business?.depositConfig;
+  const isDepositRequired = business?.enabledModules?.deposits && depositConfig?.required;
+  const calculateDepositAmount = () => {
+    if (!isDepositRequired || !selected.service) return 0;
+    if (depositConfig?.amount > 0) return depositConfig.amount;
+    const servicePrice = selected.service.price || 0;
+    return Math.round(servicePrice * (depositConfig?.percentage || 30) / 100);
+  };
+  const depositAmount = calculateDepositAmount();
+  
+  // Determinar pasos dinámicamente
+  const effectiveSteps = isDepositRequired ? STEPS_WITH_DEPOSIT : BASE_STEPS;
+  const maxStep = effectiveSteps.length - 1;
 
   // ── Loading ──
   if (loading) return (
@@ -484,25 +522,23 @@ export default function BookAppointment() {
       {/* Indicador de pasos */}
       <div style={{ background: colors.cardBg, borderBottom: `1px solid ${colors.border}`, padding: '12px 16px' }}>
         <div className="book-steps" style={{ maxWidth: 720, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 4, minWidth: 'max-content' }}>
-          {STEPS.map((s, i) => {
+          {effectiveSteps.map((s, i) => {
             if (preselectedEmployeeId && s === 'Empleado') return null;
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{
-                  width: 26, height: 26, borderRadius: '50%',
+                  width: 24, height: 24, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, flexShrink: 0,
-                  background: i < step ? primary : i === step ? secondary : colors.bgSecondary,
+                  fontSize: 12, fontWeight: 700,
+                  background: i <= step ? primary : colors.bgSecondary,
                   color: i <= step ? 'white' : colors.textSecondary,
-                  transition: 'all 0.2s',
-                }}>
-                  {i < step ? '✓' : (preselectedEmployeeId && i > 1 ? i : i + 1)}
-                </div>
-                <span className="step-label" style={{
+                  transition: '0.2s'
+                }}>{i + 1}</div>
+                <span style={{
                   fontSize: 12, color: i <= step ? primary : colors.textSecondary,
                   fontWeight: i === step ? 700 : 400,
                 }}>{s}</span>
-                {i < STEPS.length - 1 && (
+                {i < effectiveSteps.length - 1 && (
                   <div className="step-sep" style={{ width: 20, height: 1, background: colors.border, margin: '0 2px' }} />
                 )}
               </div>
@@ -670,7 +706,21 @@ export default function BookAppointment() {
               Servicio: <strong>{selected.service?.name}</strong>
             </p>
             {(() => {
-              const employees = business?.Employees || [];
+              // Filtrar empleados que pueden realizar el servicio seleccionado
+              // Si tiene servicios asignados, debe tener el específico
+              // Si NO tiene servicios asignados, es generalista y puede hacer cualquiera
+              const allEmployees = business?.Employees || [];
+              const serviceId = selected.service?.id;
+              
+              const employees = allEmployees.filter(emp => {
+                // El empleado debe tener el array Services definido
+                if (!emp.Services) return false;
+                // Si NO tiene servicios asignados = es generalista, puede hacer cualquier servicio
+                if (emp.Services.length === 0) return true;
+                // Si tiene servicios asignados, debe tener específicamente el servicio seleccionado
+                return emp.Services.some(s => s.id === serviceId);
+              });
+              
               const totalPages = Math.ceil(employees.length / employeesPerPage);
               const startIndex = (employeesPage - 1) * employeesPerPage;
               const paginatedEmployees = employees.slice(startIndex, startIndex + employeesPerPage);
@@ -678,20 +728,22 @@ export default function BookAppointment() {
               return (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-                    {/* Cualquier disponible */}
-                    <div
-                      className="book-emp"
-                      onClick={() => { setSelected(s => ({ ...s, employee: null })); setStep(2); }}
-                      style={{
-                        background: colors.cardBg, borderRadius: 14, padding: '20px 12px', textAlign: 'center',
-                        border: `2px solid ${colors.border}`, cursor: 'pointer',
-                        boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
-                      }}
-                    >
-                      <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
-                      <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
-                      <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
-                    </div>
+                    {/* Cualquier disponible (solo si hay múltiples empleados para este servicio) */}
+                    {employees.length > 1 && (
+                      <div
+                        className="book-emp"
+                        onClick={() => { setSelected(s => ({ ...s, employee: null })); setStep(2); }}
+                        style={{
+                          background: colors.cardBg, borderRadius: 14, padding: '20px 12px', textAlign: 'center',
+                          border: `2px solid ${colors.border}`, cursor: 'pointer',
+                          boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
+                        }}
+                      >
+                        <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
+                        <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
+                        <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
+                      </div>
+                    )}
 
                     {paginatedEmployees.map(emp => (
                       <div
@@ -717,7 +769,27 @@ export default function BookAppointment() {
                           }
                         </div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>{emp.User?.name}</div>
-                        {emp.description && (
+                        {emp.specialty && (
+                          <div style={{ fontSize: 10, color: primary, marginTop: 2, fontWeight: 600 }}>
+                            {emp.specialty}
+                          </div>
+                        )}
+                        {emp.Services && emp.Services.length > 0 && (
+                          <div style={{ 
+                            fontSize: 9, 
+                            color: colors.textSecondary, 
+                            marginTop: 4,
+                            lineHeight: 1.3,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}>
+                            {emp.Services.slice(0, 3).map(s => s.name).join(', ')}
+                            {emp.Services.length > 3 && ` +${emp.Services.length - 3} más`}
+                          </div>
+                        )}
+                        {emp.description && !emp.Services?.length && (
                           <div style={{ 
                             fontSize: 10, 
                             color: colors.textSecondary, 
@@ -735,6 +807,26 @@ export default function BookAppointment() {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Mensaje cuando no hay empleados disponibles */}
+                  {employees.length === 0 && (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '40px 20px',
+                      background: colors.bg,
+                      borderRadius: 12,
+                      border: `1px dashed ${colors.border}`
+                    }}>
+                      <div style={{ fontSize: 40, marginBottom: 12 }}>👤</div>
+                      <p style={{ color: colors.text, fontWeight: 600, marginBottom: 8 }}>
+                        No hay especialistas disponibles
+                      </p>
+                      <p style={{ color: colors.textSecondary, fontSize: 13 }}>
+                        Ningún empleado tiene asignado este servicio.<br/>
+                        Contacta al negocio para más información.
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Paginación de Empleados */}
                   {employees.length > employeesPerPage && (
@@ -963,11 +1055,24 @@ export default function BookAppointment() {
                 <div>🕐 {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
                 <div style={{ fontWeight: 700, color: selected.service?.priceOptional ? '#92400e' : '#059669', marginTop: 4 }}>
                   {selected.service?.priceOptional ? (
-                    <>� Precio a cotizar en sitio</>
+                    <> Precio a cotizar en sitio</>
                   ) : (
-                    <>�💰 ${Number(selected.service?.price).toLocaleString('es-CO')}</>
+                    <>💰 ${Number(selected.service?.price).toLocaleString('es-CO')}</>
                   )}
                 </div>
+                {isDepositRequired && (
+                  <div style={{ 
+                    marginTop: 8, 
+                    padding: '8px 12px', 
+                    background: '#fef3c7', 
+                    borderRadius: 8,
+                    border: '1px solid #f59e0b',
+                    fontSize: 12,
+                    color: '#92400e'
+                  }}>
+                    💰 <strong>Requiere anticipo:</strong> ${depositAmount.toLocaleString('es-CO')}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1032,7 +1137,7 @@ export default function BookAppointment() {
                 ← Atrás
               </button>
               <button
-                onClick={handleSubmit}
+                onClick={isDepositRequired ? () => setStep(5) : handleSubmit}
                 disabled={submitting || !selected.clientName || !selected.clientPhone}
                 style={{
                   background: (!selected.clientName || !selected.clientPhone) ? colors.bgSecondary : gradient,
@@ -1042,7 +1147,132 @@ export default function BookAppointment() {
                   fontSize: 14, fontWeight: 700, flex: 1, maxWidth: 300,
                 }}
               >
-                {submitting ? '⏳ Reservando...' : '✅ Confirmar cita'}
+                {submitting ? '⏳ Reservando...' : isDepositRequired ? '💰 Continuar al anticipo →' : '✅ Confirmar cita'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── PASO 5: Anticipo (solo si está configurado) ── */}
+        {step === 5 && isDepositRequired && (
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>💰 Anticipo requerido</h2>
+            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
+              Para garantizar tu cita, se requiere un anticipo
+            </p>
+
+            {/* Monto del anticipo */}
+            <div style={{
+              background: `linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)`, 
+              borderRadius: 14, 
+              padding: '20px',
+              marginBottom: 20, 
+              border: '2px solid #f59e0b',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 14, color: '#92400e', marginBottom: 8 }}>Monto del anticipo</div>
+              <div style={{ fontSize: 36, fontWeight: 800, color: '#92400e' }}>
+                ${depositAmount.toLocaleString('es-CO')}
+              </div>
+              <div style={{ fontSize: 12, color: '#a16207', marginTop: 4 }}>
+                {depositConfig?.amount > 0 ? 'Monto fijo' : `${depositConfig?.percentage || 30}% del servicio`}
+              </div>
+            </div>
+
+            {/* Términos y condiciones */}
+            <div style={{
+              background: colors.cardBg,
+              borderRadius: 12,
+              padding: '16px',
+              marginBottom: 20,
+              border: `1px solid ${colors.border}`,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                📋 Términos y condiciones
+              </div>
+              <div style={{ 
+                fontSize: 13, 
+                color: colors.textSecondary, 
+                lineHeight: 1.6,
+                padding: '12px',
+                background: colors.bg,
+                borderRadius: 8
+              }}>
+                {depositConfig?.termsText || 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'}
+              </div>
+              
+              {/* Checkbox de aceptación */}
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: 12, 
+                marginTop: 16,
+                cursor: 'pointer',
+                padding: '12px',
+                borderRadius: 8,
+                border: `2px solid ${selected.depositAccepted ? '#10b981' : colors.border}`,
+                background: selected.depositAccepted ? '#ecfdf5' : 'transparent',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={selected.depositAccepted}
+                  onChange={(e) => setSelected(s => ({ ...s, depositAccepted: e.target.checked }))}
+                  style={{ 
+                    width: 20, 
+                    height: 20, 
+                    marginTop: 2,
+                    accentColor: '#10b981',
+                    cursor: 'pointer'
+                  }}
+                />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: selected.depositAccepted ? '#065f46' : colors.text }}>
+                    Acepto los términos del anticipo
+                  </div>
+                  <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                    Entiendo que debo pagar ${depositAmount.toLocaleString('es-CO')} antes de la cita y acepto las condiciones de cancelación.
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Instrucciones de pago */}
+            <div style={{
+              background: '#dbeafe',
+              borderRadius: 12,
+              padding: '16px',
+              marginBottom: 20,
+              border: '1px solid #3b82f6',
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af', marginBottom: 8 }}>
+                💳 ¿Cómo pagar el anticipo?
+              </div>
+              <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
+                El pago se realiza directamente en el establecimiento o mediante transferencia. 
+                Una vez realizado el pago, tu cita quedará confirmada.
+              </div>
+            </div>
+
+            <div className="book-action-row" style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setStep(4)}
+                style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '11px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              >
+                ← Atrás
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !selected.depositAccepted}
+                style={{
+                  background: !selected.depositAccepted ? colors.bgSecondary : gradient,
+                  color: !selected.depositAccepted ? colors.textSecondary : 'white',
+                  border: 'none', borderRadius: 8, padding: '11px 24px',
+                  cursor: (!selected.depositAccepted || submitting) ? 'not-allowed' : 'pointer',
+                  fontSize: 14, fontWeight: 700, flex: 1, maxWidth: 300,
+                }}
+              >
+                {submitting ? '⏳ Reservando...' : '✅ Confirmar cita con anticipo'}
               </button>
             </div>
           </div>
