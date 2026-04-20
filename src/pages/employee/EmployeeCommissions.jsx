@@ -72,6 +72,9 @@ export default function EmployeeCommissions() {
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [savingInsumos, setSavingInsumos] = useState(false);
   const [workNotes, setWorkNotes] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [solution, setSolution] = useState('');
+  const [recommendations, setRecommendations] = useState('');
   const [statusMsg, setStatusMsg] = useState(null);
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export default function EmployeeCommissions() {
           view, 
           date: view === 'month' ? currentDate.slice(0, 7) : currentDate,
           page: currentPage,
-          limit: 8
+          limit: 10
         }
       });
       setData(res.data);
@@ -156,6 +159,11 @@ export default function EmployeeCommissions() {
   const handleOpenInsumosModal = async (appointment) => {
     setInsumosAppointment(appointment);
     setSelectedInsumos([]);
+    // Cargar datos del reporte técnico si existe
+    const report = appointment.workReport || {};
+    setDiagnosis(report.diagnosis || '');
+    setSolution(report.solution || '');
+    setRecommendations(report.recommendations || '');
     setWorkNotes(appointment.workNotes || '');
     await loadInventoryItems();
     setShowInsumosModal(true);
@@ -196,18 +204,35 @@ export default function EmployeeCommissions() {
           appointmentId: insumosAppointment.id
         });
       }
-      
-      // Guardar notas del trabajo y cambiar estado
-      await api.patch(`/appointments/${insumosAppointment.id}/start-work`, {
-        workNotes: workNotes,
-        status: 'attention'
+
+      // Guardar reporte técnico si hay datos
+      if (diagnosis.trim() || solution.trim() || recommendations.trim()) {
+        await api.post(`/appointments/${insumosAppointment.id}/technical-report`, {
+          diagnosis: diagnosis,
+          solution: solution,
+          recommendations: recommendations,
+          partsUsed: selectedInsumos.map(i => ({
+            itemId: i.itemId,
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit
+          }))
+        });
+      }
+
+      // Cambiar estado a "en atención"
+      await api.patch(`/appointments/${insumosAppointment.id}/technician-status`, {
+        status: 'in_progress'
       });
-      
+
       showStatus('Insumos registrados y trabajo iniciado');
       setShowInsumosModal(false);
       setInsumosAppointment(null);
       setSelectedInsumos([]);
       setWorkNotes('');
+      setDiagnosis('');
+      setSolution('');
+      setRecommendations('');
       loadCommissions();
     } catch (e) {
       showStatus(e.response?.data?.error || 'Error al guardar insumos', 'error');
@@ -766,8 +791,7 @@ export default function EmployeeCommissions() {
               </div>
             )}
 
-            {/* Lista de Citas - OCULTA para técnicos de campo (van al Dashboard) */}
-            {!data?.hasFieldTechnicians && (
+            {/* Lista de Citas - Visible para todos */}
             <div style={{
               background: colors.cardBg,
               borderRadius: 16,
@@ -1492,10 +1516,9 @@ export default function EmployeeCommissions() {
                 </div>
               )}
             </div>
-            )}
 
-            {/* Info adicional - Solo visible si no es servicio técnico */}
-            {!data?.isTechnicalServices && (
+            {/* Info adicional - Solo visible si no es servicio técnico ni técnico de campo */}
+            {!data?.isTechnicalServices && !data?.hasFieldTechnicians && (
               <div style={{
                 marginTop: 24,
                 padding: 16,
@@ -1743,16 +1766,58 @@ export default function EmployeeCommissions() {
                 </div>
               )}
 
-              {/* Notas del trabajo */}
+              {/* Diagnóstico */}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                  Notas del Trabajo Realizado:
+                  🔍 Diagnóstico:
                 </label>
                 <textarea
-                  value={workNotes}
-                  onChange={(e) => setWorkNotes(e.target.value)}
-                  placeholder="Describe el trabajo realizado, diagnóstico, reparaciones, etc."
-                  rows={4}
+                  value={diagnosis}
+                  onChange={(e) => setDiagnosis(e.target.value)}
+                  placeholder="Describe el problema o diagnóstico técnico encontrado"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: 12,
+                    borderRadius: 8,
+                    border: `1px solid ${colors.border}`,
+                    fontSize: 14,
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Solución */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                  🔧 Solución Aplicada:
+                </label>
+                <textarea
+                  value={solution}
+                  onChange={(e) => setSolution(e.target.value)}
+                  placeholder="Describe la solución o reparación realizada"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: 12,
+                    borderRadius: 8,
+                    border: `1px solid ${colors.border}`,
+                    fontSize: 14,
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Recomendaciones */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                  💡 Recomendaciones:
+                </label>
+                <textarea
+                  value={recommendations}
+                  onChange={(e) => setRecommendations(e.target.value)}
+                  placeholder="Recomendaciones para el cliente o notas adicionales"
+                  rows={2}
                   style={{
                     width: '100%',
                     padding: 12,
@@ -1772,6 +1837,9 @@ export default function EmployeeCommissions() {
                     setInsumosAppointment(null);
                     setSelectedInsumos([]);
                     setWorkNotes('');
+                    setDiagnosis('');
+                    setSolution('');
+                    setRecommendations('');
                   }}
                   style={{
                     flex: 1,

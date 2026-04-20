@@ -295,18 +295,14 @@ export default function BookAppointment() {
       setSlotsLoading(true);
       setSlots([]);
       const params = new URLSearchParams({ date: selected.date, serviceId: selected.service.id });
-      console.log('[Slots DEBUG] Consultando disponibilidad:', { date: selected.date, serviceId: selected.service.id, slug });
       api.get(`/businesses/${slug}/availability?${params}`)
         .then(r => {
-          console.log('[Slots DEBUG] Respuesta:', r.data);
           const filtered = selected.employee
             ? r.data.filter(s => s.employeeId === selected.employee.id)
             : r.data;
-          console.log('[Slots DEBUG] Slots filtrados:', filtered.length);
           setSlots(filtered);
         })
-        .catch((err) => {
-          console.error('[Slots DEBUG] Error:', err);
+        .catch(() => {
           setSlots([]);
         })
         .finally(() => setSlotsLoading(false));
@@ -368,7 +364,15 @@ export default function BookAppointment() {
   const calculateDepositAmount = () => {
     if (!isDepositRequired || !selected.service) return 0;
     if (depositConfig?.amount > 0) return depositConfig.amount;
-    const servicePrice = selected.service.price || 0;
+    // Calcular precio con descuento si hay promoción activa
+    const promo = selected.service?.Promotions && selected.service.Promotions.length > 0 ? selected.service.Promotions[0] : null;
+    let servicePrice = selected.service.price || 0;
+    if (promo) {
+      const discount = promo.discountType === 'percentage'
+        ? servicePrice * (Number(promo.discountValue) / 100)
+        : Number(promo.discountValue);
+      servicePrice = Math.max(0, servicePrice - discount);
+    }
     return Math.round(servicePrice * (depositConfig?.percentage || 30) / 100);
   };
   const depositAmount = calculateDepositAmount();
@@ -1057,7 +1061,30 @@ export default function BookAppointment() {
                   {selected.service?.priceOptional ? (
                     <> Precio a cotizar en sitio</>
                   ) : (
-                    <>💰 ${Number(selected.service?.price).toLocaleString('es-CO')}</>
+                    (() => {
+                      const promo = selected.service?.Promotions && selected.service.Promotions.length > 0 ? selected.service.Promotions[0] : null;
+                      const basePrice = Number(selected.service?.price || 0);
+                      if (promo) {
+                        const discount = promo.discountType === 'percentage'
+                          ? basePrice * (Number(promo.discountValue) / 100)
+                          : Number(promo.discountValue);
+                        const finalPrice = Math.max(0, basePrice - discount);
+                        return (
+                          <>
+                            <div style={{ fontSize: 12, color: '#ef4444', textDecoration: 'line-through' }}>
+                              ${basePrice.toLocaleString('es-CO')}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 11, background: '#fee2e2', color: '#b91c1c', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+                                -{promo.discountType === 'percentage' ? `${promo.discountValue}%` : 'PROMO'}
+                              </span>
+                              💰 ${finalPrice.toLocaleString('es-CO')}
+                            </div>
+                          </>
+                        );
+                      }
+                      return <>💰 ${basePrice.toLocaleString('es-CO')}</>;
+                    })()
                   )}
                 </div>
                 {isDepositRequired && (

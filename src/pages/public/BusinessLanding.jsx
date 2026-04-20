@@ -431,8 +431,8 @@ export default function BusinessLanding() {
     const lower = (name || '').toLowerCase();
     if (lower.includes('nequi')) return '/nequi.png';
     if (lower.includes('daviplata')) return '/daviplat.png';
-    if (lower.includes(lower.includes('llave') || lower.includes('breb-b') ||
-       lower.includes('bre-b') || lower.includes('breb'))) return '/Bre-B.png';
+    if (lower.includes('llave') || lower.includes('breb-b') ||
+        lower.includes('bre-b') || lower.includes('breb')) return '/Bre-B.png';
     if (lower.includes('davivienda')) return '/davivienda.png';
     if (lower.includes('bancolombia')) return '/bancolombia.png';
     if (lower.includes('banco')) return '/banco.png';

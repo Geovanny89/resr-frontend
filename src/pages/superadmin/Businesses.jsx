@@ -4,7 +4,7 @@ import api from '../../api/client';
 import {
   Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
   Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  CreditCard, Calendar, User, Trash2, Check, Store
+  CreditCard, Calendar, User, Trash2, Check, Store, UserPlus
 } from 'lucide-react';
 import '../../styles/responsive.css';
 
@@ -40,8 +40,24 @@ export default function BusinessesResponsive() {
     subscriptionStatus: '', 
     lastPaymentDate: '',
     subscriptionStartDate: '',
-    subscriptionEndDate: ''
+    subscriptionEndDate: '',
+    subscriptionPlan: 'basic',
+    additionalUsers: 0
   });
+  const [availablePlans, setAvailablePlans] = useState([]);
+  
+  // Planes predefinidos
+  const PLANS = {
+    basic: { name: 'Básico', price: 70000, includedUsers: 2 },
+    pro: { name: 'Pro', price: 90000, includedUsers: 5 },
+    premium: { name: 'Premium', price: 130000, includedUsers: 10 }
+  };
+  const ADDITIONAL_USER_PRICE = 20000;
+  
+  // Estado para modal rápido de agregar usuarios
+  const [quickAddModal, setQuickAddModal] = useState(null);
+  const [quickAddCount, setQuickAddCount] = useState(1);
+  const [quickAdding, setQuickAdding] = useState(false);
   const [saving, setSaving]             = useState(false);
   const [toast, setToast]               = useState(null);
   const [currentPage, setCurrentPage]     = useState(1);
@@ -152,16 +168,64 @@ export default function BusinessesResponsive() {
   const handleSubscriptionUpdate = async () => {
     setSaving(true);
     try {
-      const response = await api.patch(`/businesses/${subModal.id}/subscription-dates`, subForm);
+      // Actualizar fechas de suscripción
+      const response = await api.patch(`/businesses/${subModal.id}/subscription-dates`, {
+        subscriptionStatus: subForm.subscriptionStatus,
+        lastPaymentDate: subForm.lastPaymentDate,
+        subscriptionStartDate: subForm.subscriptionStartDate,
+        subscriptionEndDate: subForm.subscriptionEndDate
+      });
+      
+      // Actualizar plan y usuarios adicionales
+      await api.put(`/businesses/${subModal.id}/subscription-plan`, {
+        subscriptionPlan: subForm.subscriptionPlan,
+        additionalUsers: parseInt(subForm.additionalUsers) || 0
+      });
+      
       setBusinesses(prev => prev.map(b => 
         b.id === subModal.id ? { ...b, ...response.data } : b
       ));
-      showToast('Suscripción actualizada');
+      showToast('Suscripción y plan actualizados');
       setSubModal(null);
-    } catch {
+    } catch (err) {
+      console.error('Error:', err);
       showToast('Error al actualizar suscripción', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+  
+  // Calcular precio total
+  const calculateTotal = () => {
+    const plan = PLANS[subForm.subscriptionPlan] || PLANS.basic;
+    const additional = subForm.additionalUsers === '' ? 0 : (parseInt(subForm.additionalUsers) || 0);
+    return plan.price + (additional * ADDITIONAL_USER_PRICE);
+  };
+  
+  // Agregar usuarios rápidamente (sin cambiar plan ni fechas)
+  const handleQuickAddUsers = async () => {
+    if (!quickAddModal || quickAddCount < 1) return;
+    
+    setQuickAdding(true);
+    try {
+      await api.post(`/businesses/${quickAddModal.id}/additional-users`, {
+        count: parseInt(quickAddCount)
+      });
+      
+      // Actualizar el negocio en la lista
+      setBusinesses(prev => prev.map(b => 
+        b.id === quickAddModal.id 
+          ? { ...b, additionalUsers: (b.additionalUsers || 0) + parseInt(quickAddCount) }
+          : b
+      ));
+      
+      showToast(`✅ Se agregaron ${quickAddCount} usuarios a ${quickAddModal.name}`);
+      setQuickAddModal(null);
+      setQuickAddCount(1);
+    } catch (err) {
+      showToast('Error al agregar usuarios', 'error');
+    } finally {
+      setQuickAdding(false);
     }
   };
 
@@ -253,6 +317,22 @@ export default function BusinessesResponsive() {
             {biz.subscriptionStatus === 'overdue' && <AlertTriangle size={12} />}
             {subInfo.label}
           </span>
+          
+          {/* Badge del Plan */}
+          <span className="badge" style={{ 
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+            background: biz.subscriptionPlan === 'premium' ? '#fef3c7' : biz.subscriptionPlan === 'pro' ? '#e0e7ff' : '#d1fae5',
+            color: biz.subscriptionPlan === 'premium' ? '#92400e' : biz.subscriptionPlan === 'pro' ? '#3730a3' : '#065f46',
+            display: 'flex', alignItems: 'center', gap: 4
+          }}>
+            <Building2 size={12} />
+            {biz.subscriptionPlan === 'basic' && 'Básico'}
+            {biz.subscriptionPlan === 'pro' && 'Pro'}
+            {biz.subscriptionPlan === 'premium' && 'Premium'}
+            {!biz.subscriptionPlan && 'Básico'}
+            ({(biz.includedUsers || 2) + (biz.additionalUsers || 0)} empleados)
+          </span>
+          
           {biz.isBranch && (
             <span className="badge" style={{ 
               padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
@@ -329,6 +409,19 @@ export default function BusinessesResponsive() {
               </button>
             </>
           )}
+          {/* Botón rápido para agregar usuarios */}
+          <button 
+            className="btn-icon" 
+            onClick={() => {
+              setQuickAddModal(biz);
+              setQuickAddCount(1);
+            }}
+            title="Agregar usuarios rápido"
+            style={{ background: '#e0e7ff', color: '#3730a3' }}
+          >
+            <UserPlus size={18} />
+          </button>
+          
           <button 
             className="btn-icon" 
             onClick={() => setDetailBiz(biz)}
@@ -553,7 +646,9 @@ export default function BusinessesResponsive() {
                       subscriptionStatus: detailBiz.subscriptionStatus || 'pending',
                       lastPaymentDate: detailBiz.lastPaymentDate ? detailBiz.lastPaymentDate.split('T')[0] : '',
                       subscriptionStartDate: detailBiz.subscriptionStartDate ? detailBiz.subscriptionStartDate.split('T')[0] : '',
-                      subscriptionEndDate: detailBiz.subscriptionEndDate ? detailBiz.subscriptionEndDate.split('T')[0] : ''
+                      subscriptionEndDate: detailBiz.subscriptionEndDate ? detailBiz.subscriptionEndDate.split('T')[0] : '',
+                      subscriptionPlan: detailBiz.subscriptionPlan || 'basic',
+                      additionalUsers: detailBiz.additionalUsers || 0
                     });
                     setSubModal(detailBiz);
                     setDetailBiz(null);
@@ -582,6 +677,65 @@ export default function BusinessesResponsive() {
             </div>
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
               <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
+              
+              {/* Sección: Plan de Suscripción */}
+              <div style={{ background: 'var(--gray-100)', padding: '16px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>📦 Plan de Suscripción</h4>
+                
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plan</label>
+                  <select 
+                    value={subForm.subscriptionPlan} 
+                    onChange={e => setSubForm(prev => ({ ...prev, subscriptionPlan: e.target.value }))} 
+                    style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }}
+                  >
+                    <option value="basic">💚 Básico - $70.000 (2 empleados)</option>
+                    <option value="pro">💙 Pro - $90.000 (3 empleados)</option>
+                    <option value="premium">💛 Premium - $130.000 (5 empleados)</option>
+                  </select>
+                </div>
+                
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Empleados extras</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={subForm.additionalUsers} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        // Permitir string vacío o número válido
+                        if (val === '') {
+                          setSubForm(prev => ({ ...prev, additionalUsers: '' }));
+                        } else {
+                          const num = parseInt(val);
+                          if (!isNaN(num) && num >= 0) {
+                            setSubForm(prev => ({ ...prev, additionalUsers: num }));
+                          }
+                        }
+                      }}
+                      onBlur={e => {
+                        // Al salir del campo, si está vacío poner 0
+                        if (e.target.value === '') {
+                          setSubForm(prev => ({ ...prev, additionalUsers: 0 }));
+                        }
+                      }}
+                      style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }} 
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total mensual</label>
+                    <div style={{ padding: '10px', borderRadius: 8, background: 'var(--success-bg)', color: 'var(--success-text)', fontWeight: 700, fontSize: 16, textAlign: 'center' }}>
+                      ${calculateTotal().toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                  {PLANS[subForm.subscriptionPlan]?.includedUsers} incluidos + {subForm.additionalUsers === '' ? 0 : (subForm.additionalUsers || 0)} extras = {PLANS[subForm.subscriptionPlan]?.includedUsers + (subForm.additionalUsers === '' ? 0 : (parseInt(subForm.additionalUsers) || 0))} empleados totales (admin no cuenta)
+                </div>
+              </div>
+              
+              {/* Sección: Estado de Suscripción */}
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de suscripción</label>
                 <select value={subForm.subscriptionStatus} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }}>
@@ -689,6 +843,88 @@ export default function BusinessesResponsive() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal rápido para agregar usuarios */}
+      {quickAddModal && (
+        <div className="modal-overlay" onClick={() => setQuickAddModal(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, width: '98%', padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3730a3, #6366f1)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>➕ Agregar Empleados</h2>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{quickAddModal.name} (el admin no cuenta)</p>
+              </div>
+              <button onClick={() => setQuickAddModal(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: 'var(--gray-100)', padding: '16px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Plan actual:</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[quickAddModal.subscriptionPlan]?.name || 'Básico'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados incluidos:</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[quickAddModal.subscriptionPlan]?.includedUsers || 2}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados extras:</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{quickAddModal.additionalUsers || 0}</span>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Total empleados permitidos:</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+                    {(PLANS[quickAddModal.subscriptionPlan]?.includedUsers || 2) + (quickAddModal.additionalUsers || 0)}
+                  </span>
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Empleados a agregar
+                </label>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={quickAddCount}
+                    onChange={e => setQuickAddCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{ flex: 1, padding: '12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, background: 'var(--surface)', color: 'var(--text)', textAlign: 'center', fontWeight: 600 }}
+                  />
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Costo adicional</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--success-text)' }}>
+                      ${(quickAddCount * ADDITIONAL_USER_PRICE).toLocaleString()}/mes
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                  Cada usuario adicional cuesta ${ADDITIONAL_USER_PRICE.toLocaleString()} COP/mes
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button 
+                  className="btn-secondary" 
+                  style={{ flex: 1, padding: '12px', borderRadius: 8, fontWeight: 600, fontSize: 14 }} 
+                  onClick={() => setQuickAddModal(null)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 2, padding: '12px', borderRadius: 8, fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg, #3730a3, #6366f1)' }} 
+                  onClick={handleQuickAddUsers}
+                  disabled={quickAdding}
+                >
+                  {quickAdding ? 'Agregando...' : `➕ Agregar ${quickAddCount} empleado${quickAddCount > 1 ? 's' : ''}`}
+                </button>
+              </div>
             </div>
           </div>
         </div>

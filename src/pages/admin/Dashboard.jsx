@@ -225,127 +225,133 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* WHATSAPP STATUS BAR */}
+      {/* WHATSAPP STATUS BAR - Solo para empresas que NO son técnicos a domicilio */}
       {/* Si está conectado o tiene sesión guardada, mostrar como conectado permanentemente */}
-      {(whatsappStatus === 'connected' || whatsappStatus === 'session_saved') ? (
-        // Estado conectado/guardado - siempre verde con menú de opciones
-        <div className="card mb-6" style={{ 
-          background: '#ecfdf5', 
-          border: '1px solid #10b981', 
-          padding: '12px 20px', 
-          borderRadius: 12 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 20 }}>✅</div>
-              <div>
-                <div style={{ 
-                  fontWeight: 700, 
-                  fontSize: 14, 
-                  color: '#065f46'
-                }}>
-                  {business?.isBranch && business?.useParentWhatsApp ? 'WhatsApp (Sede Principal)' : 'WhatsApp Conectado'}
-                </div>
-                <div style={{ fontSize: 12, color: '#059669' }}>
-                  Los recordatorios automáticos y calificaciones están activos
-                </div>
-              </div>
-            </div>
-            {/* Menú de opciones para WhatsApp */}
-            {!business?.isBranch && (
-              <div style={{ position: 'relative' }}>
-                <button 
-                  onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    padding: '8px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4
-                  }}
-                >
-                  <span style={{ fontSize: 20 }}>⚙️</span>
-                  <span style={{ fontSize: 12, color: '#065f46', fontWeight: 500 }}>Opciones</span>
-                </button>
-                
-                {showWhatsAppMenu && (
-                  <div style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: '100%',
-                    marginTop: 8,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 100,
-                    minWidth: 200
+      {/* Para sucursales, verificar el hasFieldTechnicians del negocio padre */}
+      {!(business?.isBranch 
+        ? business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians
+        : business?.hasFieldTechnicians
+      ) && (
+        (whatsappStatus === 'connected' || whatsappStatus === 'session_saved') ? (
+          // Estado conectado/guardado - siempre verde con menú de opciones
+          <div className="card mb-6" style={{ 
+            background: '#ecfdf5', 
+            border: '1px solid #10b981', 
+            padding: '12px 20px', 
+            borderRadius: 12 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: 20 }}>✅</div>
+                <div>
+                  <div style={{ 
+                    fontWeight: 700, 
+                    fontSize: 14, 
+                    color: '#065f46'
                   }}>
-                    <button
-                      onClick={() => {
-                        setShowWhatsAppMenu(false);
-                        setShowChangeNumberConfirm(true);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        textAlign: 'left',
-                        border: 'none',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        color: '#dc2626',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8
-                      }}
-                    >
-                      <span>📱</span> Cambiar número
-                    </button>
+                    {business?.isBranch && business?.useParentWhatsApp ? 'WhatsApp (Sede Principal)' : 'WhatsApp Conectado'}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        // Estado desconectado - mostrar advertencia y botón para vincular
-        <div className="card mb-6" style={{ 
-          background: '#fff7ed', 
-          border: '1px solid #f97316', 
-          padding: '12px 20px', 
-          borderRadius: 12 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 20 }}>📲</div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#9a3412' }}>
-                  WhatsApp Desconectado
-                </div>
-                <div style={{ fontSize: 12, color: '#c2410c' }}>
-                  {business?.isBranch && business?.useParentWhatsApp 
-                    ? 'Usando conexión de la sede principal.' 
-                    : 'Conecta tu WhatsApp para enviar recordatorios y recibir calificaciones'}
+                  <div style={{ fontSize: 12, color: '#059669' }}>
+                    Los recordatorios automáticos y calificaciones están activos
+                  </div>
                 </div>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(!business?.isBranch || !business?.useParentWhatsApp) && (
-                <button 
-                  onClick={() => { setShowQRModal(true); getWAQR(); }} 
-                  className="btn-primary btn-sm"
-                  disabled={checkingWA}
-                >
-                  {checkingWA ? 'Generando...' : 'Vincular WhatsApp'}
-                </button>
+              {/* Menú de opciones para WhatsApp */}
+              {!business?.isBranch && (
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>⚙️</span>
+                    <span style={{ fontSize: 12, color: '#065f46', fontWeight: 500 }}>Opciones</span>
+                  </button>
+                  
+                  {showWhatsAppMenu && (
+                    <div style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: '100%',
+                      marginTop: 8,
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      zIndex: 100,
+                      minWidth: 200
+                    }}>
+                      <button
+                        onClick={() => {
+                          setShowWhatsAppMenu(false);
+                          setShowChangeNumberConfirm(true);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          textAlign: 'left',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          color: '#dc2626',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <span>📱</span> Cambiar número
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
-        </div>
+        ) : (
+          // Estado desconectado - mostrar advertencia y botón para vincular
+          <div className="card mb-6" style={{ 
+            background: '#fff7ed', 
+            border: '1px solid #f97316', 
+            padding: '12px 20px', 
+            borderRadius: 12 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: 20 }}>📲</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#9a3412' }}>
+                    WhatsApp Desconectado
+                  </div>
+                  <div style={{ fontSize: 12, color: '#c2410c' }}>
+                    {business?.isBranch && business?.useParentWhatsApp 
+                      ? 'Usando conexión de la sede principal.' 
+                      : 'Conecta tu WhatsApp para enviar recordatorios y recibir calificaciones'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {(!business?.isBranch || !business?.useParentWhatsApp) && (
+                  <button 
+                    onClick={() => { setShowQRModal(true); getWAQR(); }} 
+                    className="btn-primary btn-sm"
+                    disabled={checkingWA}
+                  >
+                    {checkingWA ? 'Generando...' : 'Vincular WhatsApp'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
       )}
 
       {/* MODAL QR WHATSAPP */}

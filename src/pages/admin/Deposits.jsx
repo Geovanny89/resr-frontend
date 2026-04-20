@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
-import { DollarSign, Plus, CheckCircle, XCircle, Clock, ArrowRightCircle, User } from 'lucide-react';
+import { DollarSign, Plus, CheckCircle, XCircle, Clock, ArrowRightCircle, User, X } from 'lucide-react';
 
 const STATUS_CONFIG = {
   held: { label: 'Retenido', color: '#f59e0b', icon: <Clock size={14} /> },
@@ -190,16 +190,19 @@ export default function Deposits() {
         })}
       </div>
 
-      {/* Filtros y acciones */}
+      {/* Filtros y acciones - Responsive */}
       <div style={{ 
         display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: 20,
-        flexWrap: 'wrap',
-        gap: 12
+        flexDirection: 'column',
+        gap: 12,
+        marginBottom: 20
       }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: 8, 
+          flexWrap: 'wrap',
+          justifyContent: 'flex-start'
+        }}>
           {[
             { value: 'all', label: 'Todos' },
             { value: 'held', label: 'Retenidos' },
@@ -217,8 +220,9 @@ export default function Deposits() {
                 background: filterStatus === f.value ? '#3b82f6' : colors.bgSecondary,
                 color: filterStatus === f.value ? 'white' : colors.text,
                 fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer'
+                fontSize: 'clamp(11px, 2.5vw, 13px)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               {f.label}
@@ -229,11 +233,13 @@ export default function Deposits() {
         <button
           onClick={() => setShowModal(true)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '10px 16px',
             background: '#3b82f6', color: 'white',
             border: 'none', borderRadius: 8,
-            fontWeight: 600, cursor: 'pointer'
+            fontWeight: 600, cursor: 'pointer',
+            fontSize: 'clamp(13px, 3vw, 14px)',
+            width: '100%'
           }}
         >
           <Plus size={18} />
@@ -308,7 +314,11 @@ export default function Deposits() {
               if (row.status !== 'held') return null;
               
               return (
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: 6,
+                  flexWrap: 'wrap'
+                }}>
                   <button
                     onClick={() => {
                       setSelectedDeposit(row);
@@ -321,9 +331,10 @@ export default function Deposits() {
                       border: 'none',
                       background: '#10b981',
                       color: 'white',
-                      fontSize: 12,
+                      fontSize: 'clamp(11px, 2.5vw, 12px)',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     Aplicar
@@ -337,9 +348,10 @@ export default function Deposits() {
                       border: `1px solid ${colors.border}`,
                       background: 'transparent',
                       color: colors.text,
-                      fontSize: 12,
+                      fontSize: 'clamp(11px, 2.5vw, 12px)',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     Reembolsar
@@ -353,9 +365,10 @@ export default function Deposits() {
                       border: 'none',
                       background: '#ef4444',
                       color: 'white',
-                      fontSize: 12,
+                      fontSize: 'clamp(11px, 2.5vw, 12px)',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     Perder
@@ -372,19 +385,32 @@ export default function Deposits() {
 
       {/* Modal Nuevo Depósito */}
       {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
-        }}>
-          <div style={{
-            background: colors.cardBg, borderRadius: 16, padding: 28,
-            maxWidth: 450, width: '100%'
-          }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 700, color: colors.text }}>
-              <DollarSign size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />
-              Nuevo Depósito/Anticipo
-            </h2>
+        <div 
+          onClick={() => setShowModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 16
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: colors.cardBg, borderRadius: 16, padding: 28,
+              maxWidth: 450, width: '100%', maxHeight: '90vh', overflowY: 'auto'
+            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
+                <DollarSign size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+                Nuevo Depósito/Anticipo
+              </h2>
+              <button 
+                onClick={() => setShowModal(false)} 
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={24} color={colors.textSecondary} />
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: 16 }}>
@@ -423,7 +449,12 @@ export default function Deposits() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                gap: 12, 
+                marginBottom: 16 
+              }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
                     Monto *

@@ -1,31 +1,71 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Star, Check, Loader2 } from 'lucide-react';
 import api from '../../api/client';
 
 export default function RateEmployee() {
-  const { appointmentId } = useParams();
+  const { appointmentId: routeAppointmentId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // Soportar tanto route params como query params
+  const appointmentId = routeAppointmentId || searchParams.get('appointmentId');
+  const initialRating = parseInt(searchParams.get('rating')) || 0;
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [appointment, setAppointment] = useState(null);
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(initialRating || 5);
   const [comment, setComment] = useState('');
+  const [autoSubmit, setAutoSubmit] = useState(false);
 
   useEffect(() => {
+    if (!appointmentId) {
+      setError('ID de cita no proporcionado');
+      setLoading(false);
+      return;
+    }
+    
     // Verificar que la cita existe y está completada
     api.get(`/appointments/${appointmentId}/verify`)
       .then(r => {
         setAppointment(r.data);
+        // Si viene rating por query param, auto-enviar
+        if (initialRating >= 1 && initialRating <= 5) {
+          setAutoSubmit(true);
+        }
         setLoading(false);
       })
       .catch(e => {
         setError(e.response?.data?.error || 'Cita no encontrada o no disponible para calificar');
         setLoading(false);
       });
-  }, [appointmentId]);
+  }, [appointmentId, initialRating]);
+  
+  // Auto-submit cuando viene rating por query param
+  useEffect(() => {
+    if (autoSubmit && appointment && initialRating >= 1 && initialRating <= 5) {
+      handleAutoSubmit();
+    }
+  }, [autoSubmit, appointment]);
+  
+  const handleAutoSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/appointments/${appointmentId}/rate`, { 
+        rating: initialRating, 
+        comment: '' 
+      });
+      setRating(initialRating);
+      setSuccess(true);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Error al enviar calificación');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const submitRating = async (e) => {
     e.preventDefault();

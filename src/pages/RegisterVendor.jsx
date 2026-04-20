@@ -27,6 +27,8 @@ export default function RegisterVendor() {
     description: '',
     phone: '',
     address: '',
+    hasFieldTechnicians: false,
+    subscriptionPlan: 'basic',
   });
 
   useEffect(() => {
@@ -103,15 +105,26 @@ export default function RegisterVendor() {
     return true;
   };
 
+  const validateStep3 = () => {
+    if (!form.subscriptionPlan) {
+      setError('Debes seleccionar un plan de suscripción');
+      return false;
+    }
+    setError('');
+    return true;
+  };
+
   const handleNextStep = () => {
     if (step === 1 && validateStep1()) {
       setStep(2);
+    } else if (step === 2 && validateStep2()) {
+      setStep(3);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep2()) return;
+    if (!validateStep3()) return;
 
     setLoading(true);
     try {
@@ -124,6 +137,8 @@ export default function RegisterVendor() {
         description: form.description,
         phone: form.phone,
         address: form.address,
+        hasFieldTechnicians: form.hasFieldTechnicians,
+        subscriptionPlan: form.subscriptionPlan,
       });
 
       // Mostrar pantalla de éxito
@@ -228,7 +243,7 @@ export default function RegisterVendor() {
             Crear mi Negocio
           </h1>
           <p style={{ color: colors.textSecondary, fontSize: 14 }}>
-            Paso {step} de 2
+            Paso {step} de 3
           </p>
           {/* Progress bar */}
           <div style={{
@@ -241,7 +256,7 @@ export default function RegisterVendor() {
             <div style={{
               height: '100%',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              width: `${(step / 2) * 100}%`,
+              width: `${(step / 3) * 100}%`,
               transition: 'width 0.3s'
             }} />
           </div>
@@ -606,10 +621,203 @@ export default function RegisterVendor() {
                 />
               </div>
 
+              {/* Checkbox para Técnicos a Domicilio */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+                padding: 12,
+                background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff',
+                borderRadius: 8,
+                border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe'}`,
+                marginTop: 8
+              }}>
+                <input
+                  type="checkbox"
+                  id="hasFieldTechnicians"
+                  name="hasFieldTechnicians"
+                  checked={form.hasFieldTechnicians}
+                  onChange={handleChange}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    marginTop: 2,
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <label 
+                    htmlFor="hasFieldTechnicians"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: isDark ? '#93c5fd' : '#1e40af',
+                      cursor: 'pointer',
+                      marginBottom: 4
+                    }}
+                  >
+                    <span>🔧</span>
+                    Servicios Técnicos a Domicilio
+                  </label>
+                  <p style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    margin: 0,
+                    lineHeight: 1.4
+                  }}>
+                    Marcá esta opción si tu negocio envía técnicos a domicilio (ej: reparaciones, mantenimiento). 
+                    <strong> No incluye recordatorios por WhatsApp</strong> - usarán principalmente la app móvil.
+                  </p>
+                </div>
+              </div>
+
               <div className="register-vendor-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
+                  style={{
+                    background: isDark ? colors.bgSecondary : '#e2e8f0',
+                    color: colors.text,
+                    border: `1px solid ${isDark ? colors.border : 'transparent'}`,
+                    padding: '12px',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.target.style.background = isDark ? colors.border : '#cbd5e0'}
+                  onMouseLeave={e => e.target.style.background = isDark ? colors.bgSecondary : '#e2e8f0'}
+                >
+                  ← Atrás
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '12px',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                  }}
+                  onMouseLeave={e => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Paso 3: Plan de Suscripción */}
+          {step === 3 && (
+            <>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: colors.text
+                }}>
+                  Plan de Suscripción *
+                </label>
+                <select
+                  name="subscriptionPlan"
+                  value={form.subscriptionPlan}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    cursor: 'pointer'
+                  }}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
+                >
+                  <option value="basic">Básico - $70.000/mes (2 empleados)</option>
+                  <option value="pro">Pro - $90.000/mes (5 empleados)</option>
+                  <option value="premium">Premium - $130.000/mes (10 empleados)</option>
+                </select>
+              </div>
+
+              <div style={{
+                padding: 16,
+                background: isDark ? 'rgba(102, 126, 234, 0.1)' : '#f3f4f6',
+                borderRadius: 8,
+                border: `1px solid ${isDark ? 'rgba(102, 126, 234, 0.3)' : '#e5e7eb'}`
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', color: colors.text, fontSize: 14 }}>
+                  📋 Resumen del Plan Seleccionado
+                </h4>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {form.subscriptionPlan === 'basic' && (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13, color: colors.textSecondary }}>
+                        <strong style={{ color: colors.text }}>Plan Básico</strong> - Ideal para pequeños negocios
+                      </p>
+                      <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
+                        <li>2 empleados incluidos</li>
+                        <li>Gestión de citas básica</li>
+                        <li>Recordatorios por WhatsApp</li>
+                        <li>Soporte por email</li>
+                      </ul>
+                    </>
+                  )}
+                  {form.subscriptionPlan === 'pro' && (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13, color: colors.textSecondary }}>
+                        <strong style={{ color: colors.text }}>Plan Pro</strong> - Para negocios en crecimiento
+                      </p>
+                      <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
+                        <li>5 empleados incluidos</li>
+                        <li>Todas las funciones del plan Básico</li>
+                        <li>Reportes avanzados</li>
+                        <li>Soporte prioritario</li>
+                      </ul>
+                    </>
+                  )}
+                  {form.subscriptionPlan === 'premium' && (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13, color: colors.textSecondary }}>
+                        <strong style={{ color: colors.text }}>Plan Premium</strong> - Máxima capacidad
+                      </p>
+                      <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
+                        <li>10 empleados incluidos</li>
+                        <li>Todas las funciones del plan Pro</li>
+                        <li>API access</li>
+                        <li>Soporte 24/7</li>
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="register-vendor-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
                   style={{
                     background: isDark ? colors.bgSecondary : '#e2e8f0',
                     color: colors.text,

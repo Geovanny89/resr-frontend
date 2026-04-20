@@ -46,7 +46,12 @@ function formatDateISO(date) {
 }
 
 function isSameDay(date1, date2) {
-  return formatDateISO(date1) === formatDateISO(date2);
+  // Comparar fechas en zona horaria de Colombia, no UTC
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  const date1Str = d1.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  const date2Str = d2.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  return date1Str === date2Str;
 }
 
 function getHourFromDate(dateStr) {
@@ -63,6 +68,26 @@ export default function Agenda() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [viewMode, setViewMode] = useState('week'); // 'week' | 'day'
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+
+  // Cargar empleados del negocio
+  useEffect(() => {
+    if (business?.id) {
+      loadEmployees();
+    }
+  }, [business?.id]);
+
+  const loadEmployees = async () => {
+    try {
+      const res = await api.get(`/employees?businessId=${business.id}`);
+      const employeesData = Array.isArray(res.data) ? res.data : [];
+      setEmployees(employeesData.filter(e => e.active));
+    } catch (e) {
+      console.error('Error loading employees:', e);
+      setEmployees([]);
+    }
+  };
 
   const weekDates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
   const weekLabel = useMemo(() => {
@@ -118,12 +143,25 @@ export default function Agenda() {
     const today = new Date();
     setCurrentWeek(today);
     setSelectedDate(today);
+    setViewMode('day'); // Cambiar a vista diaria al hacer clic en Hoy
+  };
+
+  const switchToWeekView = () => {
+    setViewMode('week');
+    setSelectedDate(new Date());
+  };
+
+  const switchToDayView = (date) => {
+    setViewMode('day');
+    setSelectedDate(date);
   };
 
   const getAppointmentsForDay = (date) => {
     return appointments.filter(apt => {
       const aptDate = new Date(apt.startTime);
-      return isSameDay(aptDate, date);
+      const matchesDate = isSameDay(aptDate, date);
+      const matchesEmployee = selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
+      return matchesDate && matchesEmployee;
     }).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   };
 
@@ -131,9 +169,17 @@ export default function Agenda() {
     return appointments.filter(apt => {
       const aptDate = new Date(apt.startTime);
       const aptHour = aptDate.getHours();
-      return isSameDay(aptDate, date) && aptHour === hour;
+      const matchesDate = isSameDay(aptDate, date) && aptHour === hour;
+      const matchesEmployee = selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
+      return matchesDate && matchesEmployee;
     }).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   };
+
+  // Citas filtradas para estadísticas
+  const filteredAppointments = useMemo(() => {
+    if (!selectedEmployeeId) return appointments;
+    return appointments.filter(apt => String(apt.employeeId) === selectedEmployeeId);
+  }, [appointments, selectedEmployeeId]);
 
   const openDetail = (apt) => {
     setSelectedAppointment(apt);
@@ -195,7 +241,7 @@ export default function Agenda() {
           background: ${colors.cardBg}; 
           border-radius: 12px; 
           border: 1px solid ${colors.border};
-          overflow: hidden;
+          overflow: visible;
         }
         .agenda-header {
           display: flex;
@@ -204,6 +250,26 @@ export default function Agenda() {
           padding: 16px 20px;
           border-bottom: 1px solid ${colors.border};
           background: ${colors.bgSecondary};
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .agenda-controls {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .agenda-employee-select {
+          padding: 8px 12px;
+          border: 1px solid ${colors.border};
+          border-radius: 8px;
+          background: ${colors.cardBg};
+          color: ${colors.text};
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          min-width: 150px;
+          max-width: 200px;
         }
         .agenda-nav {
           display: flex;
@@ -257,7 +323,7 @@ export default function Agenda() {
           background: ${colors.bgSecondary};
         }
         .agenda-time-slot {
-          height: 60px;
+          height: 140px;
           display: flex;
           align-items: flex-start;
           justify-content: center;
@@ -301,7 +367,7 @@ export default function Agenda() {
           position: relative;
         }
         .agenda-slot {
-          height: 60px;
+          height: 140px;
           border-bottom: 1px solid ${colors.border}30;
           position: relative;
         }
@@ -361,11 +427,26 @@ export default function Agenda() {
           .agenda-grid {
             grid-template-columns: 50px repeat(7, minmax(100px, 1fr));
           }
+          .agenda-header {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 12px 16px;
+          }
           .agenda-nav {
-            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+          }
+          .agenda-controls {
+            justify-content: center;
+            width: 100%;
           }
           .agenda-week-label {
             font-size: 14px;
+          }
+          .agenda-employee-select {
+            flex: 1;
+            min-width: 120px;
+            max-width: none;
           }
         }
       `}</style>
@@ -374,23 +455,23 @@ export default function Agenda() {
       <div className="agenda-stats">
         <div className="agenda-stat">
           <Calendar size={16} color={colors.primary} />
-          <span>Total: <span className="agenda-stat-value">{appointments.length}</span></span>
+          <span>Total: <span className="agenda-stat-value">{filteredAppointments.length}</span></span>
         </div>
         <div className="agenda-stat">
           <Clock size={16} color="#f59e0b" />
-          <span>Pendientes: <span className="agenda-stat-value">{appointments.filter(a => a.status === 'pending').length}</span></span>
+          <span>Pendientes: <span className="agenda-stat-value">{filteredAppointments.filter(a => a.status === 'pending').length}</span></span>
         </div>
         <div className="agenda-stat">
           <CheckCircle size={16} color="#10b981" />
-          <span>Completadas: <span className="agenda-stat-value">{appointments.filter(a => a.status === 'done').length}</span></span>
+          <span>Completadas: <span className="agenda-stat-value">{filteredAppointments.filter(a => a.status === 'done').length}</span></span>
         </div>
         <div className="agenda-stat">
           <Car size={16} color="#8b5cf6" />
-          <span>En Camino: <span className="agenda-stat-value">{appointments.filter(a => a.technicianStatus === 'on_the_way').length}</span></span>
+          <span>En Camino: <span className="agenda-stat-value">{filteredAppointments.filter(a => a.technicianStatus === 'on_the_way').length}</span></span>
         </div>
         <div className="agenda-stat">
           <MapPin size={16} color="#06b6d4" />
-          <span>Llegados: <span className="agenda-stat-value">{appointments.filter(a => a.technicianStatus === 'arrived').length}</span></span>
+          <span>Llegados: <span className="agenda-stat-value">{filteredAppointments.filter(a => a.technicianStatus === 'arrived').length}</span></span>
         </div>
       </div>
 
@@ -401,14 +482,53 @@ export default function Agenda() {
             <button className="agenda-nav-btn" onClick={prevWeek}>
               <ChevronLeft size={20} />
             </button>
-            <span className="agenda-week-label">{weekLabel}</span>
+            <span className="agenda-week-label">
+              {viewMode === 'week' ? weekLabel : selectedDate.toLocaleDateString('es-CO', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
             <button className="agenda-nav-btn" onClick={nextWeek}>
               <ChevronRight size={20} />
             </button>
           </div>
-          <button className="agenda-today-btn" onClick={goToToday}>
-            Hoy
-          </button>
+          <div className="agenda-controls">
+            {/* Selector de Empleado */}
+            <select
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              className="agenda-employee-select"
+            >
+              <option value="">Todos los empleados</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.User?.name || 'Empleado'}
+                </option>
+              ))}
+            </select>
+            {/* Botones de vista */}
+            <button 
+              className="agenda-today-btn" 
+              onClick={switchToWeekView}
+              style={{ 
+                background: viewMode === 'week' ? colors.primary : colors.cardBg,
+                color: viewMode === 'week' ? 'white' : colors.text,
+                borderColor: viewMode === 'week' ? colors.primary : colors.border,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Semana
+            </button>
+            <button 
+              className="agenda-today-btn" 
+              onClick={goToToday}
+              style={{ 
+                background: viewMode === 'day' ? colors.primary : colors.cardBg,
+                color: viewMode === 'day' ? 'white' : colors.text,
+                borderColor: viewMode === 'day' ? colors.primary : colors.border,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Hoy
+            </button>
+          </div>
         </div>
 
         {/* Calendar Grid */}
@@ -416,11 +536,103 @@ export default function Agenda() {
           <div style={{ padding: 60, textAlign: 'center' }}>
             <div className="spinner" />
           </div>
+        ) : viewMode === 'day' ? (
+          // Vista Diaria
+          <div className="agenda-grid" style={{ gridTemplateColumns: '60px 1fr' }}>
+            {/* Time column */}
+            <div className="agenda-time-column">
+              <div style={{ height: '140px', borderBottom: `1px solid ${colors.border}` }} />
+              {HOURS.map(hour => (
+                <div key={hour} className="agenda-time-slot">
+                  {hour}:00
+                </div>
+              ))}
+            </div>
+
+            {/* Single Day Column */}
+            <div className="agenda-day-column">
+              <div className={`agenda-day-header ${isToday(selectedDate) ? 'today' : ''}`}>
+                <div className="agenda-day-name">{DAYS_ES[selectedDate.getDay()]}</div>
+                <div className="agenda-day-number">{selectedDate.getDate()}</div>
+                {(() => {
+                  const dayAppointments = getAppointmentsForDay(selectedDate);
+                  return dayAppointments.length > 0 && (
+                    <div style={{ 
+                      fontSize: '10px', 
+                      color: colors.primary, 
+                      marginTop: '4px',
+                      fontWeight: 600 
+                    }}>
+                      {dayAppointments.length} cita{dayAppointments.length !== 1 ? 's' : ''}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="agenda-slots">
+                {HOURS.map(hour => {
+                  const hourAppointments = getAppointmentsForHour(selectedDate, hour);
+                  
+                  return (
+                    <div key={hour} className="agenda-slot">
+                      {hourAppointments.map((apt, idx) => {
+                        const status = STATUS_LABELS[apt.status] || STATUS_LABELS.pending;
+                        const techStatus = apt.technicianStatus;
+                        const displayStatus = techStatus && techStatus !== 'not_started' && STATUS_LABELS[techStatus] 
+                          ? STATUS_LABELS[techStatus] 
+                          : status;
+                        
+                        const startTime = new Date(apt.startTime);
+                        const endTime = new Date(apt.endTime);
+                        const duration = (endTime - startTime) / (1000 * 60);
+                        const startMinutes = startTime.getMinutes();
+                        
+                        return (
+                          <div
+                            key={apt.id}
+                            className="agenda-appointment"
+                            onClick={() => openDetail(apt)}
+                            style={{
+                              top: `${(startMinutes / 60) * 100}%`,
+                              height: `${Math.max(24, (duration / 60) * 100)}%`,
+                              background: displayStatus.bg,
+                              borderLeftColor: displayStatus.color,
+                              color: displayStatus.color,
+                              zIndex: idx + 1,
+                            }}
+                          >
+                            <div className="agenda-apt-time">
+                              {startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} - 
+                              {endTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className="agenda-apt-client">{apt.clientName}</div>
+                            <div className="agenda-apt-service">{apt.Service?.name}</div>
+                            {apt.Employee?.User?.name && (
+                              <div style={{ fontSize: '9px', marginTop: '2px', opacity: 0.8 }}>
+                                👤 {apt.Employee.User.name}
+                              </div>
+                            )}
+                            {apt.technicianStatus && apt.technicianStatus !== 'not_started' && (
+                              <div style={{ fontSize: '9px', marginTop: '2px' }}>
+                                {apt.technicianStatus === 'on_the_way' && '🚗 En camino'}
+                                {apt.technicianStatus === 'arrived' && '📍 Llegó'}
+                                {apt.technicianStatus === 'in_progress' && '🔧 En atención'}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         ) : (
+          // Vista Semanal
           <div className="agenda-grid">
             {/* Time column */}
             <div className="agenda-time-column">
-              <div style={{ height: '60px', borderBottom: `1px solid ${colors.border}` }} />
+              <div style={{ height: '140px', borderBottom: `1px solid ${colors.border}` }} />
               {HOURS.map(hour => (
                 <div key={hour} className="agenda-time-slot">
                   {hour}:00
@@ -434,7 +646,12 @@ export default function Agenda() {
               const isTodayDate = isToday(date);
               
               return (
-                <div key={index} className="agenda-day-column">
+                <div 
+                  key={index} 
+                  className="agenda-day-column" 
+                  onClick={() => switchToDayView(date)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className={`agenda-day-header ${isTodayDate ? 'today' : ''}`}>
                     <div className="agenda-day-name">{SHORT_DAYS[date.getDay()]}</div>
                     <div className="agenda-day-number">{date.getDate()}</div>
@@ -464,14 +681,17 @@ export default function Agenda() {
                             
                             const startTime = new Date(apt.startTime);
                             const endTime = new Date(apt.endTime);
-                            const duration = (endTime - startTime) / (1000 * 60); // minutes
+                            const duration = (endTime - startTime) / (1000 * 60);
                             const startMinutes = startTime.getMinutes();
                             
                             return (
                               <div
                                 key={apt.id}
                                 className="agenda-appointment"
-                                onClick={() => openDetail(apt)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDetail(apt);
+                                }}
                                 style={{
                                   top: `${(startMinutes / 60) * 100}%`,
                                   height: `${Math.max(24, (duration / 60) * 100)}%`,

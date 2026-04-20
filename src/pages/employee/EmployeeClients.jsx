@@ -26,6 +26,7 @@ export default function EmployeeClients() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [isTechnicalServices, setIsTechnicalServices] = useState(false);
+  const [hasFieldTechnicians, setHasFieldTechnicians] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function EmployeeClients() {
       ]);
       setData(clientsRes.data);
       setIsTechnicalServices(profileRes.data?.business?.isTechnicalServices || false);
+      setHasFieldTechnicians(profileRes.data?.business?.hasFieldTechnicians || false);
     } catch (err) {
       setError(err.response?.data?.error || 'Error al cargar datos');
     } finally {
@@ -201,7 +203,7 @@ export default function EmployeeClients() {
                             <div style={{ fontSize: 16, fontWeight: 700, color: colors.text, marginBottom: 2 }}>
                               {client.name || 'Cliente Anónimo'}
                             </div>
-                            {idx < 3 && (
+                            {idx < 3 && !hasFieldTechnicians && (
                               <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <Crown size={12} />
                                 Cliente VIP
@@ -244,7 +246,7 @@ export default function EmployeeClients() {
                         background: colors.bgSecondary,
                         borderRadius: 8
                       }}>
-                        {!isTechnicalServices && (
+                        {!isTechnicalServices && !hasFieldTechnicians && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <DollarSign size={16} color="#10b981" />
                             <div>

@@ -12,26 +12,143 @@ const SCHEDULE_TYPES = [
   { value: 'closed',  label: 'Cerrado (No laborable)', color: '#7c3aed', bg: '#ede9fe', icon: '🏖️' },
 ];
 
-// Lista de festivos comunes en Colombia (para referencia)
-const COMMON_HOLIDAYS = [
-  { date: '01-01', name: 'Año Nuevo' },
-  { date: '01-06', name: 'Día de Reyes' },
-  { date: '03-24', name: 'Día de San José' },
-  { date: '04-17', name: 'Jueves Santo' },
-  { date: '04-18', name: 'Viernes Santo' },
-  { date: '05-01', name: 'Día del Trabajo' },
-  { date: '06-02', name: 'Ascensión del Señor' },
-  { date: '06-23', name: 'Corpus Christi' },
-  { date: '06-30', name: 'Sagrado Corazón' },
-  { date: '07-20', name: 'Día de la Independencia' },
-  { date: '08-07', name: 'Batalla de Boyacá' },
-  { date: '08-15', name: 'Asunción de la Virgen' },
-  { date: '10-12', name: 'Día de la Raza' },
-  { date: '11-01', name: 'Día de Todos los Santos' },
-  { date: '11-11', name: 'Independencia de Cartagena' },
-  { date: '12-08', name: 'Inmaculada Concepción' },
-  { date: '12-25', name: 'Navidad' },
-];
+// Función para calcular Domingo de Pascua usando algoritmo de Gauss
+function getEasterDate(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1; // 0-indexed month
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month, day);
+}
+
+// Función para obtener el último lunes de un mes
+function getLastMondayOfMonth(year, month) {
+  // month is 0-indexed (0 = January)
+  const lastDay = new Date(year, month + 1, 0);
+  const dayOfWeek = lastDay.getDay();
+  const daysToSubtract = (dayOfWeek + 6) % 7;
+  lastDay.setDate(lastDay.getDate() - daysToSubtract);
+  return lastDay;
+}
+
+// Función para formatear fecha como MM-DD
+function formatMMDD(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${month}-${day}`;
+}
+
+// Función para obtener todos los festivos de Colombia de un año
+function getColombianHolidays(year) {
+  const holidays = [];
+
+  // 1. Año Nuevo (fijo)
+  holidays.push({ date: '01-01', name: 'Año Nuevo' });
+
+  // 2. Día de Reyes - Se pasa al lunes siguiente (Ley Emiliani)
+  const reyes = new Date(year, 0, 6);
+  const reyesLunes = new Date(reyes);
+  reyesLunes.setDate(reyes.getDate() + ((8 - reyes.getDay()) % 7));
+  holidays.push({ date: formatMMDD(reyesLunes), name: 'Día de los Reyes Magos' });
+
+  // 3. Día de San José - Último lunes de marzo
+  const sanJose = getLastMondayOfMonth(year, 2); // March = 2
+  holidays.push({ date: formatMMDD(sanJose), name: 'Día de San José' });
+
+  // Calcular Pascua
+  const pascua = getEasterDate(year);
+
+  // 4. Jueves Santo (Pascua - 3 días)
+  const juevesSanto = new Date(pascua);
+  juevesSanto.setDate(pascua.getDate() - 3);
+  holidays.push({ date: formatMMDD(juevesSanto), name: 'Jueves Santo' });
+
+  // 5. Viernes Santo (Pascua - 2 días)
+  const viernesSanto = new Date(pascua);
+  viernesSanto.setDate(pascua.getDate() - 2);
+  holidays.push({ date: formatMMDD(viernesSanto), name: 'Viernes Santo' });
+
+  // 6. Día del Trabajo (fijo)
+  holidays.push({ date: '05-01', name: 'Día del Trabajo' });
+
+  // 7. Ascensión del Señor (Pascua + 39 días - se pasa al lunes siguiente)
+  const ascension = new Date(pascua);
+  ascension.setDate(pascua.getDate() + 39);
+  const ascensionLunes = new Date(ascension);
+  ascensionLunes.setDate(ascension.getDate() + ((8 - ascension.getDay()) % 7));
+  holidays.push({ date: formatMMDD(ascensionLunes), name: 'Ascensión del Señor' });
+
+  // 8. Corpus Christi (Pascua + 60 días - se pasa al lunes siguiente)
+  const corpus = new Date(pascua);
+  corpus.setDate(pascua.getDate() + 60);
+  const corpusLunes = new Date(corpus);
+  corpusLunes.setDate(corpus.getDate() + ((8 - corpus.getDay()) % 7));
+  holidays.push({ date: formatMMDD(corpusLunes), name: 'Corpus Christi' });
+
+  // 9. Sagrado Corazón (Pascua + 68 días - se pasa al lunes siguiente)
+  const sagrado = new Date(pascua);
+  sagrado.setDate(pascua.getDate() + 68);
+  const sagradoLunes = new Date(sagrado);
+  sagradoLunes.setDate(sagrado.getDate() + ((8 - sagrado.getDay()) % 7));
+  holidays.push({ date: formatMMDD(sagradoLunes), name: 'Sagrado Corazón de Jesús' });
+
+  // 10. San Pedro y San Pablo - Lunes siguiente al 29 de junio (o 29 si es lunes)
+  const sanPedro = new Date(year, 5, 29);
+  const sanPedroLunes = new Date(sanPedro);
+  sanPedroLunes.setDate(sanPedro.getDate() + ((8 - sanPedro.getDay()) % 7));
+  holidays.push({ date: formatMMDD(sanPedroLunes), name: 'San Pedro y San Pablo' });
+
+  // 11. Día de la Independencia (fijo)
+  holidays.push({ date: '07-20', name: 'Día de la Independencia' });
+
+  // 12. Batalla de Boyacá (fijo)
+  holidays.push({ date: '08-07', name: 'Batalla de Boyacá' });
+
+  // 13. Asunción de la Virgen - Lunes siguiente al 15 de agosto
+  const asuncion = new Date(year, 7, 15);
+  const asuncionLunes = new Date(asuncion);
+  asuncionLunes.setDate(asuncion.getDate() + ((8 - asuncion.getDay()) % 7));
+  holidays.push({ date: formatMMDD(asuncionLunes), name: 'Asunción de la Virgen' });
+
+  // 14. Día de la Raza - Lunes siguiente al 12 de octubre
+  const raza = new Date(year, 9, 12);
+  const razaLunes = new Date(raza);
+  razaLunes.setDate(raza.getDate() + ((8 - raza.getDay()) % 7));
+  holidays.push({ date: formatMMDD(razaLunes), name: 'Día de la Raza' });
+
+  // 15. Todos los Santos - Lunes siguiente al 1 de noviembre
+  const todosSantos = new Date(year, 10, 1);
+  const todosSantosLunes = new Date(todosSantos);
+  todosSantosLunes.setDate(todosSantos.getDate() + ((8 - todosSantos.getDay()) % 7));
+  holidays.push({ date: formatMMDD(todosSantosLunes), name: 'Día de Todos los Santos' });
+
+  // 16. Independencia de Cartagena - Lunes siguiente al 11 de noviembre
+  const cartagena = new Date(year, 10, 11);
+  const cartagenaLunes = new Date(cartagena);
+  cartagenaLunes.setDate(cartagena.getDate() + ((8 - cartagena.getDay()) % 7));
+  holidays.push({ date: formatMMDD(cartagenaLunes), name: 'Independencia de Cartagena' });
+
+  // 17. Inmaculada Concepción (fijo)
+  holidays.push({ date: '12-08', name: 'Inmaculada Concepción' });
+
+  // 18. Navidad (fijo)
+  holidays.push({ date: '12-25', name: 'Navidad' });
+
+  return holidays.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Lista de festivos calculada dinámicamente para el año actual
+const COMMON_HOLIDAYS = getColombianHolidays(new Date().getFullYear());
 
 export default function SpecialSchedule() {
   const { business } = useAuth();
@@ -50,6 +167,9 @@ export default function SpecialSchedule() {
   });
   const [saving, setSaving]             = useState(false);
   const [showModal, setShowModal]       = useState(false);
+  const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [toast, setToast]               = useState(null);
   const [filterMonth, setFilterMonth]   = useState('');
@@ -120,15 +240,28 @@ export default function SpecialSchedule() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este horario especial?')) return;
+  const handleDelete = (id) => {
+    setScheduleToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!scheduleToDelete) return;
     try {
-      await api.delete(`/special-schedules/${id}`);
+      await api.delete(`/special-schedules/${scheduleToDelete}`);
       await load();
       showToast('Horario especial eliminado');
     } catch (e) {
       showToast(e.response?.data?.error || 'Error al eliminar', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
+      setScheduleToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setScheduleToDelete(null);
   };
 
   const startEdit = (sched) => {
@@ -188,19 +321,26 @@ export default function SpecialSchedule() {
   };
 
   // Crear todos los festivos de Colombia de una vez
-  const createAllHolidays = async () => {
-    if (!confirm('¿Crear automáticamente todos los festivos de Colombia para este año?\n\nSe marcarán como días cerrados y se configurarán para repetir cada año.')) {
-      return;
-    }
+  const openHolidayConfirm = () => {
+    setShowHolidayConfirm(true);
+  };
 
-    const currentYear = new Date().getFullYear();
+  const createAllHolidays = async () => {
+    setShowHolidayConfirm(false);
+    
+    // Determinar el año a usar (del filtro o el actual)
+    const currentYear = filterMonth ? parseInt(filterMonth.split('-')[0]) : new Date().getFullYear();
+    
+    // Recalcular festivos para el año seleccionado
+    const yearHolidays = getColombianHolidays(currentYear);
+    
     let created = 0;
     let skipped = 0;
 
     // Verificar cuáles ya existen
     const existingDates = new Set(schedules.map(s => s.specificDate));
 
-    for (const holiday of COMMON_HOLIDAYS) {
+    for (const holiday of yearHolidays) {
       const fullDate = `${currentYear}-${holiday.date}`;
       
       // Si ya existe un horario para esta fecha, saltar
@@ -303,7 +443,7 @@ export default function SpecialSchedule() {
           <div style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
           
           <button
-            onClick={createAllHolidays}
+            onClick={openHolidayConfirm}
             style={{ 
               padding: '8px 16px', 
               borderRadius: 6, 
@@ -318,7 +458,7 @@ export default function SpecialSchedule() {
             }}
           >
             <Calendar size={16} />
-            🎉 Crear todos los festivos 2026
+            🎉 Crear todos los festivos {filterMonth ? filterMonth.split('-')[0] : new Date().getFullYear()}
           </button>
         </div>
 
@@ -514,6 +654,129 @@ export default function SpecialSchedule() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Modal de confirmación para crear festivos */}
+        {showHolidayConfirm && (
+          <div className="modal-overlay" onClick={() => setShowHolidayConfirm(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+              <div className="modal-header" style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  width: 60, 
+                  height: 60, 
+                  borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  fontSize: 28
+                }}>
+                  🎉
+                </div>
+                <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>Crear festivos automáticamente</h3>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>
+                  Se crearán {getColombianHolidays(filterMonth ? parseInt(filterMonth.split('-')[0]) : new Date().getFullYear()).length} días festivos de Colombia para {filterMonth ? filterMonth.split('-')[0] : new Date().getFullYear()}
+                </p>
+              </div>
+              
+              <div className="modal-body" style={{ textAlign: 'center' }}>
+                <p style={{ 
+                  background: '#fef3c7', 
+                  padding: 12, 
+                  borderRadius: 8, 
+                  fontSize: 13,
+                  color: '#92400e',
+                  margin: 0
+                }}>
+                  <strong>⚠️ Nota:</strong> Se marcarán como días <strong>cerrados</strong> y se configurarán para repetir cada año.
+                </p>
+              </div>
+
+              <div className="modal-footer" style={{ justifyContent: 'center', gap: 12 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowHolidayConfirm(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={createAllHolidays}
+                  style={{ 
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    border: 'none'
+                  }}
+                >
+                  🎉 Crear {getColombianHolidays(filterMonth ? parseInt(filterMonth.split('-')[0]) : new Date().getFullYear()).length} festivos
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para eliminar */}
+        {showDeleteConfirm && (
+          <div className="modal-overlay" onClick={cancelDelete}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <div className="modal-header" style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  fontSize: 28
+                }}>
+                  <Trash2 size={32} color="white" />
+                </div>
+                <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>¿Eliminar horario especial?</h3>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>
+                  Esta acción no se puede deshacer
+                </p>
+              </div>
+
+              <div className="modal-body" style={{ textAlign: 'center' }}>
+                <p style={{
+                  background: '#fee2e2',
+                  padding: 12,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: '#991b1b',
+                  margin: 0
+                }}>
+                  ⚠️ El horario especial será eliminado permanentemente
+                </p>
+              </div>
+
+              <div className="modal-footer" style={{ justifyContent: 'center', gap: 12 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={cancelDelete}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={confirmDelete}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    border: 'none'
+                  }}
+                >
+                  <Trash2 size={16} style={{ marginRight: 6 }} />
+                  Sí, eliminar
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

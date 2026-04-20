@@ -11,47 +11,66 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('user')) || null; }
     catch { return null; }
   });
-  const [business, setBusiness] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('business')) || null; }
-    catch { return null; }
-  });
-  const [mainBusiness, setMainBusiness] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mainBusiness')) || null; }
-    catch { return null; }
-  });
+  // No usar localStorage para inicializar - siempre cargar fresco desde servidor
+  // para evitar problemas con datos desactualizados (ej: hasFieldTechnicians)
+  const [business, setBusiness] = useState(null);
+  const [mainBusiness, setMainBusiness] = useState(null);
   const [branches, setBranches] = useState([]);
   const [bizLoading, setBizLoading] = useState(false);
 
+  // Función separada para cargar datos del negocio - definida PRIMERO para evitar closure issues
+  const loadBusinessData = async () => {
+    // Solo admins pueden cargar datos de negocio
+    if (!user || (user.role !== 'admin' && user.role !== 'admin_suc' && user.role !== 'superadmin')) {
+      return;
+    }
+    setBizLoading(true);
+    try {
+      // Cargar negocio principal SIEMPRE desde el servidor (no usar caché)
+      const bizRes = await api.get('/businesses/my/business');
+      const biz = bizRes.data;
+      
+      setMainBusiness(biz);
+      localStorage.setItem('mainBusiness', JSON.stringify(biz));
+      
+      // Cargar sucursales
+      const branchesRes = await api.get('/businesses/my/branches');
+      const branchesData = branchesRes.data || [];
+      setBranches(branchesData);
+      
+      // Siempre actualizar el negocio activo con los datos frescos del servidor
+      // para asegurar que los cambios (como hasFieldTechnicians) se reflejen inmediatamente
+      const currentBusinessId = business?.id;
+      if (!currentBusinessId || currentBusinessId === biz.id) {
+        // Si no hay negocio activo o es el principal, usar el principal
+        setBusiness(biz);
+        localStorage.setItem('business', JSON.stringify(biz));
+      } else {
+        // Si hay una sucursal activa, buscarla en la lista actualizada
+        const updatedBranch = branchesData.find(b => b.id === currentBusinessId);
+        if (updatedBranch) {
+          setBusiness(updatedBranch);
+          localStorage.setItem('business', JSON.stringify(updatedBranch));
+        } else {
+          // Si la sucursal ya no existe, volver al principal
+          setBusiness(biz);
+          localStorage.setItem('business', JSON.stringify(biz));
+        }
+      }
+      
+      console.log('[Auth] Business cargado:', biz.name, 'hasFieldTechnicians:', biz.hasFieldTechnicians);
+    } catch (err) {
+      console.error('[Auth] Error loading business data:', err);
+    } finally {
+      setBizLoading(false);
+    }
+  };
+
   // Cargar negocio del admin y sus sucursales cuando hay token
+  // Se ejecuta al montar y cuando cambia token/user para asegurar datos frescos
   useEffect(() => {
     if (token && (user?.role === 'admin' || user?.role === 'admin_suc')) {
-      const loadData = async () => {
-        setBizLoading(true);
-        try {
-          // Cargar negocio principal
-          const bizRes = await api.get('/businesses/my/business');
-          const biz = bizRes.data;
-          
-          setMainBusiness(biz);
-          localStorage.setItem('mainBusiness', JSON.stringify(biz));
-          
-          // Cargar sucursales
-          const branchesRes = await api.get('/businesses/my/branches');
-          const branchesData = branchesRes.data || [];
-          setBranches(branchesData);
-          
-          // Si no hay negocio activo o el que hay no coincide, poner el principal
-          if (!business || (business.id !== biz.id && !branchesData.some(b => b.id === business.id))) {
-            setBusiness(biz);
-            localStorage.setItem('business', JSON.stringify(biz));
-          }
-        } catch (err) {
-          console.error('[Auth] Error loading business data:', err);
-        } finally {
-          setBizLoading(false);
-        }
-      };
-      loadData();
+      loadBusinessData();
     }
   }, [token, user?.role]);
 
@@ -64,6 +83,16 @@ export function AuthProvider({ children }) {
       fcmService.initialize();
     }
   }, [token]);
+
+  // useEffect de MONTAJE: Cargar negocio inmediatamente si hay token
+  // Esto asegura que los datos frescos se carguen al iniciar la aplicación
+  useEffect(() => {
+    const initToken = localStorage.getItem('token');
+    if (initToken && !business && !bizLoading) {
+      console.log('[Auth] Montaje: Detectado token, forzando carga de negocio...');
+      loadBusinessData();
+    }
+  }, []); // Solo al montar
 
   // Restaurar sesión del cliente al recargar la página (modo cliente sin token)
   useEffect(() => {
@@ -153,6 +182,10 @@ export function AuthProvider({ children }) {
   };
 
   const refreshBusiness = async () => {
+    // Solo admins pueden refrescar datos de negocio
+    if (!user || (user.role !== 'admin' && user.role !== 'admin_suc' && user.role !== 'superadmin')) {
+      return null;
+    }
     try {
       const r = await api.get('/businesses/my/business');
       setMainBusiness(r.data);

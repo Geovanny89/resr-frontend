@@ -400,10 +400,8 @@ export default function Payments() {
     if (!business?.id) return;
     setLoading(true);
     setError('');
-    console.log('🔍 Cargando reporte para mes:', month); // DEBUG
     try {
       const url = `/employees/commission-report?businessId=${business.id}&month=${month}`;
-      console.log('🔍 URL de petición:', url); // DEBUG
       const res = await api.get(url);
       // Asegurarnos de que los cálculos del negocio sean los reales (Total - Comisión)
       const data = res.data;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
@@ -27,6 +28,7 @@ function getImgUrl(url) {
 export default function Employees() {
   const { business } = useAuth();
   const { colors } = useTheme();
+  const navigate = useNavigate();
   
   // Detectar si la empresa es de servicios técnicos
   const isTechnicalBusiness = business?.isTechnicalServices || false;
@@ -66,6 +68,20 @@ export default function Employees() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [savingServices, setSavingServices] = useState(false);
+  
+  // Estado para información de suscripción
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+  
+  // Estado para modal de agregar usuarios
+  const [showAddUsersModal, setShowAddUsersModal] = useState(false);
+  const [usersToAdd, setUsersToAdd] = useState(1);
+  const [addingUsers, setAddingUsers] = useState(false);
+  const ADDITIONAL_USER_PRICE = 20000;
+
+  // Estado para modal de confirmación de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     if (!business?.id) return;
@@ -79,6 +95,14 @@ export default function Employees() {
       if (!business.isBranch) {
         const bRes = await api.get('/businesses/my/branches');
         setBranches(bRes.data || []);
+      }
+      
+      // 3. Cargar información de suscripción del negocio ACTUAL (no del negocio principal del usuario)
+      try {
+        const subRes = await api.get(`/businesses/my/subscription-info?businessId=${business.id}`);
+        setSubscriptionInfo(subRes.data);
+      } catch (subErr) {
+        // No se pudo cargar info de suscripción
       }
     } catch (e) {
       setError(e.response?.data?.error || 'Error al cargar empleados');
@@ -238,13 +262,30 @@ export default function Employees() {
     }
   };
 
-  const handleDelete = async (emp) => {
-    if (!confirm(`¿Eliminar a ${emp.User?.name}?`)) return;
+  const openDeleteModal = (emp) => {
+    setEmployeeToDelete(emp);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setEmployeeToDelete(null);
+    setDeleting(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!employeeToDelete) return;
+    setDeleting(true);
     try {
-      await api.delete(`/employees/${emp.id}`);
+      await api.delete(`/employees/${employeeToDelete.id}`);
+      setSuccess('Empleado eliminado correctamente');
+      closeDeleteModal();
       load();
+      setTimeout(() => setSuccess(''), 3000);
     } catch (e) {
-      setError('Error al eliminar');
+      setError(e.response?.data?.error || 'Error al eliminar el empleado');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -322,14 +363,69 @@ export default function Employees() {
           }
         }
       `}</style>
+      
+      {/* Banner de información de suscripción */}
+      {subscriptionInfo && (
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          marginBottom: '24px',
+          color: 'white',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '20px',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>
+              Plan {subscriptionInfo.planName}
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>
+              {subscriptionInfo.currentEmployees} de {subscriptionInfo.totalUsersAllowed} empleados
+            </div>
+            <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>
+              {subscriptionInfo.includedUsers} incluidos + {subscriptionInfo.additionalUsers} adicionales (el admin no cuenta)
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                {subscriptionInfo.availableUsers > 0 ? 'Cupos disponibles' : 'Sin cupos'}
+              </div>
+              <div style={{ 
+                fontSize: '28px', 
+                fontWeight: 800,
+                color: subscriptionInfo.availableUsers > 0 ? '#10b981' : '#ef4444'
+              }}>
+                {subscriptionInfo.availableUsers}
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      )}
+      
       <div style={{ marginBottom: 20 }}>
         <button
           onClick={openCreate}
           className="btn-primary"
-          style={{ width: isMobile ? '100%' : 'auto' }}
+          style={{ 
+            width: isMobile ? '100%' : 'auto',
+            opacity: subscriptionInfo?.availableUsers === 0 ? 0.5 : 1,
+            cursor: subscriptionInfo?.availableUsers === 0 ? 'not-allowed' : 'pointer'
+          }}
+          disabled={subscriptionInfo?.availableUsers === 0}
         >
           ➕ Nuevo empleado
         </button>
+        {subscriptionInfo?.availableUsers === 0 && (
+          <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
+            Has usado todos tus empleados permitidos ({subscriptionInfo?.currentEmployees} de {subscriptionInfo?.totalUsersAllowed}). El admin no cuenta. Contacta al administrador para agregar más cupos.
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -362,7 +458,7 @@ export default function Employees() {
           actions={[
             { label: '💼 Servicios', onClick: openServicesModal, color: 'var(--info)' },
             { label: '✏️ Editar', onClick: openEdit, color: 'var(--primary)' },
-            { label: '🗑️ Eliminar', onClick: handleDelete, color: 'var(--danger)' }
+            { label: '🗑️ Eliminar', onClick: openDeleteModal, color: 'var(--danger)' }
           ]}
           fullWidthActions={false}
           loading={loading}
@@ -607,6 +703,125 @@ export default function Employees() {
           </div>
         </div>
       )}
+
+      {/* ========== MODAL DE CONFIRMACIÓN DE ELIMINACIÓN ========== */}
+      {showDeleteModal && employeeToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }} onClick={closeDeleteModal}>
+          <div style={{
+            background: colors.cardBg,
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 420,
+            boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+            textAlign: 'center'
+          }} onClick={e => e.stopPropagation()}>
+            {/* Icono */}
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: '#fee2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '24px auto 16px',
+              fontSize: 32
+            }}>
+              🗑️
+            </div>
+
+            {/* Título */}
+            <h3 style={{
+              margin: '0 0 8px 0',
+              fontSize: 20,
+              fontWeight: 700,
+              color: colors.text
+            }}>
+              ¿Eliminar empleado?
+            </h3>
+
+            {/* Descripción */}
+            <p style={{
+              margin: '0 24px 24px',
+              fontSize: 14,
+              color: colors.textSecondary,
+              lineHeight: 1.5
+            }}>
+              ¿Estás seguro de que deseas eliminar a <strong>{employeeToDelete.User?.name}</strong>? Esta acción no se puede deshacer.
+            </p>
+
+            {/* Botones */}
+            <div style={{
+              padding: '16px 24px 24px',
+              display: 'flex',
+              gap: 12,
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.bg,
+                  color: colors.text,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  opacity: deleting ? 0.6 : 1
+                }}
+              >
+                No, cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#ef4444',
+                  color: 'white',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  opacity: deleting ? 0.6 : 1
+                }}
+              >
+                {deleting ? (
+                  <>
+                    <span style={{
+                      width: 14,
+                      height: 14,
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite',
+                      display: 'inline-block'
+                    }} />
+                    Eliminando...
+                  </>
+                ) : (
+                  'Sí, eliminar'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* ========== MODAL DE GESTIÓN DE SERVICIOS ========== */}
       {showServicesModal && servicesEmp && (

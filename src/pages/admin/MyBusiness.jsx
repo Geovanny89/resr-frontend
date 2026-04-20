@@ -725,7 +725,9 @@ export default function MyBusiness() {
                   <Share2 size={18} style={{color:'var(--primary)'}}/> Redes sociales y contacto
                 </h3>
 
-                {business?.isBranch && (
+                {/* Checkbox "Usar WhatsApp del negocio principal" - Solo para sucursales cuyo padre NO tiene técnicos a domicilio */}
+                {business?.isBranch && 
+                  !(business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) && (
                   <div className="form-group" style={{ marginBottom: 24, background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
                       <input 
@@ -770,8 +772,13 @@ export default function MyBusiness() {
                       />
                       {hint && <small style={{color:'var(--text-muted)'}}>{hint}</small>}
                       
-                      {/* Alerta de reconexión para WhatsApp */}
-                      {field === 'whatsapp' && showWhatsAppReconnect && (
+                      {/* Alerta de reconexión para WhatsApp - Solo para empresas que NO son técnicos a domicilio */}
+                      {/* Para sucursales, verificar el hasFieldTechnicians del negocio padre */}
+                      {field === 'whatsapp' && showWhatsAppReconnect && 
+                        !(business?.isBranch 
+                          ? business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians
+                          : business?.hasFieldTechnicians
+                        ) && (
                         <div style={{ marginTop: 12, padding: 12, background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8 }}>
                           <div style={{ fontSize: 13, color: '#92400e', marginBottom: 8 }}>
                             <strong>⚠️ WhatsApp cambiado:</strong> Debes reconectar la sesión con el nuevo número.

@@ -3,7 +3,8 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import {
-  LayoutDashboard, Building2, Tag, LogOut, Bell, ShieldCheck, Menu, X, Store
+  LayoutDashboard, Building2, Tag, LogOut, Bell, ShieldCheck, Menu, X, Store,
+  Users, Activity, TrendingUp
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -19,6 +20,14 @@ const NAV_ITEMS = [
       { to: '/superadmin/businesses',     icon: Building2,       label: 'Empresas' },
       { to: '/superadmin/branches',       icon: Store,           label: 'Sucursales' },
       { to: '/superadmin/business-types', icon: Tag,             label: 'Tipos de Empresa' },
+      { to: '/superadmin/users',          icon: Users,           label: 'Usuarios' },
+    ]
+  },
+  {
+    section: 'Sistema',
+    items: [
+      { to: '/superadmin/reports',        icon: TrendingUp,      label: 'Reportes Globales' },
+      { to: '/superadmin/activity-logs',  icon: Activity,        label: 'Logs de Actividad' },
     ]
   },
 ];

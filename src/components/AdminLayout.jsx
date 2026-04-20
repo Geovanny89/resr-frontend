@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
   MessageCircle, RefreshCw, Smartphone, Tag, UserCircle,
-  TrendingDown, Package, PiggyBank, CalendarDays, CalendarX
+  TrendingDown, Package, PiggyBank, CalendarDays, CalendarX, Palmtree
 } from 'lucide-react';
 
 // Función para obtener items de navegación según módulos habilitados
@@ -36,6 +36,7 @@ const getNavItems = (business) => {
         { to: '/admin/employees', icon: Users,    label: 'Empleados' },
         { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
         { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
+        { to: '/admin/employee-vacations', icon: Palmtree, label: 'Vacaciones' },
         { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
       ]
     },
@@ -135,6 +136,29 @@ export default function AdminLayout({ children, title, subtitle }) {
           <div>
             <div className="sidebar-logo-name">KDice </div>
             <div className="sidebar-logo-sub">{business?.name || 'Sistema de Citas'}</div>
+            {/* Badge del Plan de Suscripción */}
+            {business?.subscriptionPlan && (
+              <div style={{ 
+                marginTop: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 600,
+                background: business.subscriptionPlan === 'premium' ? '#fef3c7' : business.subscriptionPlan === 'pro' ? '#e0e7ff' : '#d1fae5',
+                color: business.subscriptionPlan === 'premium' ? '#92400e' : business.subscriptionPlan === 'pro' ? '#3730a3' : '#065f46',
+              }}>
+                <span>
+                  {business.subscriptionPlan === 'basic' && '💚 Básico'}
+                  {business.subscriptionPlan === 'pro' && '💙 Pro'}
+                  {business.subscriptionPlan === 'premium' && '💛 Premium'}
+                </span>
+                <span style={{ opacity: 0.8 }}>·</span>
+                <span>{(business.includedUsers || 2) + (business.additionalUsers || 0)} empleados</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -144,6 +168,8 @@ export default function AdminLayout({ children, title, subtitle }) {
             const filteredItems = section.items.filter(item => {
               // Si es empresa técnica, ocultar el módulo de Pagos (comisiones)
               if (business?.isTechnicalServices && item.to === '/admin/payments') return false;
+              // Si es técnicos a domicilio, ocultar Promociones
+              if (business?.hasFieldTechnicians && item.to === '/admin/promotions') return false;
               return true;
             });
 
@@ -198,9 +224,14 @@ export default function AdminLayout({ children, title, subtitle }) {
             {/* Selector de Sucursales (Solo si hay sucursales) */}
             {user?.role === 'admin' && <BranchSelector />}
 
-            {/* Indicador de WhatsApp Global */}
+            {/* Indicador de WhatsApp Global - Solo para empresas que NO son técnicos a domicilio */}
             {/* Si hay sesión guardada o conectada, mostrar como 'Conectado' permanentemente */}
-            {['admin', 'admin_suc'].includes(user?.role) && (
+            {/* Para sucursales, verificar el hasFieldTechnicians del negocio padre */}
+            {['admin', 'admin_suc'].includes(user?.role) && 
+              !(business?.isBranch 
+                ? business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians
+                : business?.hasFieldTechnicians
+              ) && (
               <div 
                 style={{ 
                   display: 'flex', 

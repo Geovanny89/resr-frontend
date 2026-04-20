@@ -19,6 +19,7 @@ import Services     from './pages/admin/Services';
 import Employees    from './pages/admin/Employees';
 import Schedule     from './pages/admin/Schedule';
 import SpecialSchedule from './pages/admin/SpecialSchedule';
+import EmployeeVacations from './pages/admin/EmployeeVacations';
 import Appointments from './pages/admin/Appointments';
 import Promotions   from './pages/admin/Promotions';
 import Ratings      from './pages/admin/Ratings';
@@ -48,6 +49,9 @@ import SuperAdminHome  from './pages/superadmin/SuperAdminHome';
 import Businesses      from './pages/superadmin/Businesses';
 import Branches        from './pages/superadmin/Branches';
 import BusinessTypes   from './pages/superadmin/BusinessTypes';
+import Users           from './pages/superadmin/Users';
+import ActivityLogs    from './pages/superadmin/ActivityLogs';
+import GlobalReports   from './pages/superadmin/GlobalReports';
 
 const PREFERRED_SLUG_KEY = 'preferredBusinessSlug';
 const RESERVED_FIRST_SEGMENTS = new Set([
@@ -183,6 +187,7 @@ export default function App() {
             <Route path="employees"    element={<Employees />} />
             <Route path="schedule"     element={<Schedule />} />
             <Route path="special-schedules" element={<SpecialSchedule />} />
+            <Route path="employee-vacations" element={<EmployeeVacations />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="promotions"   element={<Promotions />} />
             <Route path="ratings"      element={<Ratings />} />
@@ -209,6 +214,9 @@ export default function App() {
             <Route path="businesses"     element={<Businesses />} />
             <Route path="branches"       element={<Branches />} />
             <Route path="business-types" element={<BusinessTypes />} />
+            <Route path="users"          element={<Users />} />
+            <Route path="activity-logs"  element={<ActivityLogs />} />
+            <Route path="reports"        element={<GlobalReports />} />
           </Route>
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>
             <Route index element={<MyAppointments />} />
@@ -216,6 +224,7 @@ export default function App() {
           
           {/* ===== RUTA PARA CALIFICAR EMPLEADO ===== */}
           <Route path="/rate/:appointmentId" element={<RateEmployee />} />
+          <Route path="/rate-employee" element={<RateEmployee />} />
           
           {/* ===== RUTAS PÚBLICAS DE NEGOCIOS (SLUG) ===== */}
           <Route path="/:slug" element={<BusinessLanding />} />

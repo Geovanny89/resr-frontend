@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
-import { DollarSign, Plus, TrendingDown, Calendar, FileText } from 'lucide-react';
+import { DollarSign, Plus, TrendingDown, Calendar, FileText, Pencil, Trash2, X } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'arriendo', label: '🏠 Arriendo', color: '#8b5cf6' },
@@ -31,6 +31,9 @@ export default function Expenses() {
   });
   const [saving, setSaving] = useState(false);
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [editingId, setEditingId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     if (business?.id) loadExpenses();
@@ -66,26 +69,72 @@ export default function Expenses() {
     
     setSaving(true);
     try {
-      await api.post('/expenses', {
-        ...form,
-        businessId: business.id,
-        amount: parseFloat(form.amount)
-      });
-      setShowModal(false);
-      setForm({
-        category: '',
-        description: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        paymentMethod: 'cash',
-        notes: ''
-      });
+      if (editingId) {
+        // Actualizar gasto existente
+        await api.put(`/expenses/${editingId}`, {
+          ...form,
+          amount: parseFloat(form.amount)
+        });
+      } else {
+        // Crear nuevo gasto
+        await api.post('/expenses', {
+          ...form,
+          businessId: business.id,
+          amount: parseFloat(form.amount)
+        });
+      }
+      closeModal();
       loadExpenses();
     } catch (e) {
       alert(e.response?.data?.error || 'Error al guardar');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = (expense) => {
+    setEditingId(expense.id);
+    setForm({
+      category: expense.category,
+      description: expense.description,
+      amount: expense.amount.toString(),
+      date: expense.date,
+      paymentMethod: expense.paymentMethod || 'cash',
+      notes: expense.notes || ''
+    });
+    setShowModal(true);
+  };
+
+  // Abrir modal de confirmación para eliminar
+  const openDeleteConfirm = (expense) => {
+    setDeleteTarget(expense);
+    setShowDeleteConfirm(true);
+  };
+
+  // Eliminar gasto
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setShowDeleteConfirm(false);
+    try {
+      await api.delete(`/expenses/${deleteTarget.id}`);
+      setExpenses(expenses.filter(e => e.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (e) {
+      alert('Error al eliminar');
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setForm({
+      category: '',
+      description: '',
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: 'cash',
+      notes: ''
+    });
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
@@ -236,12 +285,121 @@ export default function Expenses() {
             key: 'paymentMethod',
             label: 'Método',
             render: (v) => v === 'cash' ? '💵 Efectivo' : v === 'transfer' ? '📲 Transferencia' : '💳 Tarjeta'
+          },
+          {
+            key: 'actions',
+            label: 'Acciones',
+            render: (_, row) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => handleEdit(row)}
+                  style={{
+                    padding: '6px 10px',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Editar"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => openDeleteConfirm(row)}
+                  style={{
+                    padding: '6px 10px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Eliminar"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )
           }
         ]}
         data={expenses}
         loading={loading}
         emptyMessage="No hay gastos registrados este mes"
       />
+
+      {/* Modal de confirmación para eliminar */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }} onClick={() => setShowDeleteConfirm(false)}>
+          <div style={{
+            background: 'white', borderRadius: 12, padding: 24,
+            maxWidth: 400, width: '90%',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px', fontSize: 28
+              }}>
+                🗑️
+              </div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>¿Eliminar gasto?</h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>
+                Esta acción no se puede deshacer
+              </p>
+              {deleteTarget && (
+                <div style={{
+                  background: '#fef2f2', padding: 12, borderRadius: 8,
+                  marginTop: 12, fontSize: 13, color: '#991b1b'
+                }}>
+                  <strong>{deleteTarget.description}</strong><br />
+                  ${deleteTarget.amount?.toLocaleString('es-CO')} - {deleteTarget.category}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{
+                  flex: 1, padding: 12, borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: 'none', color: colors.text,
+                  fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                style={{
+                  flex: 1, padding: 12, borderRadius: 10,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: 'white', fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal para nuevo gasto */}
       {showModal && (
@@ -259,10 +417,15 @@ export default function Expenses() {
             maxHeight: '90vh',
             overflowY: 'auto'
           }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 700, color: colors.text }}>
-              <DollarSign size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />
-              Nuevo Gasto
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
+                <DollarSign size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+                {editingId ? 'Editar Gasto' : 'Nuevo Gasto'}
+              </h2>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={24} color={colors.textSecondary} />
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: 16 }}>
@@ -393,7 +556,7 @@ export default function Expenses() {
               <div style={{ display: 'flex', gap: 12 }}>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   style={{
                     flex: 1, padding: 12, borderRadius: 10,
                     border: `1px solid ${colors.border}`,
@@ -415,7 +578,7 @@ export default function Expenses() {
                     opacity: saving ? 0.7 : 1
                   }}
                 >
-                  {saving ? 'Guardando...' : 'Guardar Gasto'}
+                  {saving ? 'Guardando...' : editingId ? 'Actualizar Gasto' : 'Guardar Gasto'}
                 </button>
               </div>
             </form>

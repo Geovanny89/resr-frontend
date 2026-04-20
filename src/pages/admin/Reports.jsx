@@ -5,7 +5,7 @@ import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import {
   BarChart3, Download, FileText, Table2, RefreshCw,
-  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, FileSpreadsheet,
+  TrendingUp, DollarSign, Calendar, CheckCircle, ChevronLeft, ChevronRight, ChevronDown, FileSpreadsheet,
   Clock, XCircle, Car, MapPin, Wrench, Package
 } from 'lucide-react';
 import {
@@ -325,6 +325,9 @@ export default function Reports() {
   const [activeTab, setActiveTab]       = useState('overview');
   const [isMobile, setIsMobile]         = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 480 : false);
   const [detailPage, setDetailPage]       = useState(1); // PAGINACIÓN
+  const [trackingPage, setTrackingPage]     = useState(1); // PAGINACIÓN tracking
+  const [trackingPerPage, setTrackingPerPage] = useState(5); // Items por página en tracking
+  const [expandedTrackingId, setExpandedTrackingId] = useState(null); // Cita expandida en seguimiento
   const [businessWithLogo, setBusinessWithLogo] = useState(business); // Negocio con logoUrl
   const ITEMS_PER_PAGE = 5; // 5 citas por página
 
@@ -1257,8 +1260,8 @@ export default function Reports() {
               )}
             </div>
 
-            {/* TOGGLE: Informe Financiero Completo (solo para periodo Mes) - DISEÑO COMPACTO */}
-            {period === 'month' && (
+            {/* TOGGLE: Informe Financiero Completo (solo para periodo Mes y empresas normales) - DISEÑO COMPACTO */}
+            {period === 'month' && !business?.hasFieldTechnicians && (
               <div className="card mb-4" style={{ padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1517,6 +1520,9 @@ export default function Reports() {
                 <option value="overview">Resumen</option>
                 <option value="employees">Por empleado</option>
                 <option value="services">Por servicio</option>
+                {business?.hasFieldTechnicians && (
+                  <option value="tracking">📍 Seguimiento</option>
+                )}
               </select>
             </div>
 
@@ -1657,29 +1663,144 @@ export default function Reports() {
             {/* TAB SEGUIMIENTO TÉCNICOS - Solo para negocios con técnicos de campo */}
             {activeTab === 'tracking' && business?.hasFieldTechnicians && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>📍 Seguimiento de Técnicos</h3>
-                  <button
-                    onClick={downloadTrackingReport}
-                    className="btn-outline btn-sm"
-                    disabled={appointments.length === 0}
-                  >
-                    <Download size={16} /> Descargar Reporte
-                  </button>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Select para cambiar items por página (visible en mobile) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ fontSize: 13, color: 'var(--text-muted)' }}>Mostrar:</label>
+                      <select 
+                        value={trackingPerPage} 
+                        onChange={(e) => {
+                          setTrackingPerPage(Number(e.target.value));
+                          setTrackingPage(1); // Reset a página 1
+                        }}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--text)',
+                          fontSize: 13
+                        }}
+                      >
+                        <option value={5}>5 por página</option>
+                        <option value={10}>10 por página</option>
+                        <option value={20}>20 por página</option>
+                        <option value={50}>50 por página</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={downloadTrackingReport}
+                      className="btn-outline btn-sm"
+                      disabled={appointments.length === 0}
+                    >
+                      <Download size={16} /> Descargar
+                    </button>
+                  </div>
                 </div>
                 
-                {appointments.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {appointments
-                      .filter(a => a.technicianStatus && a.technicianStatus !== 'not_started')
-                      .sort((a, b) => new Date(b.travelStartTime || b.startTime) - new Date(a.travelStartTime || a.startTime))
-                      .map(apt => (
-                      <div key={apt.id} style={{ 
-                        border: '1px solid var(--border)', 
-                        borderRadius: 12, 
-                        padding: 16,
-                        background: 'var(--surface)'
+                {(() => {
+                  const trackingAppointments = appointments
+                    .filter(a => a.technicianStatus && a.technicianStatus !== 'not_started')
+                    .sort((a, b) => new Date(b.travelStartTime || b.startTime) - new Date(a.travelStartTime || a.startTime));
+                  
+                  const totalPages = Math.ceil(trackingAppointments.length / trackingPerPage);
+                  const startIndex = (trackingPage - 1) * trackingPerPage;
+                  const paginatedAppointments = trackingAppointments.slice(startIndex, startIndex + trackingPerPage);
+                  
+                  return trackingAppointments.length > 0 ? (
+                    <>
+                      {/* Info de paginación */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        marginBottom: 12,
+                        fontSize: 13,
+                        color: 'var(--text-muted)'
                       }}>
+                        <span>Mostrando {startIndex + 1}-{Math.min(startIndex + trackingPerPage, trackingAppointments.length)} de {trackingAppointments.length} citas</span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {paginatedAppointments.map(apt => {
+                          const isExpanded = expandedTrackingId === apt.id;
+                          return (
+                      <div 
+                        key={apt.id} 
+                        style={{ 
+                          border: '1px solid var(--border)', 
+                          borderRadius: 12, 
+                          overflow: 'hidden',
+                          background: 'var(--surface)'
+                        }}
+                      >
+                        {/* Header compacto - clickeable para expandir */}
+                        <div 
+                          onClick={() => setExpandedTrackingId(isExpanded ? null : apt.id)}
+                          style={{
+                            padding: 16,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: isExpanded ? 'var(--bg-secondary)' : 'var(--surface)',
+                            borderBottom: isExpanded ? '1px solid var(--border)' : 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {/* Icono de estado */}
+                            <div style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: '50%',
+                              background: apt.travelStartTime ? '#3b82f6' : '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <Car size={16} color="white" />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                                {apt.clientName}
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                {new Date(apt.startTime).toLocaleString('es-CO', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: STATUS_LABELS[apt.status]?.bg || '#f3f4f6',
+                              color: STATUS_LABELS[apt.status]?.color || '#374151',
+                            }}>
+                              {STATUS_LABELS[apt.status]?.label || apt.status}
+                            </span>
+                            {/* Icono de expandir/colapsar */}
+                            <div style={{
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.2s'
+                            }}>
+                              <ChevronDown size={20} color="var(--text-muted)" />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Contenido expandido */}
+                        {isExpanded && (
+                          <div style={{ padding: 16 }}>
                         {/* Header de la cita */}
                         <div style={{ 
                           display: 'flex', 
@@ -1932,17 +2053,80 @@ export default function Reports() {
                             </div>
                           </div>
                         )}
+                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: 40 }}>
-                    <Package size={40} color="#cbd5e1" />
-                    <p style={{ color: '#94a3b8', marginTop: 12 }}>
-                      No hay citas con seguimiento de técnico en este período
-                    </p>
-                  </div>
-                )}
+                      );
+                    })}
+                      </div>
+                      
+                      {/* Controles de paginación */}
+                      {totalPages > 1 && (
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          gap: 16,
+                          marginTop: 20,
+                          padding: '12px',
+                          background: 'var(--bg-secondary)',
+                          borderRadius: 8
+                        }}>
+                          <button
+                            onClick={() => setTrackingPage(prev => Math.max(1, prev - 1))}
+                            disabled={trackingPage === 1}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border)',
+                              background: trackingPage === 1 ? 'var(--bg-secondary)' : 'var(--surface)',
+                              color: trackingPage === 1 ? 'var(--text-muted)' : 'var(--text)',
+                              cursor: trackingPage === 1 ? 'not-allowed' : 'pointer',
+                              fontSize: 13,
+                              fontWeight: 600
+                            }}
+                          >
+                            ← Anterior
+                          </button>
+                          
+                          <span style={{ 
+                            fontSize: 14, 
+                            fontWeight: 600, 
+                            color: 'var(--text)',
+                            minWidth: 100,
+                            textAlign: 'center'
+                          }}>
+                            Página {trackingPage} de {totalPages}
+                          </span>
+                          
+                          <button
+                            onClick={() => setTrackingPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={trackingPage === totalPages}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border)',
+                              background: trackingPage === totalPages ? 'var(--bg-secondary)' : 'var(--surface)',
+                              color: trackingPage === totalPages ? 'var(--text-muted)' : 'var(--text)',
+                              cursor: trackingPage === totalPages ? 'not-allowed' : 'pointer',
+                              fontSize: 13,
+                              fontWeight: 600
+                            }}
+                          >
+                            Siguiente →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                      <Package size={40} color="#cbd5e1" />
+                      <p style={{ color: '#94a3b8', marginTop: 12 }}>
+                        No hay citas con seguimiento de técnico en este período
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

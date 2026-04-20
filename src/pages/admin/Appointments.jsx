@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
+import { useSocket } from '../../hooks/useSocket';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveCalendar from '../../components/ResponsiveCalendar';
 import { 
@@ -31,7 +32,7 @@ export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 8;
 
   const [selectedDate, setSelectedDate] = useState(() => {
     // Inicializar con la fecha actual en Colombia
@@ -66,6 +67,16 @@ export default function Appointments() {
     serviceId: '',
     employeeId: ''
   });
+
+  // Función para verificar si una fecha es pasada (antes de hoy)
+  const isPastDate = (dateStr) => {
+    if (!dateStr) return false;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    return dateStr < today;
+  };
+
+  // Hora manual para citas retrospectivas
+  const [manualTime, setManualTime] = useState('');
 
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [completeAppointmentData, setCompleteAppointmentData] = useState(null);
@@ -133,7 +144,70 @@ export default function Appointments() {
   const [selectedInsumos, setSelectedInsumos] = useState([]); // [{itemId, quantity, name}]
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [savingInsumos, setSavingInsumos] = useState(false);
-  const [workNotes, setWorkNotes] = useState(''); // Notas del trabajo realizado
+  const [workNotes, setWorkNotes] = useState(''); // Notas del trabajo realizado (legacy)
+  const [diagnosis, setDiagnosis] = useState(''); // Diagnóstico técnico
+  const [solution, setSolution] = useState('');   // Solución aplicada
+  const [recommendations, setRecommendations] = useState(''); // Recomendaciones
+
+  // Ref para mantener citas actualizadas en callbacks del socket
+  const appointmentsRef = useRef([]);
+  const [, forceRender] = useState({});
+
+  // Sincronizar ref con estado
+  useEffect(() => {
+    appointmentsRef.current = appointments;
+  }, [appointments]);
+
+  // 🔔 SOCKET.IO: Callbacks para actualizaciones en tiempo real
+  const handleAppointmentCreated = useCallback((appointment) => {
+    if (appointmentsRef.current.find(a => a.id === appointment.id)) {
+      return;
+    }
+
+    // Verificar si la cita corresponde a la fecha seleccionada
+    const selectedDateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const aptDate = new Date(appointment.startTime);
+    const aptDateStr = aptDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+
+    const newAppointments = [...appointmentsRef.current, appointment];
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({});
+    
+    if (selectedDateStr === aptDateStr) {
+      showStatus(`📅 Nueva cita: ${appointment.clientName}`, 'info');
+    } else {
+      showStatus(`📅 Nueva cita para ${aptDateStr}: ${appointment.clientName}`, 'info');
+    }
+  }, [selectedDate]);
+
+  const handleAppointmentUpdated = useCallback((appointment) => {
+    const newAppointments = appointmentsRef.current.map(a =>
+      a.id === appointment.id ? { ...a, ...appointment, Service: appointment.Service || a.Service } : a
+    );
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({});
+  }, []);
+
+  const handleAppointmentCancelled = useCallback((appointment) => {
+    const newAppointments = appointmentsRef.current.filter(a => a.id !== appointment.id);
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({});
+    showStatus('❌ Cita cancelada', 'warning');
+  }, []);
+
+  // 🔔 SOCKET.IO: Conexión en tiempo real
+  const { isConnected } = useSocket({
+    businessId: business?.id,
+    userId: business?.userId,
+    role: 'admin',
+    onAppointmentCreated: handleAppointmentCreated,
+    onAppointmentUpdated: handleAppointmentUpdated,
+    onAppointmentCancelled: handleAppointmentCancelled
+  });
+
 
   useEffect(() => {
     if (business?.id) {
@@ -239,6 +313,11 @@ export default function Appointments() {
   const handleOpenInsumosModal = async (appointment) => {
     setInsumosAppointment(appointment);
     setSelectedInsumos([]);
+    // Cargar datos del reporte técnico si existe
+    const report = appointment.workReport || {};
+    setDiagnosis(report.diagnosis || '');
+    setSolution(report.solution || '');
+    setRecommendations(report.recommendations || '');
     setWorkNotes(appointment.workNotes || '');
     await loadInventoryItems();
     setShowInsumosModal(true);
@@ -277,10 +356,24 @@ export default function Appointments() {
         });
       }
       
-      // Guardar notas del trabajo y cambiar estado a "en atención"
-      await api.patch(`/appointments/${insumosAppointment.id}/start-work`, {
-        workNotes: workNotes,
-        status: 'attention'
+      // Guardar reporte técnico si hay datos
+      if (diagnosis.trim() || solution.trim() || recommendations.trim()) {
+        await api.post(`/appointments/${insumosAppointment.id}/technical-report`, {
+          diagnosis: diagnosis,
+          solution: solution,
+          recommendations: recommendations,
+          partsUsed: selectedInsumos.map(i => ({
+            itemId: i.itemId,
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit
+          }))
+        });
+      }
+
+      // Cambiar estado a "en atención"
+      await api.patch(`/appointments/${insumosAppointment.id}/technician-status`, {
+        status: 'in_progress'
       });
       
       showStatus('Insumos registrados y trabajo iniciado');
@@ -288,6 +381,9 @@ export default function Appointments() {
       setInsumosAppointment(null);
       setSelectedInsumos([]);
       setWorkNotes('');
+      setDiagnosis('');
+      setSolution('');
+      setRecommendations('');
       loadAppointments();
     } catch (e) {
       showStatus(e.response?.data?.error || 'Error al guardar insumos', 'error');
@@ -304,20 +400,13 @@ export default function Appointments() {
     }
 
     try {
-      const res = await api.get(`/appointments/availability?date=${date}&employeeId=${employeeId}&serviceId=${serviceId}&businessId=${business.id}`);
-      
-      const now = new Date();
-      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-      const nowTimeStr = now.toLocaleTimeString('en-US', { 
-        timeZone: 'America/Bogota', 
-        hour12: false, 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+      // Para empresas normales: allowPast=true (mostrar todas las horas incluidas pasadas)
+      // Para técnicos a domicilio: allowPast=false (solo horas futuras disponibles)
+      const allowPast = !business?.hasFieldTechnicians;
+      const res = await api.get(`/appointments/availability?date=${date}&employeeId=${employeeId}&serviceId=${serviceId}&businessId=${business.id}&allowPast=${allowPast}`);
 
       let slots = res.data.availableSlots || [];
-      console.log('[loadAvailableSlots] Slots recibidos del backend:', slots.length);
-      
+
       // Eliminar duplicados (misma hora)
       const seenTimes = new Set();
       slots = slots.filter(slot => {
@@ -327,15 +416,7 @@ export default function Appointments() {
         seenTimes.add(slot.time);
         return true;
       });
-      console.log('[loadAvailableSlots] Slots únicos después de eliminar duplicados:', slots.length);
-      
-      // Solo filtramos si es hoy para no mostrar horas pasadas
-      if (date === todayStr) {
-        const beforeFilter = slots.length;
-        slots = slots.filter(slot => slot.time >= nowTimeStr);
-        console.log(`[loadAvailableSlots] Filtrados ${beforeFilter - slots.length} slots pasados. Quedan: ${slots.length}`);
-      }
-      
+
       setAvailableSlots(slots);
     } catch (e) {
       setAvailableSlots([]);
@@ -360,7 +441,10 @@ export default function Appointments() {
 
   const paginatedAppointments = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredAppointments.slice(startIndex, startIndex + itemsPerPage);
+    // Ordenar por hora y paginar
+    return filteredAppointments
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+      .slice(startIndex, startIndex + itemsPerPage);
   }, [filteredAppointments, currentPage]);
 
   // Handler para abrir modal de edición
@@ -392,7 +476,8 @@ export default function Appointments() {
       }
 
       try {
-        const res = await api.get(`/appointments/availability?date=${editForm.selectedDate}&employeeId=${editForm.employeeId}&serviceId=${editForm.serviceId}&businessId=${business.id}`);
+        const allowPast = !business?.hasFieldTechnicians;
+        const res = await api.get(`/appointments/availability?date=${editForm.selectedDate}&employeeId=${editForm.employeeId}&serviceId=${editForm.serviceId}&businessId=${business.id}&allowPast=${allowPast}`);
         setEditAvailableSlots(res.data.availableSlots || []);
       } catch (e) {
         setEditAvailableSlots([]);
@@ -400,7 +485,7 @@ export default function Appointments() {
     };
 
     loadEditAvailableSlots();
-  }, [editForm.employeeId, editForm.serviceId, editForm.selectedDate, editingAppointment, business.id]);
+  }, [editForm.employeeId, editForm.serviceId, editForm.selectedDate, editingAppointment, business?.id]);
 
   // Handler para guardar edición
   const handleSaveEdit = async () => {
@@ -755,7 +840,8 @@ export default function Appointments() {
 
       const dateStr = new Date(selectedTransferAppointment.startTime).toISOString().split('T')[0];
       try {
-        const res = await api.get(`/appointments/availability?date=${dateStr}&employeeId=${transferEmployeeId}&serviceId=${selectedTransferAppointment.serviceId}&businessId=${business.id}`);
+        const allowPast = !business?.hasFieldTechnicians;
+        const res = await api.get(`/appointments/availability?date=${dateStr}&employeeId=${transferEmployeeId}&serviceId=${selectedTransferAppointment.serviceId}&businessId=${business.id}&allowPast=${allowPast}`);
         setTransferAvailableSlots(res.data.availableSlots || []);
       } catch (e) {
         setTransferAvailableSlots([]);
@@ -897,6 +983,7 @@ export default function Appointments() {
     });
     setSelectedDateModal('');
     setAvailableSlots([]);
+    setManualTime('');
   };
 
   const formatTime = (dateStr) => {
@@ -943,7 +1030,7 @@ export default function Appointments() {
           {statusMsg.text}
         </div>
       )}
-      
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '280px 1fr',
@@ -1075,28 +1162,30 @@ export default function Appointments() {
                 Nueva Cita
               </button>
               
-              <button
-                onClick={() => handleExpressAppointment()}
-                style={{
-                  background: '#f59e0b',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '12px 24px',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  flex: isMobile ? 1 : 'none',
-                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
-                }}
-              >
-                <Clock size={18} />
-                Cita Express
-              </button>
+              {!business?.hasFieldTechnicians && (
+                <button
+                  onClick={() => handleExpressAppointment()}
+                  style={{
+                    background: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    flex: isMobile ? 1 : 'none',
+                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
+                  }}
+                >
+                  <Clock size={18} />
+                  Cita Express
+                </button>
+              )}
             </div>
           </div>
 
@@ -1135,9 +1224,7 @@ export default function Appointments() {
               paddingRight: 8
             }}>
               {/* Grid de citas ordenadas por hora */}
-              {filteredAppointments
-                .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
-                .map((apt, index) => {
+              {paginatedAppointments.map((apt, index) => {
                   const startTime = new Date(apt.startTime);
                   const endTime = new Date(startTime.getTime() + (apt.Service?.durationMin || 60) * 60000);
                   const isPast = endTime < new Date();
@@ -1290,6 +1377,66 @@ export default function Appointments() {
                 })}
             </div>
           )}
+
+          {/* Paginación */}
+          {!loading && totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: isMobile ? 6 : 12, 
+              marginTop: isMobile ? 16 : 24,
+              padding: isMobile ? 10 : 16,
+              background: colors.cardBg,
+              borderRadius: isMobile ? 8 : 12,
+              border: `1px solid ${colors.border}`,
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: isMobile ? '6px 12px' : '10px 20px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: currentPage === 1 ? colors.bgSecondary : colors.primary,
+                  color: currentPage === 1 ? colors.textSecondary : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? 12 : 14,
+                  fontWeight: 600
+                }}
+              >
+                {isMobile ? '←' : '← Anterior'}
+              </button>
+              
+              <span style={{ 
+                fontSize: isMobile ? 13 : 15, 
+                color: colors.text,
+                fontWeight: 600,
+                minWidth: isMobile ? 80 : 120,
+                textAlign: 'center'
+              }}>
+                {isMobile ? `${currentPage}/${totalPages}` : `Página ${currentPage} de ${totalPages}`}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: isMobile ? '6px 12px' : '10px 20px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: currentPage === totalPages ? colors.bgSecondary : colors.primary,
+                  color: currentPage === totalPages ? colors.textSecondary : 'white',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? 12 : 14,
+                  fontWeight: 600
+                }}
+              >
+                {isMobile ? '→' : 'Siguiente →'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1396,6 +1543,7 @@ export default function Appointments() {
                 onClick={() => {
                   resetCreateForm();
                   setShowCreateModal(false);
+                  setManualTime('');
                 }}
                 style={{
                   background: 'none',
@@ -1522,7 +1670,6 @@ export default function Appointments() {
                     setCreateForm({...createForm, startTime: ''});
                     setAvailableSlots([]);
                   }}
-                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
                   style={{
                     width: '100%',
                     padding: '15px 12px',
@@ -1560,65 +1707,100 @@ export default function Appointments() {
 
             {selectedDateModal && createForm.employeeId && createForm.serviceId && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
-                  ⏰ Horarios disponibles
-                </label>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
-                  gap: '8px',
-                  maxHeight: '180px',
-                  overflowY: 'auto',
-                  border: `2px solid ${colors.border}`,
-                  borderRadius: '10px',
-                  padding: '16px',
-                  backgroundColor: colors.bgSecondary
-                }}>
-                  {availableSlots.length > 0 ? (
-                    availableSlots.map((slot, index) => (
-                      <button
-                        key={`${slot.time}-${index}`}
-                        type="button"
-                        onClick={() => {
-                          setCreateForm({...createForm, startTime: slot.startTime});
-                        }}
-                        style={{
-                          padding: '14px 10px',
-                          border: `2px solid ${colors.border}`,
-                          borderRadius: '8px',
-                          background: createForm.startTime === slot.startTime ? '#10b981' : colors.inputBg,
-                          color: createForm.startTime === slot.startTime ? '#ffffff' : colors.text,
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          transition: 'all 0.2s ease',
-                          boxShadow: createForm.startTime === slot.startTime 
-                            ? '0 4px 6px rgba(16, 185, 129, 0.3)' 
-                            : `0 2px 4px ${colors.shadow}`,
-                          transform: createForm.startTime === slot.startTime ? 'scale(1.05)' : 'scale(1)'
-                        }}
-                      >
-                        🕐 {slot.time}
-                      </button>
-                    ))
-                  ) : (
-                    <div style={{ 
-                      gridColumn: '1 / -1', 
-                      textAlign: 'center', 
-                      color: colors.textSecondary,
-                      padding: '30px 20px',
-                      fontSize: '16px',
-                      backgroundColor: colors.warning,
-                      borderRadius: '8px',
-                      border: `2px dashed ${colors.warning}`
-                    }}>
-                      {selectedDateModal && createForm.employeeId && createForm.serviceId 
-                        ? '🔄 Cargando horarios...' 
-                        : '📋 Selecciona todos los campos arriba'
-                      }
+                {isPastDate(selectedDateModal) ? (
+                  // Input manual para fechas pasadas
+                  <>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
+                      ⏰ Hora de la cita (retrospectiva)
+                    </label>
+                    <input
+                      type="time"
+                      value={manualTime}
+                      onChange={(e) => {
+                        setManualTime(e.target.value);
+                        if (e.target.value) {
+                          setCreateForm({...createForm, startTime: `${selectedDateModal}T${e.target.value}`});
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '15px 12px',
+                        border: `2px solid ${colors.border}`,
+                        borderRadius: '10px',
+                        fontSize: '16px',
+                        backgroundColor: colors.inputBg,
+                        color: colors.text,
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <div style={{ fontSize: '12px', color: colors.textSecondary, marginTop: '8px' }}>
+                      ⚠️ Fecha pasada: selecciona manualmente la hora que tuvo la cita
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  // Slots del backend para fechas futuras
+                  <>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px', color: colors.text }}>
+                      ⏰ Horarios disponibles
+                    </label>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+                      gap: '8px',
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      border: `2px solid ${colors.border}`,
+                      borderRadius: '10px',
+                      padding: '16px',
+                      backgroundColor: colors.bgSecondary
+                    }}>
+                      {availableSlots.length > 0 ? (
+                        availableSlots.map((slot, index) => (
+                          <button
+                            key={`${slot.time}-${index}`}
+                            type="button"
+                            onClick={() => {
+                              setCreateForm({...createForm, startTime: slot.startTime});
+                            }}
+                            style={{
+                              padding: '14px 10px',
+                              border: `2px solid ${colors.border}`,
+                              borderRadius: '8px',
+                              background: createForm.startTime === slot.startTime ? '#10b981' : colors.inputBg,
+                              color: createForm.startTime === slot.startTime ? '#ffffff' : colors.text,
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              transition: 'all 0.2s ease',
+                              boxShadow: createForm.startTime === slot.startTime 
+                                ? '0 4px 6px rgba(16, 185, 129, 0.3)' 
+                                : `0 2px 4px ${colors.shadow}`,
+                              transform: createForm.startTime === slot.startTime ? 'scale(1.05)' : 'scale(1)'
+                            }}
+                          >
+                            🕐 {slot.time}
+                          </button>
+                        ))
+                      ) : (
+                        <div style={{ 
+                          gridColumn: '1 / -1', 
+                          textAlign: 'center', 
+                          color: colors.textSecondary,
+                          padding: '30px 20px',
+                          fontSize: '16px',
+                          backgroundColor: colors.warning,
+                          borderRadius: '8px',
+                          border: `2px dashed ${colors.warning}`
+                        }}>
+                          {selectedDateModal && createForm.employeeId && createForm.serviceId 
+                            ? '🔄 Cargando horarios...' 
+                            : '📋 Selecciona todos los campos arriba'
+                          }
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -2791,16 +2973,58 @@ export default function Appointments() {
               </div>
             )}
 
-            {/* Notas del trabajo */}
+            {/* Diagnóstico */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                Notas del Trabajo Realizado:
+                🔍 Diagnóstico:
               </label>
               <textarea
-                value={workNotes}
-                onChange={(e) => setWorkNotes(e.target.value)}
-                placeholder="Describe el trabajo realizado, diagnóstico, reparaciones, etc."
-                rows={4}
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                placeholder="Describe el problema o diagnóstico técnico encontrado"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Solución */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                🔧 Solución Aplicada:
+              </label>
+              <textarea
+                value={solution}
+                onChange={(e) => setSolution(e.target.value)}
+                placeholder="Describe la solución o reparación realizada"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Recomendaciones */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                💡 Recomendaciones:
+              </label>
+              <textarea
+                value={recommendations}
+                onChange={(e) => setRecommendations(e.target.value)}
+                placeholder="Recomendaciones para el cliente o notas adicionales"
+                rows={2}
                 style={{
                   width: '100%',
                   padding: 12,
@@ -2820,6 +3044,9 @@ export default function Appointments() {
                   setInsumosAppointment(null);
                   setSelectedInsumos([]);
                   setWorkNotes('');
+                  setDiagnosis('');
+                  setSolution('');
+                  setRecommendations('');
                 }}
                 style={{
                   flex: 1,

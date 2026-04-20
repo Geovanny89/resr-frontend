@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import EmployeeLayout from '../../components/EmployeeLayout';
 import api from '../../api/client';
+import { useSocket } from '../../hooks/useSocket';
 import { Capacitor } from '@capacitor/core';
 import notificationService from '../../services/notificationService';
 import { Eye, EyeOff, Timer, MessageSquare, Car, MapPin, Package, CheckCircle2, Play } from 'lucide-react';
@@ -33,6 +34,8 @@ export default function EmployeeDashboard() {
   const [employee, setEmployee] = useState(null);
   const [business, setBusiness] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const appointmentsRef = useRef([]); // Ref persistente para sobrevivir desconexiones
+  const [, forceRender] = useState({}); // Estado dummy para forzar re-render
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -83,7 +86,11 @@ export default function EmployeeDashboard() {
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [savingInsumos, setSavingInsumos] = useState(false);
   const [workNotes, setWorkNotes] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [solution, setSolution] = useState('');
+  const [recommendations, setRecommendations] = useState('');
   const [statusMsg, setStatusMsg] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all'); // Filtro de estado: all, pending, confirmed, attention, done, cancelled
 
   useEffect(() => {
     loadEmployeeInfo();
@@ -137,10 +144,20 @@ export default function EmployeeDashboard() {
       setEmployee(response.data);
       // También cargar info del negocio
       if (response.data?.businessId) {
-        const bizRes = await api.get(`/businesses/by-id/${response.data.businessId}/public`);
-        setBusiness(bizRes.data);
+        try {
+          const bizRes = await api.get(`/businesses/by-id/${response.data.businessId}/public`);
+          setBusiness(bizRes.data);
+          console.log('Business cargado:', bizRes.data);
+          console.log('hasFieldTechnicians:', bizRes.data?.hasFieldTechnicians);
+        } catch (bizErr) {
+          console.error('Error cargando negocio:', bizErr);
+          setError('Error al cargar información del negocio');
+        }
+      } else {
+        console.warn('Empleado sin businessId');
       }
     } catch (err) {
+      console.error('Error cargando empleado:', err);
       setError('Error al cargar información del empleado');
     }
   };
@@ -150,6 +167,77 @@ export default function EmployeeDashboard() {
       loadAppointments();
     }
   }, [employee, selectedDate]);
+
+  // 🔔 Callbacks SOCKET.IO estables - SIN dependencias para evitar reconexiones
+  const handleNewAssigned = useCallback((appointment) => {
+    // Transformar al formato que espera el componente
+    const normalizedAppointment = {
+      id: appointment.id,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      clientName: appointment.clientName,
+      clientPhone: appointment.clientPhone,
+      status: appointment.status,
+      Service: appointment.Service,
+      technicianStatus: appointment.technicianStatus,
+      ...appointment
+    };
+
+    // Usar ref para verificar duplicados (más estable)
+    if (appointmentsRef.current.find(a => a.id === appointment.id)) {
+      return;
+    }
+
+    // Actualizar ref primero (persistente) y luego estado
+    const newAppointments = [...appointmentsRef.current, normalizedAppointment];
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({}); // FORZAR RE-RENDER
+
+    showStatus(`📅 Nueva cita: ${appointment.clientName}`, 'info');
+  }, []); // <- SIN dependencias
+
+  const handleAppointmentUpdated = useCallback((appointment) => {
+    const newAppointments = appointmentsRef.current.map(a => 
+      a.id === appointment.id 
+        ? { ...a, ...appointment, Service: appointment.Service || a.Service } 
+        : a
+    );
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({}); // FORZAR RE-RENDER
+  }, []); // <- SIN dependencias
+
+  const handleAppointmentCancelled = useCallback((appointment) => {
+    const newAppointments = appointmentsRef.current.filter(a => a.id !== appointment.id);
+    appointmentsRef.current = newAppointments;
+    setAppointments(newAppointments);
+    forceRender({}); // FORZAR RE-RENDER
+    showStatus('❌ Cita cancelada', 'warning');
+  }, []); // <- SIN dependencias
+
+  // 🔔 SOCKET.IO: Actualizaciones en tiempo real
+  const { subscribeToEmployeeAppointments, unsubscribeFromAppointments, isConnected } = useSocket({
+    businessId: employee?.businessId,
+    employeeId: employee?.id,
+    role: 'employee',
+    onNewAssigned: handleNewAssigned,
+    onAppointmentUpdated: handleAppointmentUpdated,
+    onAppointmentCancelled: handleAppointmentCancelled
+  });
+
+  // 🔔 Suscribirse a citas del empleado cuando cambia la fecha o el empleado
+  useEffect(() => {
+    if (employee?.id && selectedDate && isConnected) {
+      subscribeToEmployeeAppointments(employee.id, selectedDate);
+    }
+    // Cleanup: desuscribirse cuando cambia la fecha o se desmonta
+    return () => {
+      if (employee?.id && selectedDate) {
+        unsubscribeFromAppointments(employee.id, selectedDate);
+      }
+    };
+  }, [employee?.id, selectedDate, isConnected, subscribeToEmployeeAppointments, unsubscribeFromAppointments]);
 
   // Programar notificaciones cuando se cargan las citas (solo en APK)
   useEffect(() => {
@@ -165,17 +253,19 @@ export default function EmployeeDashboard() {
   const loadAppointments = async () => {
     try {
       setLoading(true);
+      // El backend busca desde startDate 00:00 hasta endDate 23:59
+      // Para un solo día, enviamos el mismo día en ambos parámetros
       const startDate = selectedDate;
-      const endDate = new Date(selectedDate);
-      endDate.setDate(endDate.getDate() + 1);
+      const endDate = selectedDate;
       
       const response = await api.get(`/employees/${employee.id}/appointments`, {
         params: {
           startDate: startDate,
-          endDate: endDate.toISOString().split('T')[0]
+          endDate: endDate
         }
       });
       setAppointments(response.data);
+      appointmentsRef.current = response.data; // Sincronizar ref
     } catch (err) {
       setError('Error al cargar citas');
     } finally {
@@ -201,6 +291,20 @@ export default function EmployeeDashboard() {
       loadAppointments();
     } catch (e) {
       alert(e.response?.data?.error || 'Error al actualizar el estado de la cita');
+    }
+  };
+
+  // Completar cita directamente sin modal de pago (para técnicos de campo)
+  const handleCompleteTechnician = async (id) => {
+    setCompleting(true);
+    try {
+      await api.patch(`/appointments/${id}/status`, { status: 'done' });
+      loadAppointments();
+      showStatus('Cita completada exitosamente');
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al completar cita');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -286,6 +390,11 @@ export default function EmployeeDashboard() {
     } finally {
       setPwLoading(false);
     }
+  };
+
+  // Handler para extender tiempo - abre modal de confirmación
+  const handleExtendTimeRequest = () => {
+    setShowExtendConfirm(true);
   };
 
   const handleExtendConfirm = async () => {
@@ -385,6 +494,11 @@ export default function EmployeeDashboard() {
   const handleOpenInsumosModal = async (appointment) => {
     setInsumosAppointment(appointment);
     setSelectedInsumos([]);
+    // Cargar datos del reporte técnico si existe
+    const report = appointment.workReport || {};
+    setDiagnosis(report.diagnosis || '');
+    setSolution(report.solution || '');
+    setRecommendations(report.recommendations || '');
     setWorkNotes(appointment.workNotes || '');
     await loadInventory();
     setShowInsumosModal(true);
@@ -425,18 +539,35 @@ export default function EmployeeDashboard() {
           appointmentId: insumosAppointment.id
         });
       }
-      
-      // Guardar notas del trabajo y cambiar estado a "en atención"
-      await api.patch(`/appointments/${insumosAppointment.id}/start-work`, {
-        workNotes: workNotes,
-        status: 'attention'
+
+      // Guardar reporte técnico si hay datos
+      if (diagnosis.trim() || solution.trim() || recommendations.trim()) {
+        await api.post(`/appointments/${insumosAppointment.id}/technical-report`, {
+          diagnosis: diagnosis,
+          solution: solution,
+          recommendations: recommendations,
+          partsUsed: selectedInsumos.map(i => ({
+            itemId: i.itemId,
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit
+          }))
+        });
+      }
+
+      // Cambiar estado a "en atención"
+      await api.patch(`/appointments/${insumosAppointment.id}/technician-status`, {
+        status: 'in_progress'
       });
-      
+
       showStatus('Insumos registrados y trabajo iniciado');
       setShowInsumosModal(false);
       setInsumosAppointment(null);
       setSelectedInsumos([]);
       setWorkNotes('');
+      setDiagnosis('');
+      setSolution('');
+      setRecommendations('');
       loadAppointments();
     } catch (e) {
       showStatus(e.response?.data?.error || 'Error al guardar insumos', 'error');
@@ -507,6 +638,51 @@ export default function EmployeeDashboard() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Filtrar y ordenar citas según el filtro de estado seleccionado
+  const filteredAppointments = useMemo(() => {
+    let filtered = appointments;
+    if (statusFilter !== 'all') {
+      filtered = appointments.filter(a => a.status === statusFilter);
+    }
+    // Ordenar: primero por prioridad de estado (confirmadas > en atención > pendientes > otras), luego por hora
+    const statusPriority = {
+      'confirmed': 1,     // Confirmadas primero (listas para atender)
+      'in_progress': 2,     // En atención segundo
+      'pending': 3,       // Pendientes tercero
+      'done': 4,
+      'completed': 4,
+      'cancelled': 5
+    };
+    
+    return filtered.sort((a, b) => {
+      const priorityA = statusPriority[a.status] || 3;
+      const priorityB = statusPriority[b.status] || 3;
+      // Si tienen diferente prioridad, ordenar por prioridad
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      // Si tienen misma prioridad, ordenar por hora
+      return new Date(a.startTime) - new Date(b.startTime);
+    });
+  }, [appointments, statusFilter]);
+
+  // Paginación de citas
+  const paginatedAppointments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAppointments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAppointments, currentPage]);
+
+  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+
+  // Reset a primera página cuando cambian las citas o el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   if (!employee) {
     return (
       <div style={{
@@ -517,8 +693,8 @@ export default function EmployeeDashboard() {
         justifyContent: 'center'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
-          <p style={{ color: colors.textSecondary }}>Cargando...</p>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+          <p>Cargando...</p>
         </div>
       </div>
     );
@@ -676,6 +852,43 @@ export default function EmployeeDashboard() {
             </div>
           )}
 
+          {/* Filtro de estado */}
+          {!loading && appointments.length > 0 && (
+            <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { value: 'all', label: 'Todas', color: '#6b7280' },
+                { value: 'pending', label: 'Pendientes', color: STATUS_COLORS.pending },
+                { value: 'confirmed', label: 'Confirmadas', color: STATUS_COLORS.confirmed },
+                { value: 'attention', label: 'En Atención', color: STATUS_COLORS.attention },
+                { value: 'done', label: 'Completadas', color: STATUS_COLORS.done },
+                { value: 'cancelled', label: 'Canceladas', color: STATUS_COLORS.cancelled }
+              ].map(filter => (
+                <button
+                  key={filter.value}
+                  onClick={() => setStatusFilter(filter.value)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 20,
+                    border: 'none',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: statusFilter === filter.value ? filter.color : colors.bgSecondary,
+                    color: statusFilter === filter.value ? 'white' : colors.text,
+                    opacity: statusFilter === filter.value ? 1 : 0.8
+                  }}
+                >
+                  {filter.label}
+                  {filter.value !== 'all' && (
+                    <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.9 }}>
+                      ({appointments.filter(a => a.status === filter.value).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           {!loading && appointments.length === 0 && (
             <div style={{
               textAlign: 'center',
@@ -690,9 +903,9 @@ export default function EmployeeDashboard() {
             </div>
           )}
 
-          {!loading && appointments.length > 0 && (
+          {!loading && paginatedAppointments.length > 0 && (
             <div style={{ display: 'grid', gap: 16 }}>
-              {appointments.map(apt => {
+              {paginatedAppointments.map((apt, index) => {
                 const startTime = new Date(apt.startTime);
                 const endTime = new Date(apt.endTime);
                 const timeStr = startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
@@ -773,7 +986,22 @@ export default function EmployeeDashboard() {
                       {/* ========== UI PARA TÉCNICOS DE CAMPO ========== */}
                       {business?.hasFieldTechnicians ? (
                         <>
-                          {/* Flujo estricto: confirmed → on_the_way → arrived → attention → done */}
+                          {/* Flujo estricto: pending → confirmed → on_the_way → arrived → attention → done */}
+                          {/* Botón Confirmar - cuando está pendiente */}
+                          {apt.status === 'pending' && (
+                            <button
+                              onClick={() => handleStatusUpdate(apt.id, 'confirmed')}
+                              style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#68d391', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            >
+                              <CheckCircle2 size={14} /> Confirmar
+                            </button>
+                          )}
+                          {/* Botón Cancelar para pendientes */}
+                          {apt.status === 'pending' && (
+                            <button onClick={() => handleStatusUpdate(apt.id, 'cancelled')} style={{ padding: '8px 14px', fontSize: 13, background: '#ef4444', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, flex: 1, minWidth: 100 }}>
+                              Cancelar
+                            </button>
+                          )}
                           {/* Botón En Camino - solo si está confirmada y no ha iniciado viaje */}
                           {apt.status === 'confirmed' && (!apt.technicianStatus || apt.technicianStatus === 'not_started') && (
                             <button
@@ -818,10 +1046,11 @@ export default function EmployeeDashboard() {
                                 <Package size={14} /> Insumos
                               </button>
                               <button
-                                onClick={() => handleStatusUpdate(apt.id, 'done', apt)}
-                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                                onClick={() => handleCompleteTechnician(apt.id)}
+                                disabled={completing}
+                                style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', background: '#22c55e', color: 'white', cursor: completing ? 'not-allowed' : 'pointer', opacity: completing ? 0.6 : 1, flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                               >
-                                <CheckCircle2 size={14} /> Completar
+                                <CheckCircle2 size={14} /> {completing ? 'Completando...' : 'Completar'}
                               </button>
                             </>
                           )}
@@ -836,6 +1065,34 @@ export default function EmployeeDashboard() {
                       ) : (
                         <>
                           {/* ========== UI NORMAL (NO TÉCNICOS DE CAMPO) ========== */}
+                          {/* Mensaje cuando no se ha cargado el negocio */}
+                          {!business && (
+                            <div style={{ 
+                              padding: '8px 12px', 
+                              background: '#fee2e2', 
+                              borderRadius: 6, 
+                              fontSize: 12, 
+                              color: '#991b1b',
+                              marginBottom: 8,
+                              width: '100%'
+                            }}>
+                              ⚠️ No se pudo cargar la información del negocio. Recarga la página.
+                            </div>
+                          )}
+                          {/* Mensaje informativo cuando no tiene seguimiento habilitado */}
+                          {business && !business.hasFieldTechnicians && (
+                            <div style={{ 
+                              padding: '8px 12px', 
+                              background: colors.bgSecondary, 
+                              borderRadius: 6, 
+                              fontSize: 12, 
+                              color: colors.textSecondary,
+                              marginBottom: 8,
+                              width: '100%'
+                            }}>
+                              ℹ️ Seguimiento no disponible. El negocio no tiene activada la opción "Técnicos a domicilio".
+                            </div>
+                          )}
                           {apt.status === 'pending' && (
                             <button onClick={() => handleStatusUpdate(apt.id, 'confirmed')} className="btn-primary" style={{ padding: '8px 14px', fontSize: 13, flex: 1, minWidth: 100 }}>
                               Confirmar
@@ -882,6 +1139,64 @@ export default function EmployeeDashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Paginación */}
+          {!loading && totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 12, 
+              marginTop: 20,
+              padding: 16,
+              background: colors.cardBg,
+              borderRadius: 12
+            }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: currentPage === 1 ? colors.bgSecondary : colors.primary,
+                  color: currentPage === 1 ? colors.textSecondary : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                ← Anterior
+              </button>
+              
+              <span style={{ 
+                fontSize: 15, 
+                color: colors.text,
+                fontWeight: 600,
+                minWidth: 100,
+                textAlign: 'center'
+              }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: currentPage === totalPages ? colors.bgSecondary : colors.primary,
+                  color: currentPage === totalPages ? colors.textSecondary : 'white',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                Siguiente →
+              </button>
             </div>
           )}
         </div>
@@ -1398,7 +1713,7 @@ export default function EmployeeDashboard() {
                 No, volver
               </button>
               <button 
-                onClick={handleConfirmExtend} 
+                onClick={handleExtendConfirm} 
                 disabled={savingExtend}
                 style={{ 
                   flex: 1, padding: '12px', borderRadius: 10, 
@@ -1659,16 +1974,58 @@ export default function EmployeeDashboard() {
               </div>
             )}
 
-            {/* Notas del trabajo */}
+            {/* Diagnóstico */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                Notas del Trabajo Realizado:
+                🔍 Diagnóstico:
               </label>
               <textarea
-                value={workNotes}
-                onChange={(e) => setWorkNotes(e.target.value)}
-                placeholder="Describe el trabajo realizado, diagnóstico, reparaciones, etc."
-                rows={4}
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                placeholder="Describe el problema o diagnóstico técnico encontrado"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Solución */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                🔧 Solución Aplicada:
+              </label>
+              <textarea
+                value={solution}
+                onChange={(e) => setSolution(e.target.value)}
+                placeholder="Describe la solución o reparación realizada"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Recomendaciones */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                💡 Recomendaciones:
+              </label>
+              <textarea
+                value={recommendations}
+                onChange={(e) => setRecommendations(e.target.value)}
+                placeholder="Recomendaciones para el cliente o notas adicionales"
+                rows={2}
                 style={{
                   width: '100%',
                   padding: 12,
@@ -1688,6 +2045,9 @@ export default function EmployeeDashboard() {
                   setInsumosAppointment(null);
                   setSelectedInsumos([]);
                   setWorkNotes('');
+                  setDiagnosis('');
+                  setSolution('');
+                  setRecommendations('');
                 }}
                 style={{
                   flex: 1,
