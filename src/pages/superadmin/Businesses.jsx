@@ -48,7 +48,7 @@ export default function BusinessesResponsive() {
   
   // Planes predefinidos
   const PLANS = {
-    basic: { name: 'Básico', price: 70000, includedUsers: 2 },
+    basic: { name: 'Básico', price: 70000, includedUsers: 3 },
     pro: { name: 'Pro', price: 90000, includedUsers: 5 },
     premium: { name: 'Premium', price: 130000, includedUsers: 10 }
   };
@@ -330,7 +330,7 @@ export default function BusinessesResponsive() {
             {biz.subscriptionPlan === 'pro' && 'Pro'}
             {biz.subscriptionPlan === 'premium' && 'Premium'}
             {!biz.subscriptionPlan && 'Básico'}
-            ({(biz.includedUsers || 2) + (biz.additionalUsers || 0)} empleados)
+            ({(biz.includedUsers || 3) + (biz.additionalUsers || 0)} empleados)
           </span>
           
           {biz.isBranch && (
@@ -689,9 +689,9 @@ export default function BusinessesResponsive() {
                     onChange={e => setSubForm(prev => ({ ...prev, subscriptionPlan: e.target.value }))} 
                     style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }}
                   >
-                    <option value="basic">💚 Básico - $70.000 (2 empleados)</option>
-                    <option value="pro">💙 Pro - $90.000 (3 empleados)</option>
-                    <option value="premium">💛 Premium - $130.000 (5 empleados)</option>
+                    <option value="basic">💚 Básico - $70.000 (3 empleados)</option>
+                    <option value="pro">💙 Pro - $90.000 (5 empleados)</option>
+                    <option value="premium">💛 Premium - $130.000 (10 empleados)</option>
                   </select>
                 </div>
                 

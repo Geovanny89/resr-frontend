@@ -79,9 +79,9 @@ export default function Landing() {
       desc: 'Perfecto para emprendedores', 
       color: '#10b981',
       popular: false,
-      users: 2,
+      users: 3,
       features: [
-        '✅ 2 empleados incluidos',
+        '✅ 3 empleados incluidos',
         '✅ Citas ilimitadas',
         '✅ App móvil personalizada (APK)',
         '✅ Página web de reservas',

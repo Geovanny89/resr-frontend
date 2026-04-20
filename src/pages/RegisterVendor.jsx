@@ -756,7 +756,7 @@ export default function RegisterVendor() {
                   onFocus={e => e.target.style.borderColor = colors.primary}
                   onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 >
-                  <option value="basic">Básico - $70.000/mes (2 empleados)</option>
+                  <option value="basic">Básico - $70.000/mes (3 empleados)</option>
                   <option value="pro">Pro - $90.000/mes (5 empleados)</option>
                   <option value="premium">Premium - $130.000/mes (10 empleados)</option>
                 </select>
@@ -778,7 +778,7 @@ export default function RegisterVendor() {
                         <strong style={{ color: colors.text }}>Plan Básico</strong> - Ideal para pequeños negocios
                       </p>
                       <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
-                        <li>2 empleados incluidos</li>
+                        <li>3 empleados incluidos</li>
                         <li>Gestión de citas básica</li>
                         <li>Recordatorios por WhatsApp</li>
                         <li>Soporte por email</li>
