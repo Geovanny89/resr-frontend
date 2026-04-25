@@ -28,15 +28,45 @@ const api = axios.create({
   baseURL,
 });
 
-// Interceptor para logging de requests
+// Caché simple en memoria para peticiones GET
+const cache = new Map();
+const CACHE_DURATION = 30000; // 30 segundos
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Usar caché solo para GET requests sin parámetros de no-cache
+  if (config.method === 'get' && !config.params?.noCache) {
+    const cacheKey = `${config.url}${JSON.stringify(config.params || {})}`;
+    const cached = cache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      // Devolver respuesta cacheada
+      config.adapter = () => Promise.resolve({
+        data: cached.data,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        request: {}
+      });
+    }
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
   (res) => {
+    // Guardar en caché las respuestas GET exitosas
+    if (res.config.method === 'get' && res.status === 200) {
+      const cacheKey = `${res.config.url}${JSON.stringify(res.config.params || {})}`;
+      cache.set(cacheKey, {
+        data: res.data,
+        timestamp: Date.now()
+      });
+    }
     return res;
   },
   (err) => {
@@ -51,5 +81,15 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+// Limpiar caché periódicamente
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      cache.delete(key);
+    }
+  }
+}, 60000); // Limpiar cada minuto
 
 export default api;

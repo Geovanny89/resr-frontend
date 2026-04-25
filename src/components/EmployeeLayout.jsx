@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 import ThemeToggle from './ThemeToggle';
 import api from '../api/client';
 import {
   LayoutDashboard, ClipboardList, UserCircle, Star, DollarSign,
-  Users, LogOut, Bell, Briefcase
+  Users, LogOut, Bell, Briefcase, Lock
 } from 'lucide-react';
 
 // Función para obtener items de navegación según tipo de negocio
-const getNavItems = (business) => {
+const getNavItems = (business, onChangePassword) => {
   const isTechnical = business?.isTechnicalServices;
   const isFieldTech = business?.hasFieldTechnicians;
-  
+
   return [
     {
       section: 'Principal',
@@ -28,18 +28,27 @@ const getNavItems = (business) => {
       section: 'Configuración',
       items: [
         { to: '/employee/profile', icon: UserCircle, label: 'Mi Perfil' },
+        { action: 'changePassword', icon: Lock, label: 'Cambiar Contraseña', onClick: onChangePassword },
       ]
     }
   ];
 };
 
-export default function EmployeeLayout({ children, title, subtitle }) {
+export default function EmployeeLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
-  const [business, setBusiness] = useState(null);
+  // Cachear en sessionStorage para evitar parpadeo al navegar entre páginas
+  const [business, setBusiness] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('employeeBusiness');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Detectar cambios de tamaño de pantalla
   useEffect(() => {
@@ -51,7 +60,7 @@ export default function EmployeeLayout({ children, title, subtitle }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cargar info del negocio
+  // Cargar info del negocio (con cache para evitar parpadeo)
   useEffect(() => {
     const loadBusiness = async () => {
       try {
@@ -59,6 +68,8 @@ export default function EmployeeLayout({ children, title, subtitle }) {
         if (res.data?.businessId) {
           const bizRes = await api.get(`/businesses/by-id/${res.data.businessId}/public`);
           setBusiness(bizRes.data);
+          // Guardar en cache para futuras navegaciones
+          sessionStorage.setItem('employeeBusiness', JSON.stringify(bizRes.data));
         }
       } catch (e) {
         console.error('Error loading business:', e);
@@ -67,19 +78,25 @@ export default function EmployeeLayout({ children, title, subtitle }) {
     loadBusiness();
   }, []);
 
-  const handleLogout = () => { 
-    logout(); 
-    navigate('/login'); 
+  const handleLogout = () => {
+    sessionStorage.removeItem('employeeBusiness');
+    logout();
+    navigate('/login');
+  };
+
+  const handleChangePassword = () => {
+    navigate('/employee', { state: { openChangePassword: true } });
+    if (isMobile) setSidebarOpen(false);
   };
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'EM';
 
-  const currentItem = getNavItems(business).flatMap(s => s.items).find(item =>
-    item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to)
+  const currentItem = getNavItems(business, handleChangePassword).flatMap(s => s.items).find(item =>
+    item.to && (item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to))
   );
-  const pageTitle = title || currentItem?.label || 'Panel';
+  const pageTitle = currentItem?.label || 'Panel';
 
   const handleCloseSidebar = () => setSidebarOpen(false);
 
@@ -111,14 +128,27 @@ export default function EmployeeLayout({ children, title, subtitle }) {
         </div>
 
         <nav className="sidebar-nav">
-          {getNavItems(business).map(section => (
+          {getNavItems(business, handleChangePassword).map(section => (
             <div key={section.section}>
               <div className="sidebar-section-label">{section.section}</div>
               {section.items.map(item => {
                 const Icon = item.icon;
-                const isActive = item.exact
+                const isActive = item.to && (item.exact
                   ? location.pathname === item.to
-                  : location.pathname.startsWith(item.to);
+                  : location.pathname.startsWith(item.to));
+                if (item.action === 'changePassword') {
+                  return (
+                    <button
+                      key={item.action}
+                      onClick={item.onClick}
+                      className="sidebar-link"
+                      style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Icon className="nav-icon" size={18} />
+                      {item.label}
+                    </button>
+                  );
+                }
                 return (
                   <NavLink
                     key={item.to}
@@ -153,7 +183,6 @@ export default function EmployeeLayout({ children, title, subtitle }) {
         <header className="topbar">
           <div className="topbar-left">
             <div className="topbar-title">{pageTitle}</div>
-            {subtitle && <div className="topbar-subtitle">{subtitle}</div>}
           </div>
           <div className="topbar-actions">
             <ThemeToggle />
@@ -164,7 +193,7 @@ export default function EmployeeLayout({ children, title, subtitle }) {
         </header>
 
         <div className="page-content fade-in">
-          {children}
+          <Outlet />
         </div>
       </main>
     </div>

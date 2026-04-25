@@ -1,346 +1,102 @@
-import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/client';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useBooking, formatDateES, formatSlotTime } from '../../features/booking';
+import {
+  ConfirmationScreen,
+  ServiceStep,
+  EmployeeStep,
+  DateStep,
+  TimeSlotStep,
+  ClientDataStep,
+  DepositStep,
+} from '../../features/booking';
 
-const BASE_STEPS = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos'];
-const STEPS_WITH_DEPOSIT = ['Servicio', 'Empleado', 'Fecha', 'Horario', 'Datos', 'Anticipo'];
-
-const MONTHS_ES = [
-  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
-];
-const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-
-function todayColombia() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+// Helper for image URLs
+function getImgUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const FALLBACK_BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/'))
+    ? api.defaults.baseURL.replace('/api', '')
+    : FALLBACK_BACKEND_URL;
+  return `${base}${cleanUrl}`;
 }
-
-function buildCalendarDays(year, month) {
-  const firstDay    = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let d = 1; d <= daysInMonth; d++) days.push(d);
-  return days;
-}
-
-function formatDateES(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const names = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const date  = new Date(y, m - 1, d);
-  return `${names[date.getDay()]}, ${d} de ${MONTHS_ES[m - 1]} de ${y}`;
-}
-
-// ─── Calendario ────────────────────────────────────────────────────────────────
-
-function CalendarPicker({ value, onChange, minDate, colors }) {
-  const today = minDate || todayColombia();
-  const [y, m] = today.split('-').map(Number); // m viene como 1-12 de toLocaleDateString
-  const [viewYear,  setViewYear]  = useState(value ? parseInt(value.split('-')[0]) : y);
-  // toLocaleDateString devuelve mes 1-12, pero JavaScript Date usa 0-11
-  // Por eso restamos 1 para obtener el mes correcto (ej: abril 4 → 3)
-  const [viewMonth, setViewMonth] = useState(value ? parseInt(value.split('-')[1]) - 1 : m - 1);
-
-  // DEBUG: Verificar fechas
-  console.log('[Calendar DEBUG]', { today, y, m, viewYear, viewMonth, value });
-
-  const days = useMemo(() => buildCalendarDays(viewYear, viewMonth), [viewYear, viewMonth]);
-
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(v => v - 1); setViewMonth(11); }
-    else setViewMonth(v => v - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(v => v + 1); setViewMonth(0); }
-    else setViewMonth(v => v + 1);
-  };
-
-  const pad = (n) => String(n).padStart(2, '0');
-  const toStr = (day) => `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
-
-  const isPast = (day) => {
-    if (!day) return true;
-    const dayStr = toStr(day);
-    const result = dayStr < today;
-    // DEBUG: Verificar comparación
-    if (day <= 5) { // Solo logear los primeros días para no saturar
-      console.log('[isPast DEBUG]', { day, dayStr, today, result, viewYear, viewMonth });
-    }
-    // Allow today and future dates (dayStr >= today)
-    return result;
-  };
-  const isSelected = (day) => !!day && !!value && toStr(day) === value;
-  const isToday    = (day) => !!day && toStr(day) === today;
-  const canGoPrev  = () => !(viewYear === y && viewMonth === m - 1);
-
-  const handleDay = (day) => {
-    if (!day || isPast(day)) return;
-    onChange(toStr(day));
-  };
-
-  return (
-    <div style={{
-      background: colors.cardBg, borderRadius: 16,
-      boxShadow: `0 4px 20px ${colors.shadow}`,
-      padding: '20px', userSelect: 'none',
-      width: '100%', maxWidth: 340,
-      border: `1px solid ${colors.border}`,
-    }}>
-      {/* Cabecera */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button
-          onClick={prevMonth}
-          disabled={!canGoPrev()}
-          style={{
-            background: canGoPrev() ? '#eef2ff' : colors.bgSecondary,
-            border: 'none', borderRadius: 8, width: 36, height: 36,
-            cursor: canGoPrev() ? 'pointer' : 'not-allowed',
-            fontSize: 18, color: canGoPrev() ? '#4f46e5' : colors.textSecondary,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >‹</button>
-        <span style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>
-          {MONTHS_ES[viewMonth]} {viewYear}
-        </span>
-        <button
-          onClick={nextMonth}
-          style={{
-            background: '#eef2ff', border: 'none', borderRadius: 8,
-            width: 36, height: 36, cursor: 'pointer', fontSize: 18, color: '#4f46e5',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >›</button>
-      </div>
-
-      {/* Días de la semana */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 6 }}>
-        {DAYS_ES.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: colors.textSecondary, padding: '4px 0' }}>
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Días del mes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
-        {days.map((day, i) => {
-          const past     = isPast(day);
-          const selected = isSelected(day);
-          const today_   = isToday(day);
-          return (
-            <div
-              key={i}
-              onClick={() => handleDay(day)}
-              style={{
-                textAlign: 'center', padding: '8px 2px', borderRadius: 8, fontSize: 13,
-                fontWeight: selected ? 700 : today_ ? 600 : 400,
-                cursor: day && !past ? 'pointer' : 'default',
-                background: selected ? '#4f46e5' : today_ && !selected ? '#eef2ff' : 'transparent',
-                color: !day ? 'transparent' : past ? colors.textSecondary : selected ? 'white' : today_ ? '#4f46e5' : colors.text,
-                border: today_ && !selected ? '1.5px solid #4f46e5' : '1.5px solid transparent',
-                transition: 'all 0.15s',
-              }}
-            >
-              {day || ''}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Componente Principal ───────────────────────────────────────────────────────
 
 export default function BookAppointment() {
-  const { slug }    = useParams();
-  const navigate    = useNavigate();
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedEmployeeId = searchParams.get('employeeId');
   const preselectedServiceId = searchParams.get('serviceId');
-  
-  const { colors }  = useTheme();
-  const { user }    = useAuth();
-  const [business, setBusiness]     = useState(null);
-  const [step, setStep]             = useState(0);
-  const [loading, setLoading]       = useState(true);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState('');
-  const [slots, setSlots]           = useState([]);
-  const [confirmed, setConfirmed]   = useState(false);
+  const { colors } = useTheme();
+  const { user } = useAuth();
 
-  const [selected, setSelected] = useState({
-    service: null, employee: null, date: '', slot: null,
-    clientName: '', clientPhone: '', clientEmail: '', notes: '',
-    depositAccepted: false,  // Aceptó términos de anticipo
-  });
-  
-  // Estado para anticipo
-  const [showDepositStep, setShowDepositStep] = useState(false);
-  const [hasPreviousData, setHasPreviousData] = useState(false);
-  const [loadingClientData, setLoadingClientData] = useState(true);
-  
-  // Paginación para servicios y empleados
-  const [servicesPage, setServicesPage] = useState(1);
-  const [employeesPage, setEmployeesPage] = useState(1);
-  const servicesPerPage = 5;
-  const employeesPerPage = 8;
-
-  // Precargar datos del cliente si viene desde MyAppointments (APK)
-  useEffect(() => {
-    const loadClientData = async () => {
-      const savedClientEmail = localStorage.getItem('clientEmail');
-      if (savedClientEmail) {
-        try {
-          // Intentar recuperar datos del cliente desde citas anteriores
-          const response = await api.get('/appointments/my-client-appointments', { 
-            params: { email: savedClientEmail } 
-          });
-          
-          if (response.data && response.data.length > 0) {
-            // Usar datos de la cita más reciente
-            const lastApt = response.data[0];
-            console.log('📋 Datos del cliente precargados:', {
-              clientName: lastApt.clientName,
-              clientPhone: lastApt.clientPhone,
-              clientEmail: savedClientEmail
-            });
-            
-            setSelected(prev => ({
-              ...prev,
-              clientName: lastApt.clientName || '',
-              clientPhone: lastApt.clientPhone || '',
-              clientEmail: savedClientEmail,
-            }));
-            
-            if (lastApt.clientName && lastApt.clientPhone) {
-              setHasPreviousData(true);
-            }
-          } else {
-            console.log('📋 No hay citas previas, solo pre-llenando email');
-            // Solo pre-llenar el email si no hay citas previas
-            setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
-          }
-        } catch (err) {
-          console.error('❌ Error cargando datos del cliente:', err);
-          // Solo pre-llenar el email si falla la petición
-          setSelected(prev => ({ ...prev, clientEmail: savedClientEmail }));
-        } finally {
-          setLoadingClientData(false);
-        }
-      } else {
-        console.log('📋 No hay clientEmail en localStorage');
-        setLoadingClientData(false);
-      }
-    };
-    
-    loadClientData();
-  }, []);
-
-  useEffect(() => {
-    api.get(`/businesses/${slug}/public`)
-      .then(r => {
-        setBusiness(r.data);
-        const data = r.data;
-        
-        let newSelected = {};
-        let jumpToStep = 0;
-
-        // Si hay un servicio preseleccionado por URL, buscarlo y asignarlo
-        if (preselectedServiceId && data.Services) {
-          const svc = data.Services.find(s => String(s.id) === String(preselectedServiceId));
-          if (svc) {
-            newSelected.service = svc;
-            jumpToStep = 1;
-          }
-        }
-
-        // Si hay un empleado preseleccionado por URL, buscarlo y asignarlo
-        if (preselectedEmployeeId && data.Employees) {
-          const emp = data.Employees.find(e => String(e.id) === String(preselectedEmployeeId));
-          if (emp) {
-            newSelected.employee = emp;
-            // Si ya tenemos servicio, saltamos directo a fecha (paso 2)
-            // Si no tenemos servicio, vamos a paso 0 (Servicio) y saltaremos Empleado después
-            if (newSelected.service) jumpToStep = 2;
-            // Si solo hay empleado, nos quedamos en paso 0 (Servicio)
-          }
-        }
-
-        if (Object.keys(newSelected).length > 0) {
-          setSelected(prev => ({ ...prev, ...newSelected }));
-          setStep(jumpToStep);
-        }
-      })
-      .catch(() => setError('Negocio no encontrado'))
-      .finally(() => setLoading(false));
-  }, [slug, preselectedEmployeeId, preselectedServiceId]);
-
-  // Redirigir si estamos en paso Empleado pero hay empleado preseleccionado
-  useEffect(() => {
-    if (step === 1 && preselectedEmployeeId) {
-      // Si ya hay servicio seleccionado, ir a Fecha (paso 2)
-      // Si no hay servicio, volver a Servicio (paso 0)
-      setStep(selected.service ? 2 : 0);
-    }
-  }, [step, preselectedEmployeeId, selected.service]);
-
-  useEffect(() => {
-    if (step === 3 && selected.date && selected.service) {
-      setSlotsLoading(true);
-      setSlots([]);
-      const params = new URLSearchParams({ date: selected.date, serviceId: selected.service.id });
-      api.get(`/businesses/${slug}/availability?${params}`)
-        .then(r => {
-          const filtered = selected.employee
-            ? r.data.filter(s => s.employeeId === selected.employee.id)
-            : r.data;
-          setSlots(filtered);
-        })
-        .catch(() => {
-          setSlots([]);
-        })
-        .finally(() => setSlotsLoading(false));
-    }
-  }, [step, selected.date, selected.service, selected.employee]);
+  const {
+    business,
+    step,
+    setStep,
+    loading,
+    slotsLoading,
+    submitting,
+    setSubmitting,
+    error,
+    setError,
+    slots,
+    selected,
+    setSelected,
+    confirmed,
+    setConfirmed,
+    hasPreviousData,
+    loadingClientData,
+    servicesPage,
+    setServicesPage,
+    employeesPage,
+    setEmployeesPage,
+    depositAmount,
+    isDepositRequired,
+    effectiveSteps,
+    primary,
+    secondary,
+    gradient,
+    depositConfig,
+  } = useBooking(slug, preselectedEmployeeId, preselectedServiceId);
 
   const handleSubmit = async () => {
-    if (submitting) return; // Evitar doble envío
+    if (submitting) return;
     setSubmitting(true);
     setError('');
     try {
+      // Validar dirección para negocios con técnicos a domicilio
+      if (business?.hasFieldTechnicians && !selected.address) {
+        setError('La dirección es requerida para servicios a domicilio');
+        setSubmitting(false);
+        return;
+      }
+
       // Construir fecha ISO con zona horaria Colombia explícita
-      // Usar selected.date (YYYY-MM-DD) + slot.localTime (HH:MM) + offset Colombia (-05:00)
-      const startTimeIso = selected.slot.localTime 
+      const startTimeIso = selected.slot.localTime
         ? `${selected.date}T${selected.slot.localTime}:00-05:00`
         : null;
-      
-      console.log('[BookAppointment] Enviando cita:', {
+
+      await api.post('/appointments', {
         businessId: business.id,
         serviceId: selected.service.id,
         employeeId: selected.slot.employeeId,
-        startTime: startTimeIso,
-        clientEmail: selected.clientEmail
-      });
-      
-      await api.post('/appointments', {
-        businessId:  business.id,
-        serviceId:   selected.service.id,
-        employeeId:  selected.slot.employeeId,
-        clientName:  selected.clientName,
+        clientName: selected.clientName,
         clientPhone: selected.clientPhone,
         clientEmail: selected.clientEmail,
-        startTime:   startTimeIso,
-        notes:       selected.notes,
+        address: selected.address,
+        startTime: startTimeIso,
+        notes: selected.notes,
         depositAmount: isDepositRequired ? depositAmount : null,
         depositAccepted: isDepositRequired ? selected.depositAccepted : false,
       });
-      setConfirmed(true)
+      setConfirmed(true);
     } catch (e) {
       setError(e.response?.data?.error || 'Error al reservar la cita');
     } finally {
@@ -348,61 +104,6 @@ export default function BookAppointment() {
     }
   };
 
-  const formatSlotTime = (startTime) =>
-    new Date(startTime).toLocaleTimeString('es-CO', {
-      hour: '2-digit', minute: '2-digit', hour12: true,
-      timeZone: 'America/Bogota',
-    });
-
-  const primary   = business?.primaryColor   || '#4f46e5';
-  const secondary = business?.secondaryColor || '#7c3aed';
-  const gradient  = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`;
-  
-  // Calcular monto del anticipo
-  const depositConfig = business?.depositConfig;
-  const isDepositRequired = business?.enabledModules?.deposits && depositConfig?.required;
-  const calculateDepositAmount = () => {
-    if (!isDepositRequired || !selected.service) return 0;
-    if (depositConfig?.amount > 0) return depositConfig.amount;
-    // Calcular precio con descuento si hay promoción activa
-    const promo = selected.service?.Promotions && selected.service.Promotions.length > 0 ? selected.service.Promotions[0] : null;
-    let servicePrice = selected.service.price || 0;
-    if (promo) {
-      const discount = promo.discountType === 'percentage'
-        ? servicePrice * (Number(promo.discountValue) / 100)
-        : Number(promo.discountValue);
-      servicePrice = Math.max(0, servicePrice - discount);
-    }
-    return Math.round(servicePrice * (depositConfig?.percentage || 30) / 100);
-  };
-  const depositAmount = calculateDepositAmount();
-  
-  // Determinar pasos dinámicamente
-  const effectiveSteps = isDepositRequired ? STEPS_WITH_DEPOSIT : BASE_STEPS;
-  const maxStep = effectiveSteps.length - 1;
-
-  // ── Loading ──
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.bg }}>
-      <div style={{ textAlign: 'center', color: colors.textSecondary }}>
-        <div style={{ width: 44, height: 44, border: `4px solid ${colors.border}`, borderTopColor: primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-        <p>Cargando...</p>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    </div>
-  );
-
-  if (error && !business) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.bg, padding: 20 }}>
-      <div style={{ textAlign: 'center', maxWidth: 400 }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>😕</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text, marginBottom: 8 }}>Negocio no encontrado</h2>
-        <p style={{ color: colors.textSecondary }}>{error}</p>
-      </div>
-    </div>
-  );
-
-  // ── Flujo de navegación ──
   const handleBack = () => {
     if (step > 0) {
       if (preselectedEmployeeId && step === 2) {
@@ -419,10 +120,8 @@ export default function BookAppointment() {
       }
     }
   };
-  
-  // Navegación directa para pantalla de confirmación
+
   const handleConfirmBack = () => {
-    // Si el usuario está autenticado como cliente, ir directo a sus citas
     if (user?.role === 'client' || localStorage.getItem('clientEmail')) {
       navigate('/my-appointments', { replace: true });
     } else {
@@ -430,54 +129,45 @@ export default function BookAppointment() {
     }
   };
 
-  const getImgUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const FALLBACK_BACKEND_URL = isLocal ? 'http://localhost:4000' : 'https://api-reservas.k-dice.com';
-    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-    const base = (api.defaults.baseURL && !api.defaults.baseURL.startsWith('/')) 
-      ? api.defaults.baseURL.replace('/api', '') 
-      : FALLBACK_BACKEND_URL;
-    return `${base}${cleanUrl}`;
-  };
-
-  // ── Confirmación ──
-  if (confirmed) return (
-    <div style={{ minHeight: '100vh', background: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{
-        background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 20, padding: '40px 32px',
-        maxWidth: 480, width: '100%', textAlign: 'center',
-        boxShadow: `0 8px 32px ${colors.shadow}`,
-      }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-        <h2 style={{ fontSize: 24, fontWeight: 800, color: colors.text, marginBottom: 8 }}>¡Cita reservada!</h2>
-        <p style={{ color: colors.textSecondary, marginBottom: 24 }}>Tu cita ha sido registrada exitosamente.</p>
-        <div style={{
-          background: colors.bgSecondary, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '16px 20px',
-          marginBottom: 24, textAlign: 'left', fontSize: 14, lineHeight: 1.8, color: colors.text,
-        }}>
-          <div><strong>Servicio:</strong> {selected.service?.name}</div>
-          <div><strong>Empleado:</strong> {selected.slot?.employeeName}</div>
-          <div><strong>Fecha:</strong> {formatDateES(selected.date)}</div>
-          <div><strong>Hora:</strong> {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
-          <div><strong>Nombre:</strong> {selected.clientName}</div>
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.bg }}>
+        <div style={{ textAlign: 'center', color: colors.textSecondary }}>
+          <div style={{ width: 44, height: 44, border: `4px solid ${colors.border}`, borderTopColor: primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <p>Cargando...</p>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
-        <button
-          onClick={handleConfirmBack}
-          style={{
-            background: gradient, color: 'white', border: 'none',
-            borderRadius: 10, padding: '12px 32px', fontSize: 15,
-            fontWeight: 700, cursor: 'pointer', width: '100%',
-          }}
-        >
-          Volver a mis citas
-        </button>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // ── Flujo principal ──
+  // Error state
+  if (error && !business) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.bg, padding: 20 }}>
+        <div style={{ textAlign: 'center', maxWidth: 400 }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>😕</div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text, marginBottom: 8 }}>Negocio no encontrado</h2>
+          <p style={{ color: colors.textSecondary }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Confirmation screen
+  if (confirmed) {
+    return (
+      <ConfirmationScreen
+        selected={selected}
+        colors={colors}
+        gradient={gradient}
+        onBack={handleConfirmBack}
+      />
+    );
+  }
+
+  // Main booking flow
   return (
     <div style={{ minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
@@ -562,747 +252,90 @@ export default function BookAppointment() {
           </div>
         )}
 
-        {/* ── PASO 0: Servicio ── */}
         {step === 0 && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>¿Qué servicio necesitas?</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>Selecciona el servicio que deseas reservar</p>
-            {(!business?.Services || business.Services.length === 0) ? (
-              <div style={{ background: colors.cardBg, borderRadius: 14, padding: 40, textAlign: 'center', color: colors.textSecondary, boxShadow: `0 2px 8px ${colors.shadow}`, border: `1px solid ${colors.border}` }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-                <p style={{ fontWeight: 600, color: colors.text }}>Sin servicios disponibles</p>
-                <p style={{ fontSize: 13, marginTop: 4 }}>Este negocio aún no tiene servicios configurados.</p>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {(() => {
-                    const totalPages = Math.ceil(business.Services.length / servicesPerPage);
-                    const startIndex = (servicesPage - 1) * servicesPerPage;
-                    const paginatedServices = business.Services.slice(startIndex, startIndex + servicesPerPage);
-                    
-                    return (
-                      <>
-                        {paginatedServices.map(svc => (
-                          <div
-                            key={svc.id}
-                            className="book-svc"
-                            onClick={() => { 
-                              setSelected(s => ({ ...s, service: svc })); 
-                              setStep(preselectedEmployeeId ? 2 : 1); 
-                            }}
-                            style={{
-                              background: colors.cardBg, borderRadius: 14, padding: '16px 20px',
-                              border: `2px solid ${selected.service?.id === svc.id ? primary : colors.border}`,
-                              cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                              alignItems: 'center', boxShadow: `0 1px 4px ${colors.shadow}`,
-                              transition: 'all 0.15s', gap: 12,
-                            }}
-                          >
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontWeight: 700, fontSize: 16, color: colors.text, marginBottom: 4 }}>{svc.name}</div>
-                              {svc.description && <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>{svc.description}</div>}
-                              <div style={{ fontSize: 12, color: colors.textSecondary }}>⏱ {svc.durationMin} min</div>
-                              {svc.isTechnicalService && (
-                                <div style={{ fontSize: 11, color: '#0369a1', marginTop: 4, fontWeight: 600 }}>
-                                  🔧 Servicio técnico
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ fontSize: svc.priceOptional ? 14 : 20, fontWeight: 800, color: svc.priceOptional ? '#92400e' : '#059669', flexShrink: 0, textAlign: 'right' }}>
-                              {svc.priceOptional ? (
-                                <>
-                                  <div>A cotizar</div>
-                                  {svc.price > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary }}>Ref: ${Number(svc.price).toLocaleString('es-CO')}</div>}
-                                </>
-                              ) : (
-                                (() => {
-                                  const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
-                                  const basePrice = Number(svc.price);
-                                  if (promo) {
-                                    const discount = promo.discountType === 'percentage' 
-                                      ? basePrice * (Number(promo.discountValue) / 100) 
-                                      : Number(promo.discountValue);
-                                    const finalPrice = Math.max(0, basePrice - discount);
-                                    return (
-                                      <>
-                                        <div style={{ fontSize: 12, color: '#ef4444', textDecoration: 'line-through', marginBottom: -4 }}>
-                                          ${basePrice.toLocaleString('es-CO')}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                          <span style={{ fontSize: 11, background: '#fee2e2', color: '#b91c1c', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
-                                            -{promo.discountType === 'percentage' ? `${promo.discountValue}%` : 'PROMO'}
-                                          </span>
-                                          ${finalPrice.toLocaleString('es-CO')}
-                                        </div>
-                                      </>
-                                    );
-                                  }
-                                  return `$${basePrice.toLocaleString('es-CO')}`;
-                                })()
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    );
-                  })()}
-                </div>
-                
-                {/* Paginación de Servicios */}
-                {business.Services.length > servicesPerPage && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    gap: 12, 
-                    marginTop: 20,
-                    padding: '12px',
-                  }}>
-                    <button
-                      onClick={() => setServicesPage(p => Math.max(1, p - 1))}
-                      disabled={servicesPage === 1}
-                      style={{ 
-                        padding: '8px 12px', 
-                        borderRadius: 8, 
-                        border: 'none',
-                        background: servicesPage === 1 ? colors.bgSecondary : primary,
-                        color: servicesPage === 1 ? colors.textSecondary : 'white',
-                        cursor: servicesPage === 1 ? 'not-allowed' : 'pointer',
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      ‹ Anterior
-                    </button>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
-                      {servicesPage} / {Math.ceil(business.Services.length / servicesPerPage)}
-                    </span>
-                    <button
-                      onClick={() => setServicesPage(p => Math.min(Math.ceil(business.Services.length / servicesPerPage), p + 1))}
-                      disabled={servicesPage === Math.ceil(business.Services.length / servicesPerPage)}
-                      style={{ 
-                        padding: '8px 12px', 
-                        borderRadius: 8, 
-                        border: 'none',
-                        background: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? colors.bgSecondary : primary,
-                        color: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? colors.textSecondary : 'white',
-                        cursor: servicesPage === Math.ceil(business.Services.length / servicesPerPage) ? 'not-allowed' : 'pointer',
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Siguiente ›
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <ServiceStep
+            business={business}
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            servicesPage={servicesPage}
+            setServicesPage={setServicesPage}
+            colors={colors}
+            primary={primary}
+            preselectedEmployeeId={preselectedEmployeeId}
+          />
         )}
 
-        {/* ── PASO 1: Empleado ── */}
-        {/* Saltar este paso si ya hay empleado preseleccionado */}
         {step === 1 && !preselectedEmployeeId && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>¿Con quién quieres tu cita?</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
-              Servicio: <strong>{selected.service?.name}</strong>
-            </p>
-            {(() => {
-              // Filtrar empleados que pueden realizar el servicio seleccionado
-              // Si tiene servicios asignados, debe tener el específico
-              // Si NO tiene servicios asignados, es generalista y puede hacer cualquiera
-              const allEmployees = business?.Employees || [];
-              const serviceId = selected.service?.id;
-              
-              const employees = allEmployees.filter(emp => {
-                // El empleado debe tener el array Services definido
-                if (!emp.Services) return false;
-                // Si NO tiene servicios asignados = es generalista, puede hacer cualquier servicio
-                if (emp.Services.length === 0) return true;
-                // Si tiene servicios asignados, debe tener específicamente el servicio seleccionado
-                return emp.Services.some(s => s.id === serviceId);
-              });
-              
-              const totalPages = Math.ceil(employees.length / employeesPerPage);
-              const startIndex = (employeesPage - 1) * employeesPerPage;
-              const paginatedEmployees = employees.slice(startIndex, startIndex + employeesPerPage);
-              
-              return (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-                    {/* Cualquier disponible (solo si hay múltiples empleados para este servicio) */}
-                    {employees.length > 1 && (
-                      <div
-                        className="book-emp"
-                        onClick={() => { setSelected(s => ({ ...s, employee: null })); setStep(2); }}
-                        style={{
-                          background: colors.cardBg, borderRadius: 14, padding: '20px 12px', textAlign: 'center',
-                          border: `2px solid ${colors.border}`, cursor: 'pointer',
-                          boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
-                        }}
-                      >
-                        <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
-                        <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
-                        <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
-                      </div>
-                    )}
-
-                    {paginatedEmployees.map(emp => (
-                      <div
-                        key={emp.id}
-                        className="book-emp"
-                        onClick={() => { setSelected(s => ({ ...s, employee: emp })); setStep(2); }}
-                        style={{
-                          background: selected.employee?.id === emp.id ? '#eef2ff' : colors.cardBg,
-                          borderRadius: 14, padding: '20px 12px', textAlign: 'center',
-                          border: `2px solid ${selected.employee?.id === emp.id ? primary : colors.border}`,
-                          cursor: 'pointer', boxShadow: `0 1px 4px ${colors.shadow}`, transition: 'all 0.15s',
-                        }}
-                      >
-                        <div style={{
-                          width: 56, height: 56, borderRadius: '50%',
-                          background: '#eef2ff', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', margin: '0 auto 10px',
-                          overflow: 'hidden', border: `2px solid ${colors.border}`,
-                        }}>
-                          {emp.photoUrl
-                            ? <img src={getImgUrl(emp.photoUrl)} alt={emp.User?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <span style={{ fontSize: 24 }}>👤</span>
-                          }
-                        </div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>{emp.User?.name}</div>
-                        {emp.specialty && (
-                          <div style={{ fontSize: 10, color: primary, marginTop: 2, fontWeight: 600 }}>
-                            {emp.specialty}
-                          </div>
-                        )}
-                        {emp.Services && emp.Services.length > 0 && (
-                          <div style={{ 
-                            fontSize: 9, 
-                            color: colors.textSecondary, 
-                            marginTop: 4,
-                            lineHeight: 1.3,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}>
-                            {emp.Services.slice(0, 3).map(s => s.name).join(', ')}
-                            {emp.Services.length > 3 && ` +${emp.Services.length - 3} más`}
-                          </div>
-                        )}
-                        {emp.description && !emp.Services?.length && (
-                          <div style={{ 
-                            fontSize: 10, 
-                            color: colors.textSecondary, 
-                            marginTop: 4,
-                            lineHeight: 1.2,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            fontStyle: 'italic'
-                          }}>
-                            {emp.description}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Mensaje cuando no hay empleados disponibles */}
-                  {employees.length === 0 && (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '40px 20px',
-                      background: colors.bg,
-                      borderRadius: 12,
-                      border: `1px dashed ${colors.border}`
-                    }}>
-                      <div style={{ fontSize: 40, marginBottom: 12 }}>👤</div>
-                      <p style={{ color: colors.text, fontWeight: 600, marginBottom: 8 }}>
-                        No hay especialistas disponibles
-                      </p>
-                      <p style={{ color: colors.textSecondary, fontSize: 13 }}>
-                        Ningún empleado tiene asignado este servicio.<br/>
-                        Contacta al negocio para más información.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Paginación de Empleados */}
-                  {employees.length > employeesPerPage && (
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center', 
-                      gap: 12, 
-                      marginBottom: 20,
-                      padding: '12px',
-                    }}>
-                      <button
-                        onClick={() => setEmployeesPage(p => Math.max(1, p - 1))}
-                        disabled={employeesPage === 1}
-                        style={{ 
-                          padding: '8px 12px', 
-                          borderRadius: 8, 
-                          border: 'none',
-                          background: employeesPage === 1 ? colors.bgSecondary : primary,
-                          color: employeesPage === 1 ? colors.textSecondary : 'white',
-                          cursor: employeesPage === 1 ? 'not-allowed' : 'pointer',
-                          fontSize: 13,
-                          fontWeight: 600,
-                        }}
-                      >
-                        ‹ Anterior
-                      </button>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
-                        {employeesPage} / {totalPages}
-                      </span>
-                      <button
-                        onClick={() => setEmployeesPage(p => Math.min(totalPages, p + 1))}
-                        disabled={employeesPage === totalPages}
-                        style={{ 
-                          padding: '8px 12px', 
-                          borderRadius: 8, 
-                          border: 'none',
-                          background: employeesPage === totalPages ? colors.bgSecondary : primary,
-                          color: employeesPage === totalPages ? colors.textSecondary : 'white',
-                          cursor: employeesPage === totalPages ? 'not-allowed' : 'pointer',
-                          fontSize: 13,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Siguiente ›
-                      </button>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-            <button
-              onClick={() => setStep(0)}
-              style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-            >
-              ← Cambiar servicio
-            </button>
-          </div>
+          <EmployeeStep
+            business={business}
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            employeesPage={employeesPage}
+            setEmployeesPage={setEmployeesPage}
+            colors={colors}
+            primary={primary}
+            api={api}
+          />
         )}
 
-        {/* ── PASO 2: Fecha ── */}
         {step === 2 && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>¿Qué día prefieres?</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
-              {selected.service?.name} · {selected.employee ? `Con ${selected.employee.User?.name}` : 'Cualquier empleado'}
-            </p>
-
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <CalendarPicker
-                value={selected.date}
-                minDate={todayColombia()}
-                onChange={(date) => setSelected(s => ({ ...s, date, slot: null }))}
-                colors={colors}
-              />
-            </div>
-
-            {selected.date && (
-              <div style={{
-                background: '#eef2ff', border: `1.5px solid ${primary}`,
-                borderRadius: 10, padding: '12px 16px', marginBottom: 16,
-                fontSize: 14, color: '#3730a3',
-              }}>
-                <strong>✓ Fecha seleccionada:</strong> {formatDateES(selected.date)}
-              </div>
-            )}
-
-            <div className="book-action-row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                onClick={handleBack}
-                style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '10px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-              >
-                ← Atrás
-              </button>
-              <button
-                disabled={!selected.date}
-                onClick={() => setStep(3)}
-                style={{
-                  background: selected.date ? gradient : colors.bgSecondary,
-                  color: selected.date ? 'white' : colors.textSecondary,
-                  border: 'none', borderRadius: 8, padding: '10px 20px',
-                  cursor: selected.date ? 'pointer' : 'not-allowed',
-                  fontSize: 13, fontWeight: 700, flex: 1, maxWidth: 260,
-                }}
-              >
-                Ver horarios disponibles →
-              </button>
-            </div>
-          </div>
+          <DateStep
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            handleBack={handleBack}
+            colors={colors}
+            gradient={gradient}
+            primary={primary}
+          />
         )}
 
-        {/* ── PASO 3: Horario ── */}
         {step === 3 && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>Elige tu horario</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
-              {selected.service?.name} · {formatDateES(selected.date)}
-            </p>
-
-            {slotsLoading ? (
-              <div style={{ background: colors.cardBg, borderRadius: 14, padding: 48, textAlign: 'center', boxShadow: `0 2px 8px ${colors.shadow}`, border: `1px solid ${colors.border}` }}>
-                <div style={{ width: 40, height: 40, border: `4px solid ${colors.border}`, borderTopColor: primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-                <p style={{ color: colors.textSecondary, fontSize: 14 }}>Buscando horarios disponibles...</p>
-              </div>
-            ) : slots.length === 0 ? (
-              <div style={{ background: colors.cardBg, borderRadius: 14, padding: 48, textAlign: 'center', color: colors.textSecondary, boxShadow: `0 2px 8px ${colors.shadow}`, border: `1px solid ${colors.border}` }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>😕</div>
-                <p style={{ fontWeight: 700, color: colors.text, marginBottom: 6 }}>No hay horarios disponibles</p>
-                <p style={{ fontSize: 13 }}>Intenta con otro día o selecciona un empleado diferente.</p>
-              </div>
-            ) : (
-              <>
-                <p style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 14 }}>
-                  {slots.length} horario{slots.length !== 1 ? 's' : ''} disponible{slots.length !== 1 ? 's' : ''} · Hora Colombia (UTC-5)
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
-                  {slots.map((slot, i) => {
-                    const isSel = selected.slot === slot;
-                    return (
-                      <div
-                        key={i}
-                        className="book-slot"
-                        onClick={() => setSelected(s => ({ ...s, slot }))}
-                        style={{
-                          background: isSel ? primary : colors.cardBg,
-                          borderRadius: 12, padding: '14px 12px',
-                          border: `2px solid ${isSel ? primary : colors.border}`,
-                          cursor: 'pointer',
-                          boxShadow: isSel ? `0 4px 16px ${primary}40` : `0 1px 4px ${colors.shadow}`,
-                          transition: 'all 0.15s', textAlign: 'center',
-                        }}
-                      >
-                        <div style={{ fontWeight: 800, fontSize: 18, color: isSel ? 'white' : colors.text }}>
-                          {formatSlotTime(slot.startTime)}
-                        </div>
-                        <div style={{ fontSize: 11, color: isSel ? 'rgba(255,255,255,0.8)' : colors.textSecondary, marginTop: 4 }}>
-                          {slot.employeeName}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            {hasPreviousData && !submitting && !loadingClientData && (
-              <div style={{ marginBottom: 16, padding: '10px 14px', background: colors.bgSecondary, borderRadius: 10, fontSize: 12, color: colors.textSecondary, border: `1px solid ${colors.border}` }}>
-                ✨ Se usará tu información guardada: <strong>{selected.clientName}</strong>. 
-                <span onClick={() => setStep(4)} style={{ color: primary, cursor: 'pointer', marginLeft: 6, fontWeight: 600, textDecoration: 'underline' }}>
-                  Cambiar datos
-                </span>
-              </div>
-            )}
-
-            {loadingClientData && (
-              <div style={{ marginBottom: 16, padding: '10px 14px', background: '#e0f2fe', borderRadius: 10, fontSize: 12, color: '#0369a1', border: '1px solid #7dd3fc', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 14, height: 14, border: '2px solid #7dd3fc', borderTopColor: '#0369a1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                Cargando tus datos...
-              </div>
-            )}
-
-            <div className="book-action-row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setStep(2)}
-                style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '10px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-              >
-                ← Cambiar fecha
-              </button>
-              {selected.slot && (
-                <button
-                  onClick={hasPreviousData ? handleSubmit : () => setStep(4)}
-                  disabled={submitting}
-                  style={{
-                    background: gradient, color: 'white', border: 'none',
-                    borderRadius: 8, padding: '10px 20px', cursor: 'pointer',
-                    fontSize: 13, fontWeight: 700, flex: 1, maxWidth: 260,
-                  }}
-                >
-                  {submitting ? '⏳ Reservando...' : (hasPreviousData ? '✅ Confirmar Cita →' : 'Continuar →')}
-                </button>
-              )}
-            </div>
-          </div>
+          <TimeSlotStep
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            slots={slots}
+            slotsLoading={slotsLoading}
+            hasPreviousData={hasPreviousData}
+            loadingClientData={loadingClientData}
+            submitting={submitting}
+            handleSubmit={handleSubmit}
+            colors={colors}
+            gradient={gradient}
+            primary={primary}
+          />
         )}
 
-        {/* ── PASO 4: Datos del cliente ── */}
         {step === 4 && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>Tus datos</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
-              Completa tu información para confirmar la cita
-            </p>
-
-            {/* Resumen */}
-            <div style={{
-              background: colors.cardBg, borderRadius: 14, padding: '16px 20px',
-              marginBottom: 20, boxShadow: `0 2px 8px ${colors.shadow}`,
-              borderLeft: `4px solid ${primary}`,
-              border: `1px solid ${colors.border}`,
-            }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 8 }}>Resumen de tu cita</div>
-              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.8 }}>
-                <div>📋 <strong>{selected.service?.name}</strong></div>
-                <div>👤 {selected.slot?.employeeName}</div>
-                <div>📅 {formatDateES(selected.date)}</div>
-                <div>🕐 {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
-                <div style={{ fontWeight: 700, color: selected.service?.priceOptional ? '#92400e' : '#059669', marginTop: 4 }}>
-                  {selected.service?.priceOptional ? (
-                    <> Precio a cotizar en sitio</>
-                  ) : (
-                    (() => {
-                      const promo = selected.service?.Promotions && selected.service.Promotions.length > 0 ? selected.service.Promotions[0] : null;
-                      const basePrice = Number(selected.service?.price || 0);
-                      if (promo) {
-                        const discount = promo.discountType === 'percentage'
-                          ? basePrice * (Number(promo.discountValue) / 100)
-                          : Number(promo.discountValue);
-                        const finalPrice = Math.max(0, basePrice - discount);
-                        return (
-                          <>
-                            <div style={{ fontSize: 12, color: '#ef4444', textDecoration: 'line-through' }}>
-                              ${basePrice.toLocaleString('es-CO')}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 11, background: '#fee2e2', color: '#b91c1c', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
-                                -{promo.discountType === 'percentage' ? `${promo.discountValue}%` : 'PROMO'}
-                              </span>
-                              💰 ${finalPrice.toLocaleString('es-CO')}
-                            </div>
-                          </>
-                        );
-                      }
-                      return <>💰 ${basePrice.toLocaleString('es-CO')}</>;
-                    })()
-                  )}
-                </div>
-                {isDepositRequired && (
-                  <div style={{ 
-                    marginTop: 8, 
-                    padding: '8px 12px', 
-                    background: '#fef3c7', 
-                    borderRadius: 8,
-                    border: '1px solid #f59e0b',
-                    fontSize: 12,
-                    color: '#92400e'
-                  }}>
-                    💰 <strong>Requiere anticipo:</strong> ${depositAmount.toLocaleString('es-CO')}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: colors.text }}>
-                  Nombre completo *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Tu nombre completo"
-                  value={selected.clientName}
-                  onChange={e => setSelected(s => ({ ...s, clientName: e.target.value }))}
-                  required
-                  style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${colors.border}`, borderRadius: 10, fontSize: 14, outline: 'none', background: colors.cardBg, color: colors.text }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: colors.text }}>
-                  Teléfono *
-                </label>
-                <input
-                  type="tel"
-                  placeholder="Tu número de teléfono"
-                  value={selected.clientPhone}
-                  onChange={e => setSelected(s => ({ ...s, clientPhone: e.target.value }))}
-                  required
-                  style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${colors.border}`, borderRadius: 10, fontSize: 14, outline: 'none', background: colors.cardBg, color: colors.text }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: colors.text }}>
-                  Email (opcional)
-                </label>
-                <input
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={selected.clientEmail}
-                  onChange={e => setSelected(s => ({ ...s, clientEmail: e.target.value }))}
-                  style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${colors.border}`, borderRadius: 10, fontSize: 14, outline: 'none', background: colors.cardBg, color: colors.text }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: colors.text }}>
-                  Notas (opcional)
-                </label>
-                <textarea
-                  placeholder="Alguna indicación especial..."
-                  value={selected.notes}
-                  onChange={e => setSelected(s => ({ ...s, notes: e.target.value }))}
-                  rows={3}
-                  style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${colors.border}`, borderRadius: 10, fontSize: 14, outline: 'none', resize: 'vertical', background: colors.cardBg, color: colors.text }}
-                />
-              </div>
-            </div>
-
-            <div className="book-action-row" style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setStep(3)}
-                style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '11px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-              >
-                ← Atrás
-              </button>
-              <button
-                onClick={isDepositRequired ? () => setStep(5) : handleSubmit}
-                disabled={submitting || !selected.clientName || !selected.clientPhone}
-                style={{
-                  background: (!selected.clientName || !selected.clientPhone) ? colors.bgSecondary : gradient,
-                  color: (!selected.clientName || !selected.clientPhone) ? colors.textSecondary : 'white',
-                  border: 'none', borderRadius: 8, padding: '11px 24px',
-                  cursor: (!selected.clientName || !selected.clientPhone || submitting) ? 'not-allowed' : 'pointer',
-                  fontSize: 14, fontWeight: 700, flex: 1, maxWidth: 300,
-                }}
-              >
-                {submitting ? '⏳ Reservando...' : isDepositRequired ? '💰 Continuar al anticipo →' : '✅ Confirmar cita'}
-              </button>
-            </div>
-          </div>
+          <ClientDataStep
+            business={business}
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            isDepositRequired={isDepositRequired}
+            depositAmount={depositAmount}
+            submitting={submitting}
+            handleSubmit={handleSubmit}
+            colors={{ ...colors, primary }}
+            gradient={gradient}
+          />
         )}
 
-        {/* ── PASO 5: Anticipo (solo si está configurado) ── */}
         {step === 5 && isDepositRequired && (
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: colors.text, marginBottom: 4 }}>💰 Anticipo requerido</h2>
-            <p style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20 }}>
-              Para garantizar tu cita, se requiere un anticipo
-            </p>
-
-            {/* Monto del anticipo */}
-            <div style={{
-              background: `linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)`, 
-              borderRadius: 14, 
-              padding: '20px',
-              marginBottom: 20, 
-              border: '2px solid #f59e0b',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: 14, color: '#92400e', marginBottom: 8 }}>Monto del anticipo</div>
-              <div style={{ fontSize: 36, fontWeight: 800, color: '#92400e' }}>
-                ${depositAmount.toLocaleString('es-CO')}
-              </div>
-              <div style={{ fontSize: 12, color: '#a16207', marginTop: 4 }}>
-                {depositConfig?.amount > 0 ? 'Monto fijo' : `${depositConfig?.percentage || 30}% del servicio`}
-              </div>
-            </div>
-
-            {/* Términos y condiciones */}
-            <div style={{
-              background: colors.cardBg,
-              borderRadius: 12,
-              padding: '16px',
-              marginBottom: 20,
-              border: `1px solid ${colors.border}`,
-            }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                📋 Términos y condiciones
-              </div>
-              <div style={{ 
-                fontSize: 13, 
-                color: colors.textSecondary, 
-                lineHeight: 1.6,
-                padding: '12px',
-                background: colors.bg,
-                borderRadius: 8
-              }}>
-                {depositConfig?.termsText || 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'}
-              </div>
-              
-              {/* Checkbox de aceptación */}
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'flex-start', 
-                gap: 12, 
-                marginTop: 16,
-                cursor: 'pointer',
-                padding: '12px',
-                borderRadius: 8,
-                border: `2px solid ${selected.depositAccepted ? '#10b981' : colors.border}`,
-                background: selected.depositAccepted ? '#ecfdf5' : 'transparent',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={selected.depositAccepted}
-                  onChange={(e) => setSelected(s => ({ ...s, depositAccepted: e.target.checked }))}
-                  style={{ 
-                    width: 20, 
-                    height: 20, 
-                    marginTop: 2,
-                    accentColor: '#10b981',
-                    cursor: 'pointer'
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: selected.depositAccepted ? '#065f46' : colors.text }}>
-                    Acepto los términos del anticipo
-                  </div>
-                  <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    Entiendo que debo pagar ${depositAmount.toLocaleString('es-CO')} antes de la cita y acepto las condiciones de cancelación.
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            {/* Instrucciones de pago */}
-            <div style={{
-              background: '#dbeafe',
-              borderRadius: 12,
-              padding: '16px',
-              marginBottom: 20,
-              border: '1px solid #3b82f6',
-            }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af', marginBottom: 8 }}>
-                💳 ¿Cómo pagar el anticipo?
-              </div>
-              <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
-                El pago se realiza directamente en el establecimiento o mediante transferencia. 
-                Una vez realizado el pago, tu cita quedará confirmada.
-              </div>
-            </div>
-
-            <div className="book-action-row" style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setStep(4)}
-                style={{ background: colors.bgSecondary, color: colors.text, border: 'none', borderRadius: 8, padding: '11px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-              >
-                ← Atrás
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !selected.depositAccepted}
-                style={{
-                  background: !selected.depositAccepted ? colors.bgSecondary : gradient,
-                  color: !selected.depositAccepted ? colors.textSecondary : 'white',
-                  border: 'none', borderRadius: 8, padding: '11px 24px',
-                  cursor: (!selected.depositAccepted || submitting) ? 'not-allowed' : 'pointer',
-                  fontSize: 14, fontWeight: 700, flex: 1, maxWidth: 300,
-                }}
-              >
-                {submitting ? '⏳ Reservando...' : '✅ Confirmar cita con anticipo'}
-              </button>
-            </div>
-          </div>
+          <DepositStep
+            selected={selected}
+            setSelected={setSelected}
+            setStep={setStep}
+            depositAmount={depositAmount}
+            depositConfig={depositConfig}
+            submitting={submitting}
+            handleSubmit={handleSubmit}
+            colors={colors}
+            gradient={gradient}
+          />
         )}
       </div>
     </div>

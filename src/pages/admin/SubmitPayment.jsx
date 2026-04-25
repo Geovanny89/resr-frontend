@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
@@ -21,8 +21,6 @@ const ADMIN_PAYMENT_INFO = {
   }
 };
 
-const MONTHLY_PRICE = 70000;
-
 export default function SubmitPayment() {
   const { business } = useAuth();
   const { colors } = useTheme();
@@ -34,9 +32,28 @@ export default function SubmitPayment() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [monthlyPrice, setMonthlyPrice] = useState(70000);
+  const [loadingPrice, setLoadingPrice] = useState(true);
 
   const currentMethod = ADMIN_PAYMENT_INFO[paymentMethod];
   const Icon = currentMethod.icon;
+
+  // Obtener el precio mensual del negocio (personalizado o del plan)
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      try {
+        const response = await api.get('/businesses/my/subscription-info');
+        if (response.data.monthlyTotal) {
+          setMonthlyPrice(response.data.monthlyTotal);
+        }
+      } catch (err) {
+        console.error('Error al obtener info de suscripción:', err);
+      } finally {
+        setLoadingPrice(false);
+      }
+    };
+    fetchSubscriptionInfo();
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(currentMethod.number);
@@ -69,7 +86,7 @@ export default function SubmitPayment() {
 
     try {
       const data = new FormData();
-      data.append('paymentAmount', MONTHLY_PRICE);
+      data.append('paymentAmount', monthlyPrice);
       data.append('paymentMethod', paymentMethod);
       data.append('paymentReference', paymentReference);
       // Enviamos los datos del método seleccionado para que el admin sepa por dónde llegó
@@ -125,7 +142,7 @@ export default function SubmitPayment() {
   }
 
   return (
-    <AdminLayout title="Pagar Suscripción" subtitle="Paga tu suscripción mensual de $60,000">
+    <AdminLayout title="Pagar Suscripción" subtitle={`Paga tu suscripción mensual de $${monthlyPrice.toLocaleString('es-CO')}`}>
       <div className="card">
         {error && (
           <div className="alert alert-error" style={{ marginBottom: 24 }}>
@@ -189,7 +206,7 @@ export default function SubmitPayment() {
             }}
           >
             <p style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 12 }}>
-              Transfiere <strong style={{ color: colors.text }}>${MONTHLY_PRICE.toLocaleString('es-CO')} COP</strong> a:
+              Transfiere <strong style={{ color: colors.text }}>${monthlyPrice.toLocaleString('es-CO')} COP</strong> a:
             </p>
             
             <div 

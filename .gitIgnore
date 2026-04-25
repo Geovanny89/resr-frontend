@@ -7,13 +7,30 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
+# Environment
 .env
 .env.production
+
+# Dependencies
 node_modules
+
+# Build
 dist
 dist-ssr
 *.local
+
+# Git repository
+.git/
+
+# Android/Capacitor (se genera en build)
+android/
+
+# Scripts de build local
+build-apk.ps1
+build-apk.sh
+
+# Scripts de build (algunos son locales)
+scripts/
 
 # Editor directories and files
 .vscode/*

@@ -17,6 +17,8 @@ export function AuthProvider({ children }) {
   const [mainBusiness, setMainBusiness] = useState(null);
   const [branches, setBranches] = useState([]);
   const [bizLoading, setBizLoading] = useState(false);
+  const [hasNoBusiness, setHasNoBusiness] = useState(false);
+  const [initialBusinessLoaded, setInitialBusinessLoaded] = useState(false);
 
   // Función separada para cargar datos del negocio - definida PRIMERO para evitar closure issues
   const loadBusinessData = async () => {
@@ -59,10 +61,20 @@ export function AuthProvider({ children }) {
       }
       
       console.log('[Auth] Business cargado:', biz.name, 'hasFieldTechnicians:', biz.hasFieldTechnicians);
+      setInitialBusinessLoaded(true);
+      setHasNoBusiness(false);
     } catch (err) {
-      console.error('[Auth] Error loading business data:', err);
+      // 404 = admin sin negocio registrado (caso esperado, no es error)
+      if (err.response?.status === 404) {
+        setHasNoBusiness(true);
+        console.info('[Auth] No hay negocio registrado para este usuario');
+      } else {
+        setHasNoBusiness(false);
+        console.error('[Auth] Error loading business data:', err);
+      }
     } finally {
       setBizLoading(false);
+      setInitialBusinessLoaded(true);
     }
   };
 
@@ -88,9 +100,14 @@ export function AuthProvider({ children }) {
   // Esto asegura que los datos frescos se carguen al iniciar la aplicación
   useEffect(() => {
     const initToken = localStorage.getItem('token');
-    if (initToken && !business && !bizLoading) {
-      console.log('[Auth] Montaje: Detectado token, forzando carga de negocio...');
+    const initUser = user || JSON.parse(localStorage.getItem('user') || 'null');
+    
+    if (initToken && initUser && (initUser.role === 'admin' || initUser.role === 'admin_suc')) {
+      console.log('[Auth] Montaje: Detectado token admin, forzando carga de negocio...');
       loadBusinessData();
+    } else {
+      // Si no hay token o no es admin, marcar como cargado inmediatamente
+      setInitialBusinessLoaded(true);
     }
   }, []); // Solo al montar
 
@@ -181,16 +198,36 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const refreshBusiness = async () => {
+  const refreshBusiness = async (updatedBusinessData = null) => {
     // Solo admins pueden refrescar datos de negocio
     if (!user || (user.role !== 'admin' && user.role !== 'admin_suc' && user.role !== 'superadmin')) {
       return null;
     }
+    
+    // Si se proporcionan datos actualizados, usarlos directamente sin hacer llamada GET
+    if (updatedBusinessData) {
+      setMainBusiness(updatedBusinessData);
+      localStorage.setItem('mainBusiness', JSON.stringify(updatedBusinessData));
+      setHasNoBusiness(false);
+      setInitialBusinessLoaded(true);
+
+      // Si el activo es el principal, actualizarlo
+      if (!business || business.id === updatedBusinessData.id) {
+        setBusiness(updatedBusinessData);
+        localStorage.setItem('business', JSON.stringify(updatedBusinessData));
+      }
+
+      return updatedBusinessData;
+    }
+    
+    // Si no se proporcionan datos, hacer la llamada GET normal
     try {
       const r = await api.get('/businesses/my/business');
       setMainBusiness(r.data);
       localStorage.setItem('mainBusiness', JSON.stringify(r.data));
-      
+      setHasNoBusiness(false);
+      setInitialBusinessLoaded(true);
+
       // Actualizar sucursales
       const branchesRes = await api.get('/businesses/my/branches');
       const branchesData = branchesRes.data || [];
@@ -211,14 +248,17 @@ export function AuthProvider({ children }) {
 
       return r.data;
     } catch (e) {
+      if (e.response?.status === 404) {
+        setHasNoBusiness(true);
+      }
       return null;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      token, user, business, mainBusiness, branches, bizLoading, 
-      login, loginAsClient, logout, refreshBusiness, setBusiness, switchBusiness 
+    <AuthContext.Provider value={{
+      token, user, business, mainBusiness, branches, bizLoading, hasNoBusiness, initialBusinessLoaded,
+      login, loginAsClient, logout, refreshBusiness, setBusiness, switchBusiness
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import EmployeeLayout from '../../components/EmployeeLayout';
 import api from '../../api/client';
 import { 
   Users,
@@ -95,8 +94,7 @@ export default function EmployeeClients() {
   };
 
   return (
-    <EmployeeLayout>
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
             <Loader2 size={40} style={{ animation: 'spin 1s linear infinite', color: colors.primary, margin: '0 auto 16px' }} />
@@ -351,6 +349,5 @@ export default function EmployeeClients() {
           </>
         )}
       </div>
-    </EmployeeLayout>
   );
 }

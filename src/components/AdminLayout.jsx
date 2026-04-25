@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
@@ -13,53 +13,6 @@ import {
   TrendingDown, Package, PiggyBank, CalendarDays, CalendarX, Palmtree
 } from 'lucide-react';
 
-// Función para obtener items de navegación según módulos habilitados
-const getNavItems = (business) => {
-  const enabledModules = business?.enabledModules || {};
-  
-  return [
-    {
-      section: 'Principal',
-      items: [
-        { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
-        ...(business?.hasFieldTechnicians ? [{ to: '/admin/agenda', icon: CalendarDays, label: 'Agenda' }] : []),
-        { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
-        { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
-        { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
-        { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
-      ]
-    },
-    {
-      section: 'Gestión',
-      items: [
-        { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
-        { to: '/admin/employees', icon: Users,    label: 'Empleados' },
-        { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
-        { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
-        { to: '/admin/employee-vacations', icon: Palmtree, label: 'Vacaciones' },
-        { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
-      ]
-    },
-    {
-      section: 'Finanzas',
-      items: [
-        { to: '/admin/reports',  icon: BarChart3,  label: 'Informes' },
-        { to: '/admin/payments', icon: DollarSign, label: 'Pagos' },
-        { to: '/admin/submit-payment', icon: CreditCard, label: 'Enviar Pago' },
-        ...(enabledModules.expenses ? [{ to: '/admin/expenses', icon: TrendingDown, label: 'Gastos' }] : []),
-        ...(enabledModules.inventory ? [{ to: '/admin/inventory', icon: Package, label: 'Insumos' }] : []),
-        ...(enabledModules.deposits ? [{ to: '/admin/deposits', icon: PiggyBank, label: 'Depósitos' }] : []),
-      ]
-    },
-    {
-      section: 'Configuración',
-      items: [
-        { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
-      ]
-    }
-  ];
-};
-
 export default function AdminLayout({ children, title, subtitle }) {
   const { user, business, logout } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +21,58 @@ export default function AdminLayout({ children, title, subtitle }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [whatsappStatus, setWhatsappStatus] = useState('disconnected');
   const [loadingWA, setLoadingWA] = useState(false);
+
+  // Función para obtener items de navegación según módulos habilitados
+  // Usamos useMemo para re-evaluar cuando business cambia
+  const navItems = useMemo(() => {
+    const enabledModules = business?.enabledModules || {};
+
+    return [
+      {
+        section: 'Principal',
+        items: [
+          { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
+          { to: '/admin/agenda', icon: CalendarDays, label: 'Agenda' },
+          { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
+          { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
+          { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
+          { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
+        ]
+      },
+      {
+        section: 'Gestión',
+        items: [
+          { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
+          { to: '/admin/employees', icon: Users,    label: 'Empleados' },
+          { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
+          { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
+          { to: '/admin/employee-vacations', icon: Palmtree, label: 'Vacaciones' },
+          { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
+        ]
+      },
+      {
+        section: 'Finanzas',
+        items: [
+          { to: '/admin/payments', icon: CreditCard, label: 'Pagos y Comisiones' },
+          ...(enabledModules.inventory ? [{ to: '/admin/inventory', icon: Package, label: 'Insumos' }] : []),
+          ...(enabledModules.expenses ? [{ to: '/admin/expenses', icon: TrendingDown, label: 'Gastos' }] : []),
+          ...(enabledModules.deposits ? [{ to: '/admin/deposits', icon: PiggyBank, label: 'Depósitos' }] : []),
+        ]
+      },
+      {
+        section: 'Informes',
+        items: [
+          { to: '/admin/reports', icon: BarChart3, label: 'Informes' },
+        ]
+      },
+      {
+        section: 'Configuración',
+        items: [
+          { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
+        ]
+      }
+    ];
+  }, [JSON.stringify(business?.enabledModules)]);
 
   const checkWAStatus = async () => {
     if (!business?.id || !['admin', 'admin_suc'].includes(user?.role)) return;
@@ -107,7 +112,7 @@ export default function AdminLayout({ children, title, subtitle }) {
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'AD';
 
-  const currentItem = getNavItems(business).flatMap(s => s.items).find(item =>
+  const currentItem = navItems.flatMap(s => s.items).find(item =>
     item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to)
   );
   const pageTitle = title || currentItem?.label || 'Panel';
@@ -163,7 +168,7 @@ export default function AdminLayout({ children, title, subtitle }) {
         </div>
 
         <nav className="sidebar-nav">
-          {getNavItems(business).map(section => {
+          {navItems.map(section => {
             // Filtrar items según configuración del negocio
             const filteredItems = section.items.filter(item => {
               // Si es empresa técnica, ocultar el módulo de Pagos (comisiones)
@@ -224,13 +229,14 @@ export default function AdminLayout({ children, title, subtitle }) {
             {/* Selector de Sucursales (Solo si hay sucursales) */}
             {user?.role === 'admin' && <BranchSelector />}
 
-            {/* Indicador de WhatsApp Global - Solo para empresas que NO son técnicos a domicilio */}
+            {/* Indicador de WhatsApp Global - Solo para empresas que NO son técnicos a domicilio NI servicios técnicos */}
             {/* Si hay sesión guardada o conectada, mostrar como 'Conectado' permanentemente */}
-            {/* Para sucursales, verificar el hasFieldTechnicians del negocio padre */}
+            {/* Para sucursales, verificar el hasFieldTechnicians e isTechnicalServices del negocio padre */}
             {['admin', 'admin_suc'].includes(user?.role) && 
               !(business?.isBranch 
-                ? business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians
-                : business?.hasFieldTechnicians
+                ? (business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) ||
+                  (business?.ParentBusiness?.isTechnicalServices || business?.parentIsTechnicalServices)
+                : business?.hasFieldTechnicians || business?.isTechnicalServices
               ) && (
               <div 
                 style={{ 

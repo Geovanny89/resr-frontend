@@ -9,6 +9,13 @@ import {
   CheckCircle, XCircle, ArrowRight, AlertTriangle
 } from 'lucide-react';
 
+// NUEVO: Utilidades compartidas (desde shared/utils)
+// import { fmt, fmtDate } from '../../shared/utils/formatters';
+// NUEVO: Hooks de features (desde features/)
+// import { useWhatsApp } from '../../features/whatsapp/hooks';
+// import { useBusinessStats } from '../../features/business/hooks';
+
+// LEGACY: Mantener para compatibilidad (migrar a shared/utils/formatters)
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
 const fmtDate = (d) =>
@@ -24,11 +31,15 @@ const STATUS_LABELS = {
 
 export default function Dashboard() {
   const { business } = useAuth();
+  console.log('[Dashboard] business:', business);
+  console.log('[Dashboard] isTechnicalServices:', business?.isTechnicalServices);
+  console.log('[Dashboard] hasFieldTechnicians:', business?.hasFieldTechnicians);
+
   const [upcoming, setUpcoming] = useState([]);
   const [stats, setStats]       = useState({ total: 0, pending: 0, confirmed: 0, done: 0, cancelled: 0 });
-  const [finance, setFinance]   = useState({ 
-    totalRevenue: 0, 
-    ownerRevenue: 0, 
+  const [finance, setFinance]   = useState({
+    totalRevenue: 0,
+    ownerRevenue: 0,
     employeeRevenue: 0,
     cashRevenue: 0,
     transferRevenue: 0
@@ -43,6 +54,18 @@ export default function Dashboard() {
   const [employeeRatings, setEmployeeRatings] = useState([]);
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
   const [showChangeNumberConfirm, setShowChangeNumberConfirm] = useState(false);
+
+  // Toast notification state
+  const [statusMsg, setStatusMsg] = useState(null);
+  const showStatus = (text, type = 'success') => {
+    setStatusMsg({ text, type });
+    setTimeout(() => setStatusMsg(null), 3500);
+  };
+
+  // Estados para confirmaciones modales de WhatsApp
+  const [showResetWAConfirm, setShowResetWAConfirm] = useState(false);
+  const [showStopWAConfirm, setShowStopWAConfirm] = useState(false);
+  const [showLogoutWAConfirm, setShowLogoutWAConfirm] = useState(false);
 
   // Calcular días restantes de suscripción
   const daysLeft = business?.subscriptionDaysLeft;
@@ -71,13 +94,17 @@ export default function Dashboard() {
     try {
       if (force) {
         await api.post(`/notifications/whatsapp/reset?businessId=${business.id}`);
+        // IMPORTANTE: Dale tiempo a la Evolution API para limpiar la base de datos
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
       // Si hay sesión guardada, intentar conectar rápidamente sin QR
       if (whatsappStatus === 'session_saved' && !force) {
         const connectRes = await api.post(`/notifications/whatsapp/connect?businessId=${business.id}`);
         if (connectRes.data.status === 'connected') {
-          setWhatsappStatus('connected');
+          // El backend inicia la conexión async, mostrar conectando temporalmente
+          // El polling cada 10s actualizará el estado real
+          setWhatsappStatus('connecting');
           setShowQRModal(false);
           setCheckingWA(false);
           return;
@@ -94,46 +121,75 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error('Error getting WA QR:', e);
-      setWaError(e.response?.data?.error || 'No se pudo generar el código QR. Intenta de nuevo.');
+      // Si el error es 500, es probable que la instancia se esté inicializando
+      if (e.response?.status === 500) {
+        setWaError("La instancia se está preparando. Espera 5 segundos e intenta de nuevo.");
+      } else {
+        setWaError(e.response?.data?.error || 'No se pudo generar el código QR. Intenta de nuevo.');
+      }
     } finally {
       setCheckingWA(false);
     }
   };
 
-  const resetWA = async () => {
-    if (!window.confirm('¿Deseas generar un código QR NUEVO y LIMPIO? Esto cerrará cualquier conexión previa de esta sede.')) return;
+  const resetWA = () => {
+    setShowResetWAConfirm(true);
+  };
+
+  const handleConfirmResetWA = async () => {
+    setShowResetWAConfirm(false);
     setWhatsappQR(null);
     getWAQR(true);
   };
 
-  const stopWA = async () => {
-    if (!window.confirm('¿Deseas pausar el servicio de WhatsApp? La sesión se mantendrá guardada para que puedas reconectar sin escanear el QR.')) return;
+  const stopWA = () => {
+    setShowStopWAConfirm(true);
+  };
+
+  const handleConfirmStopWA = async () => {
+    setShowStopWAConfirm(false);
     try {
       await api.post(`/notifications/whatsapp/stop?businessId=${business.id}`);
       setWhatsappStatus('disconnected');
+      showStatus('Servicio de WhatsApp pausado');
     } catch (e) {
       console.error('Error stopping WA:', e);
+      showStatus('Error al pausar WhatsApp', 'error');
     }
   };
 
-  const logoutWA = async () => {
-    if (!window.confirm('¡ATENCIÓN! Esto cerrará la sesión por completo y BORRARÁ la conexión actual. Tendrás que escanear el código QR nuevamente para vincular tu WhatsApp. ¿Deseas continuar?')) return;
+  const logoutWA = () => {
+    setShowLogoutWAConfirm(true);
+  };
+
+  const handleConfirmLogoutWA = async () => {
+    setShowLogoutWAConfirm(false);
     try {
       await api.post(`/notifications/whatsapp/logout?businessId=${business.id}`);
       setWhatsappStatus('disconnected');
       setWhatsappQR(null);
+      showStatus('Sesión de WhatsApp cerrada');
     } catch (e) {
       console.error('Error logging out WA:', e);
+      showStatus('Error al cerrar sesión de WhatsApp', 'error');
     }
   };
 
   useEffect(() => {
     if (business?.id) {
       checkWAStatus();
-      const interval = setInterval(checkWAStatus, 10000); // Check cada 10s
+      const interval = setInterval(checkWAStatus, 10000); // Check cada 10s normal
       return () => clearInterval(interval);
     }
   }, [business?.id]);
+
+  // Polling más agresivo cuando el modal QR está abierto
+  useEffect(() => {
+    if (showQRModal && business?.id) {
+      const fastInterval = setInterval(checkWAStatus, 2000); // Check cada 2s cuando QR está abierto
+      return () => clearInterval(fastInterval);
+    }
+  }, [showQRModal, business?.id]);
 
   useEffect(() => {
     if (!business?.id) return;
@@ -225,12 +281,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* WHATSAPP STATUS BAR - Solo para empresas que NO son técnicos a domicilio */}
+      {/* WHATSAPP STATUS BAR - Solo para empresas que NO son técnicos a domicilio NI servicios técnicos */}
       {/* Si está conectado o tiene sesión guardada, mostrar como conectado permanentemente */}
-      {/* Para sucursales, verificar el hasFieldTechnicians del negocio padre */}
+      {/* Para sucursales, verificar el hasFieldTechnicians e isTechnicalServices del negocio padre */}
       {!(business?.isBranch 
-        ? business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians
-        : business?.hasFieldTechnicians
+        ? (business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) ||
+          (business?.ParentBusiness?.isTechnicalServices || business?.parentIsTechnicalServices)
+        : business?.hasFieldTechnicians || business?.isTechnicalServices
       ) && (
         (whatsappStatus === 'connected' || whatsappStatus === 'session_saved') ? (
           // Estado conectado/guardado - siempre verde con menú de opciones
@@ -616,6 +673,98 @@ export default function Dashboard() {
                 disabled={checkingWA}
               >
                 {checkingWA ? 'Procesando...' : 'Sí, cambiar número'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {statusMsg && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {statusMsg.type === 'error' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+          {statusMsg.text}
+        </div>
+      )}
+
+      {/* Modal: Confirmar Reset WA */}
+      {showResetWAConfirm && (
+        <div className="modal-overlay" onClick={() => setShowResetWAConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={20} color="#f59e0b" /> Generar nuevo QR
+              </h3>
+              <button className="btn-ghost" onClick={() => setShowResetWAConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                ¿Deseas generar un código QR <strong>NUEVO y LIMPIO</strong>? Esto cerrará cualquier conexión previa de esta sede.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => setShowResetWAConfirm(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleConfirmResetWA}>Sí, generar nuevo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar Stop WA */}
+      {showStopWAConfirm && (
+        <div className="modal-overlay" onClick={() => setShowStopWAConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={20} color="#f59e0b" /> Pausar WhatsApp
+              </h3>
+              <button className="btn-ghost" onClick={() => setShowStopWAConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                ¿Deseas pausar el servicio de WhatsApp? La sesión se mantendrá guardada para que puedas reconectar sin escanear el QR.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => setShowStopWAConfirm(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleConfirmStopWA}>Sí, pausar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar Logout WA */}
+      {showLogoutWAConfirm && (
+        <div className="modal-overlay" onClick={() => setShowLogoutWAConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ borderBottomColor: '#ef4444' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444' }}>
+                <AlertTriangle size={20} /> Cerrar sesión de WhatsApp
+              </h3>
+              <button className="btn-ghost" onClick={() => setShowLogoutWAConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                ¡ATENCIÓN! Esto cerrará la sesión por completo y <strong>BORRARÁ</strong> la conexión actual. Tendrás que escanear el código QR nuevamente para vincular tu WhatsApp.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => setShowLogoutWAConfirm(false)}>Cancelar</button>
+              <button 
+                className="btn-danger" 
+                onClick={handleConfirmLogoutWA}
+                style={{ background: '#ef4444', color: 'white' }}
+              >
+                Sí, cerrar sesión
               </button>
             </div>
           </div>

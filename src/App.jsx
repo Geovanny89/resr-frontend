@@ -41,6 +41,7 @@ import DownloadAPK from './pages/admin/DownloadAPK';
 import ChangePassword from './pages/admin/ChangePassword';
 import DownloadAPKPublic from './pages/DownloadAPKPublic';
 import APKHome from './pages/APKHome';
+import EmployeeLayout from './components/EmployeeLayout';
 import { useAuth } from './context/AuthContext';
 import notificationService from './services/notificationService';
 import UpdateChecker from './components/UpdateChecker';
@@ -202,11 +203,13 @@ export default function App() {
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
-            <Route index element={<EmployeeDashboard />} />
-            <Route path="commissions" element={<EmployeeCommissions />} />
-            <Route path="profile" element={<EmployeeProfile />} />
-            <Route path="ratings" element={<EmployeeRatings />} />
-            <Route path="clients" element={<EmployeeClients />} />
+            <Route element={<EmployeeLayout />}>
+              <Route index element={<EmployeeDashboard />} />
+              <Route path="commissions" element={<EmployeeCommissions />} />
+              <Route path="profile" element={<EmployeeProfile />} />
+              <Route path="ratings" element={<EmployeeRatings />} />
+              <Route path="clients" element={<EmployeeClients />} />
+            </Route>
           </Route>
           {/* ===== PANEL SUPER ADMIN (INDEPENDIENTE) ===== */}
           <Route path="/superadmin" element={<ProtectedRoute roles={['superadmin']} />}>

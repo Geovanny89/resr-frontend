@@ -31,13 +31,13 @@ export default function EmployeeVacations() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const load = async () => {
+  const load = async (skipCache = false) => {
     if (!business?.id) return;
     setLoading(true);
     try {
       const [empRes, vacRes] = await Promise.all([
-        api.get(`/employees?businessId=${business.id}`),
-        api.get(`/employee-vacations/business/${business.id}`)
+        api.get(`/employees?businessId=${business.id}`, skipCache ? { params: { noCache: true } } : {}),
+        api.get(`/employee-vacations/business/${business.id}`, skipCache ? { params: { noCache: true } } : {})
       ]);
       setEmployees(empRes.data || []);
       setVacations(vacRes.data || []);
@@ -80,7 +80,7 @@ export default function EmployeeVacations() {
         showToast('Vacaciones registradas correctamente');
       }
       
-      await load();
+      await load(true);
       resetForm();
       setShowModal(false);
     } catch (e) {
@@ -99,7 +99,7 @@ export default function EmployeeVacations() {
     if (!vacationToDelete) return;
     try {
       await api.delete(`/employee-vacations/${vacationToDelete}`);
-      await load();
+      await load(true);
       showToast('Período de vacaciones eliminado');
     } catch (e) {
       showToast(e.response?.data?.error || 'Error al eliminar', 'error');

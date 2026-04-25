@@ -152,25 +152,37 @@ export async function savePDF(doc, filename) {
 }
 
 /**
- * Guarda Excel desde XLSX
+ * Guarda Excel desde XLSX o ExcelJS
  */
 export async function saveExcel(wb, filename) {
   const isNative = Capacitor.isNativePlatform();
-  
+
+  // Detectar si es un buffer de ExcelJS
+  const isExcelJSBuffer = wb && wb._exceljs === true && wb._buffer;
+
   if (isNative) {
     try {
-      // Generar Excel como array
-      const excelData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelData], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
-      
+      let blob;
+
+      if (isExcelJSBuffer) {
+        // Usar buffer directamente de ExcelJS
+        blob = new Blob([wb._buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+      } else {
+        // Generar Excel como array desde XLSX
+        const excelData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        blob = new Blob([excelData], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+      }
+
       const base64 = await blobToBase64(blob);
-      
+
       // Usar directorio Cache que NO requiere permisos y es compatible con Share
       const saveDir = getSaveDirectory();
-      const path = filename; // Guardar directo en la raíz de Cache para evitar mkdir
-      
+      const path = filename;
+
       const result = await Filesystem.writeFile({
         path,
         data: base64,
@@ -192,6 +204,21 @@ export async function saveExcel(wb, filename) {
       throw error;
     }
   } else {
-    XLSX.writeFile(wb, filename);
+    // Web: descarga normal
+    if (isExcelJSBuffer) {
+      const blob = new Blob([wb._buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } else {
+      XLSX.writeFile(wb, filename);
+    }
   }
 }

@@ -35,15 +35,19 @@ export default function Schedule() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Estados para confirmación de eliminación
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const itemsPerPage = 7;
 
-  const load = async () => {
+  const load = async (skipCache = false) => {
     if (!business?.id) return;
     setLoading(true);
     try {
       const [empRes, schedRes] = await Promise.all([
-        api.get(`/employees?businessId=${business.id}`),
-        api.get(`/schedules/business/${business.id}`),
+        api.get(`/employees?businessId=${business.id}`, skipCache ? { params: { noCache: true } } : {}),
+        api.get(`/schedules/business/${business.id}`, skipCache ? { params: { noCache: true } } : {}),
       ]);
       setEmployees(empRes.data);
       setSchedules(schedRes.data);
@@ -59,6 +63,13 @@ export default function Schedule() {
 
   useEffect(() => { load(); }, [business]);
 
+  // Recargar empleados cuando el componente se monta (para detectar nuevos empleados creados)
+  useEffect(() => {
+    if (business?.id) {
+      load(true);
+    }
+  }, []);
+
   const resetForm = () => {
     setForm({
       employeeId: employees.length > 0 ? employees[0].id : '',
@@ -72,13 +83,32 @@ export default function Schedule() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        businessId: business.id,
+        dayOfWeek: parseInt(form.dayOfWeek, 10)
+      };
+      let createdSchedule;
       if (editingSchedule) {
-        await api.put(`/schedules/${editingSchedule.id}`, { ...form, businessId: business.id });
+        const res = await api.put(`/schedules/${editingSchedule.id}`, payload);
+        // Actualizar inmediatamente en el estado para reflejar cambios sin recargar
+        setSchedules(prev => prev.map(s => s.id === editingSchedule.id ? res.data : s));
       } else {
-        await api.post('/schedules', { ...form, businessId: business.id });
+        const res = await api.post('/schedules', payload);
+        createdSchedule = res.data;
+        // Agregar inmediatamente al estado para que aparezca sin recargar
+        setSchedules(prev => [...prev, createdSchedule]);
       }
-      // Forzar la recarga de horarios para que se vean los cambios inmediatamente
-      await load();
+      // Recargar del backend para sincronizar (sin usar cache)
+      await load(true);
+      // Navegar a la página donde está el empleado y expandir su sección
+      const empIndex = employees.findIndex(e => e.id === form.employeeId);
+      if (empIndex !== -1) {
+        const targetPage = Math.floor(empIndex / itemsPerPage) + 1;
+        setCurrentPage(targetPage);
+        setExpandedEmp(form.employeeId);
+        setExpandedDay(`${form.employeeId}-${parseInt(form.dayOfWeek, 10)}`);
+      }
       resetForm();
       setShowModal(false);
       showToast(editingSchedule ? 'Horario actualizado' : 'Horario creado');
@@ -89,14 +119,22 @@ export default function Schedule() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este horario?')) return;
+  const handleDelete = (id) => {
+    setScheduleToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!scheduleToDelete) return;
     try {
-      await api.delete(`/schedules/${id}`);
-      await load();
+      await api.delete(`/schedules/${scheduleToDelete}`);
       showToast('Horario eliminado');
+      load(true);
     } catch (e) {
-      showToast(e.response?.data?.error || 'Error al eliminar', 'error');
+      showToast('Error al eliminar', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
+      setScheduleToDelete(null);
     }
   };
 
@@ -115,9 +153,10 @@ export default function Schedule() {
 
   const groupedSchedules = schedules.reduce((acc, s) => {
     const empId = s.employeeId;
+    const dayOfWeek = parseInt(s.dayOfWeek, 10);
     if (!acc[empId]) acc[empId] = {};
-    if (!acc[empId][s.dayOfWeek]) acc[empId][s.dayOfWeek] = [];
-    acc[empId][s.dayOfWeek].push(s);
+    if (!acc[empId][dayOfWeek]) acc[empId][dayOfWeek] = [];
+    acc[empId][dayOfWeek].push(s);
     return acc;
   }, {});
 
@@ -408,8 +447,8 @@ export default function Schedule() {
 
       {/* Modal crear/editar */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: 500 }}>
             <style>{`
               @media (max-width: 480px) {
                 .schedule-time-grid { grid-template-columns: 1fr !important; }
@@ -576,6 +615,27 @@ export default function Schedule() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar eliminación de horario */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0 }}>¿Eliminar horario?</h3>
+              <button className="btn-ghost" onClick={() => setShowDeleteConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => setShowDeleteConfirm(false)}>Cancelar</button>
+              <button className="btn-danger" onClick={confirmDelete}>Eliminar</button>
+            </div>
           </div>
         </div>
       )}

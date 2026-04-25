@@ -42,6 +42,13 @@ export default function Deposits() {
   const [saving, setSaving] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
 
+  // Toast notification state
+  const [statusMsg, setStatusMsg] = useState(null);
+  const showStatus = (text, type = 'success') => {
+    setStatusMsg({ text, type });
+    setTimeout(() => setStatusMsg(null), 3500);
+  };
+
   useEffect(() => {
     if (business?.id) {
       loadDeposits();
@@ -95,7 +102,7 @@ export default function Deposits() {
       });
       loadDeposits();
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al guardar');
+      showStatus(e.response?.data?.error || 'Error al guardar', 'error');
     } finally {
       setSaving(false);
     }
@@ -111,7 +118,7 @@ export default function Deposits() {
       setSelectedDeposit(null);
       loadDeposits();
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al aplicar depósito');
+      showStatus(e.response?.data?.error || 'Error al aplicar depósito', 'error');
     } finally {
       setSaving(false);
     }
@@ -122,7 +129,7 @@ export default function Deposits() {
       await api.patch(`/deposits/${depositId}/status`, { status: newStatus });
       loadDeposits();
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al cambiar estado');
+      showStatus(e.response?.data?.error || 'Error al cambiar estado', 'error');
     }
   };
 
@@ -657,6 +664,23 @@ export default function Deposits() {
               Cancelar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {statusMsg && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {statusMsg.type === 'error' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+          {statusMsg.text}
         </div>
       )}
     </AdminLayout>

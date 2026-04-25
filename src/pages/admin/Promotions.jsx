@@ -32,6 +32,17 @@ export default function Promotions() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Toast notification state
+  const [statusMsg, setStatusMsg] = useState(null);
+  const showStatus = (text, type = 'success') => {
+    setStatusMsg({ text, type });
+    setTimeout(() => setStatusMsg(null), 3500);
+  };
+
+  // Estados para confirmación de eliminación
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [promotionToDelete, setPromotionToDelete] = useState(null);
+
   useEffect(() => {
     if (business?.id) {
       loadPromotions();
@@ -45,9 +56,9 @@ export default function Promotions() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const loadPromotions = () => {
+  const loadPromotions = (skipCache = false) => {
     setLoading(true);
-    api.get(`/promotions/business/${business.id}`)
+    api.get(`/promotions/business/${business.id}`, skipCache ? { params: { noCache: true } } : {})
       .then(r => {
         if (Array.isArray(r.data)) {
           setPromotions(r.data);
@@ -59,8 +70,8 @@ export default function Promotions() {
       .finally(() => setLoading(false));
   };
 
-  const loadServices = () => {
-    api.get(`/services/business/${business.id}`)
+  const loadServices = (skipCache = false) => {
+    api.get(`/services/business/${business.id}`, skipCache ? { params: { noCache: true } } : {})
       .then(r => setServices(r.data))
       .catch(() => setServices([]));
   };
@@ -98,7 +109,7 @@ export default function Promotions() {
       }
       setForm(empty);
       setEditing(null);
-      loadPromotions();
+      loadPromotions(true);
       setTimeout(() => setSuccess(''), 4000);
     } catch (e) {
       const errorMsg = e.response?.data?.error || e.message || 'Ocurrió un error inesperado';
@@ -122,16 +133,23 @@ export default function Promotions() {
     });
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar esta promoción?')) return;
+  const handleDelete = (id) => {
+    setPromotionToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!promotionToDelete) return;
     try {
       setError('');
-      await api.delete(`/promotions/${id}`);
-      setSuccess('Promoción eliminada correctamente');
-      loadPromotions();
-      setTimeout(() => setSuccess(''), 3000);
+      await api.delete(`/promotions/${promotionToDelete}`);
+      showStatus('Promoción eliminada correctamente');
+      loadPromotions(true);
     } catch (e) {
-      setError(e.response?.data?.error || 'Error al eliminar');
+      showStatus(e.response?.data?.error || 'Error al eliminar', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
+      setPromotionToDelete(null);
     }
   };
 
@@ -328,6 +346,44 @@ export default function Promotions() {
           )}
         </div>
       </div>
+
+      {/* Toast notification */}
+      {statusMsg && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {statusMsg.type === 'error' ? <XCircle size={16} /> : <Tag size={16} />}
+          {statusMsg.text}
+        </div>
+      )}
+
+      {/* Modal: Confirmar eliminación de promoción */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0 }}>¿Eliminar promoción?</h3>
+              <button className="btn-ghost" onClick={() => setShowDeleteConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: 0, color: 'var(--text)', lineHeight: 1.5 }}>
+                Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => setShowDeleteConfirm(false)}>Cancelar</button>
+              <button className="btn-danger" onClick={confirmDelete}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

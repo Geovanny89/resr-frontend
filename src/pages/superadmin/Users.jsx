@@ -43,6 +43,10 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // Estado para confirmación de impersonar
+  const [showImpersonateConfirm, setShowImpersonateConfirm] = useState(false);
+  const [userToImpersonate, setUserToImpersonate] = useState(null);
+
   useEffect(() => { loadUsers(); }, [pagination.page, search, roleFilter, statusFilter]);
 
   const loadUsers = async () => {
@@ -152,12 +156,17 @@ export default function UsersPage() {
     }
   };
 
-  const handleImpersonate = async (user) => {
-    if (!confirm(`¿Ingresar como ${user.name}? Esto cerrará tu sesión actual.`)) return;
+  const handleImpersonate = (user) => {
+    setUserToImpersonate(user);
+    setShowImpersonateConfirm(true);
+  };
+
+  const confirmImpersonate = async () => {
+    if (!userToImpersonate) return;
     
     try {
-      const res = await api.post(`/superadmin/users/${user.id}/impersonate`);
-      showToast(`Ingresando como ${user.name}...`);
+      const res = await api.post(`/superadmin/users/${userToImpersonate.id}/impersonate`);
+      showToast(`Ingresando como ${userToImpersonate.name}...`);
       
       // Guardar token y redirigir
       localStorage.setItem('token', res.data.token);
@@ -169,7 +178,12 @@ export default function UsersPage() {
       // Redirigir según el rol
       window.location.href = res.data.redirectUrl;
     } catch (err) {
-      showToast('Error al ingresar como usuario', 'error');
+      const errorMsg = err.response?.data?.error || err.message || 'Error desconocido';
+      console.error('[Impersonate Error]', err);
+      showToast(`Error: ${errorMsg}`, 'error');
+    } finally {
+      setShowImpersonateConfirm(false);
+      setUserToImpersonate(null);
     }
   };
 
@@ -667,6 +681,38 @@ export default function UsersPage() {
                 disabled={saving}
               >
                 {saving ? 'Eliminando...' : <><Trash2 size={14} /> Eliminar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar Impersonación */}
+      {showImpersonateConfirm && (
+        <div className="modal-overlay" onClick={() => setShowImpersonateConfirm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header" style={{ borderBottomColor: 'var(--warning)' }}>
+              <div className="modal-title" style={{ color: 'var(--warning)' }}>⚠️ Ingresar como usuario</div>
+              <button className="btn-ghost btn-icon" onClick={() => setShowImpersonateConfirm(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                ¿Ingresar como <strong>{userToImpersonate?.name}</strong>?<br/>
+                Esto cerrará tu sesión actual de SuperAdmin.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowImpersonateConfirm(false)}>
+                Cancelar
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={confirmImpersonate}
+                disabled={saving}
+              >
+                {saving ? 'Ingresando...' : <><LogIn size={14} /> Ingresar</>}
               </button>
             </div>
           </div>

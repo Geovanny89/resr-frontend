@@ -27,7 +27,7 @@ export default function RegisterVendor() {
     description: '',
     phone: '',
     address: '',
-    hasFieldTechnicians: false,
+    businessMode: 'normal', // normal, technical_services, field_technicians
     subscriptionPlan: 'basic',
   });
 
@@ -137,7 +137,8 @@ export default function RegisterVendor() {
         description: form.description,
         phone: form.phone,
         address: form.address,
-        hasFieldTechnicians: form.hasFieldTechnicians,
+        isTechnicalServices: form.businessMode === 'technical_services',
+        hasFieldTechnicians: form.businessMode === 'field_technicians',
         subscriptionPlan: form.subscriptionPlan,
       });
 
@@ -621,57 +622,52 @@ export default function RegisterVendor() {
                 />
               </div>
 
-              {/* Checkbox para Técnicos a Domicilio */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 12,
-                padding: 12,
-                background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff',
-                borderRadius: 8,
-                border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe'}`,
-                marginTop: 8
-              }}>
-                <input
-                  type="checkbox"
-                  id="hasFieldTechnicians"
-                  name="hasFieldTechnicians"
-                  checked={form.hasFieldTechnicians}
+              {/* Select para Tipo de Negocio */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: colors.text
+                }}>
+                  Tipo de operación (opcional)
+                </label>
+                <select
+                  name="businessMode"
+                  value={form.businessMode}
                   onChange={handleChange}
                   style={{
-                    width: 20,
-                    height: 20,
-                    marginTop: 2,
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
                     cursor: 'pointer'
                   }}
-                />
-                <div style={{ flex: 1 }}>
-                  <label 
-                    htmlFor="hasFieldTechnicians"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: isDark ? '#93c5fd' : '#1e40af',
-                      cursor: 'pointer',
-                      marginBottom: 4
-                    }}
-                  >
-                    <span>🔧</span>
-                    Servicios Técnicos a Domicilio
-                  </label>
-                  <p style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    margin: 0,
-                    lineHeight: 1.4
-                  }}>
-                    Marcá esta opción si tu negocio envía técnicos a domicilio (ej: reparaciones, mantenimiento). 
-                    <strong> No incluye recordatorios por WhatsApp</strong> - usarán principalmente la app móvil.
-                  </p>
-                </div>
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
+                >
+                  <option value="normal">💇 Negocio de Estética y Belleza</option>
+                  <option value="technical_services">⚙️ Servicios Especializados</option>
+                  <option value="field_technicians">🔧 Seguimiento de Campo</option>
+                </select>
+                <p style={{
+                  fontSize: 11,
+                  color: colors.textSecondary,
+                  marginTop: 6,
+                  margin: '6px 0 0 0',
+                  lineHeight: 1.4
+                }}>
+                  {form.businessMode === 'normal' && 'Negocio estándar con recordatorios por WhatsApp y todas las funciones.'}
+                  {form.businessMode === 'technical_services' && 'Servicios técnicos que generan órdenes de servicio en lugar de recibos.'}
+                  {form.businessMode === 'field_technicians' && 'Envía técnicos a domicilio con seguimiento en tiempo real. No incluye recordatorios por WhatsApp.'}
+                </p>
               </div>
 
               <div className="register-vendor-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>

@@ -1,376 +1,103 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import { Plus, Trash2, Calendar, Clock, Edit2, X, Info, Repeat } from 'lucide-react';
-
-const SCHEDULE_TYPES = [
-  { value: 'work',    label: 'Jornada de trabajo',  color: '#4f46e5', bg: '#eef2ff', icon: '💼' },
-  { value: 'lunch',   label: 'Almuerzo',             color: '#d97706', bg: '#fef3c7', icon: '🍽️' },
-  { value: 'blocked', label: 'Bloqueado / Permiso',  color: '#ef4444', bg: '#fee2e2', icon: '🚫' },
-  { value: 'closed',  label: 'Cerrado (No laborable)', color: '#7c3aed', bg: '#ede9fe', icon: '🏖️' },
-];
-
-// Función para calcular Domingo de Pascua usando algoritmo de Gauss
-function getEasterDate(year) {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1; // 0-indexed month
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month, day);
-}
-
-// Función para obtener el último lunes de un mes
-function getLastMondayOfMonth(year, month) {
-  // month is 0-indexed (0 = January)
-  const lastDay = new Date(year, month + 1, 0);
-  const dayOfWeek = lastDay.getDay();
-  const daysToSubtract = (dayOfWeek + 6) % 7;
-  lastDay.setDate(lastDay.getDate() - daysToSubtract);
-  return lastDay;
-}
-
-// Función para formatear fecha como MM-DD
-function formatMMDD(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${month}-${day}`;
-}
-
-// Función para obtener todos los festivos de Colombia de un año
-function getColombianHolidays(year) {
-  const holidays = [];
-
-  // 1. Año Nuevo (fijo)
-  holidays.push({ date: '01-01', name: 'Año Nuevo' });
-
-  // 2. Día de Reyes - Se pasa al lunes siguiente (Ley Emiliani)
-  const reyes = new Date(year, 0, 6);
-  const reyesLunes = new Date(reyes);
-  reyesLunes.setDate(reyes.getDate() + ((8 - reyes.getDay()) % 7));
-  holidays.push({ date: formatMMDD(reyesLunes), name: 'Día de los Reyes Magos' });
-
-  // 3. Día de San José - Último lunes de marzo
-  const sanJose = getLastMondayOfMonth(year, 2); // March = 2
-  holidays.push({ date: formatMMDD(sanJose), name: 'Día de San José' });
-
-  // Calcular Pascua
-  const pascua = getEasterDate(year);
-
-  // 4. Jueves Santo (Pascua - 3 días)
-  const juevesSanto = new Date(pascua);
-  juevesSanto.setDate(pascua.getDate() - 3);
-  holidays.push({ date: formatMMDD(juevesSanto), name: 'Jueves Santo' });
-
-  // 5. Viernes Santo (Pascua - 2 días)
-  const viernesSanto = new Date(pascua);
-  viernesSanto.setDate(pascua.getDate() - 2);
-  holidays.push({ date: formatMMDD(viernesSanto), name: 'Viernes Santo' });
-
-  // 6. Día del Trabajo (fijo)
-  holidays.push({ date: '05-01', name: 'Día del Trabajo' });
-
-  // 7. Ascensión del Señor (Pascua + 39 días - se pasa al lunes siguiente)
-  const ascension = new Date(pascua);
-  ascension.setDate(pascua.getDate() + 39);
-  const ascensionLunes = new Date(ascension);
-  ascensionLunes.setDate(ascension.getDate() + ((8 - ascension.getDay()) % 7));
-  holidays.push({ date: formatMMDD(ascensionLunes), name: 'Ascensión del Señor' });
-
-  // 8. Corpus Christi (Pascua + 60 días - se pasa al lunes siguiente)
-  const corpus = new Date(pascua);
-  corpus.setDate(pascua.getDate() + 60);
-  const corpusLunes = new Date(corpus);
-  corpusLunes.setDate(corpus.getDate() + ((8 - corpus.getDay()) % 7));
-  holidays.push({ date: formatMMDD(corpusLunes), name: 'Corpus Christi' });
-
-  // 9. Sagrado Corazón (Pascua + 68 días - se pasa al lunes siguiente)
-  const sagrado = new Date(pascua);
-  sagrado.setDate(pascua.getDate() + 68);
-  const sagradoLunes = new Date(sagrado);
-  sagradoLunes.setDate(sagrado.getDate() + ((8 - sagrado.getDay()) % 7));
-  holidays.push({ date: formatMMDD(sagradoLunes), name: 'Sagrado Corazón de Jesús' });
-
-  // 10. San Pedro y San Pablo - Lunes siguiente al 29 de junio (o 29 si es lunes)
-  const sanPedro = new Date(year, 5, 29);
-  const sanPedroLunes = new Date(sanPedro);
-  sanPedroLunes.setDate(sanPedro.getDate() + ((8 - sanPedro.getDay()) % 7));
-  holidays.push({ date: formatMMDD(sanPedroLunes), name: 'San Pedro y San Pablo' });
-
-  // 11. Día de la Independencia (fijo)
-  holidays.push({ date: '07-20', name: 'Día de la Independencia' });
-
-  // 12. Batalla de Boyacá (fijo)
-  holidays.push({ date: '08-07', name: 'Batalla de Boyacá' });
-
-  // 13. Asunción de la Virgen - Lunes siguiente al 15 de agosto
-  const asuncion = new Date(year, 7, 15);
-  const asuncionLunes = new Date(asuncion);
-  asuncionLunes.setDate(asuncion.getDate() + ((8 - asuncion.getDay()) % 7));
-  holidays.push({ date: formatMMDD(asuncionLunes), name: 'Asunción de la Virgen' });
-
-  // 14. Día de la Raza - Lunes siguiente al 12 de octubre
-  const raza = new Date(year, 9, 12);
-  const razaLunes = new Date(raza);
-  razaLunes.setDate(raza.getDate() + ((8 - raza.getDay()) % 7));
-  holidays.push({ date: formatMMDD(razaLunes), name: 'Día de la Raza' });
-
-  // 15. Todos los Santos - Lunes siguiente al 1 de noviembre
-  const todosSantos = new Date(year, 10, 1);
-  const todosSantosLunes = new Date(todosSantos);
-  todosSantosLunes.setDate(todosSantos.getDate() + ((8 - todosSantos.getDay()) % 7));
-  holidays.push({ date: formatMMDD(todosSantosLunes), name: 'Día de Todos los Santos' });
-
-  // 16. Independencia de Cartagena - Lunes siguiente al 11 de noviembre
-  const cartagena = new Date(year, 10, 11);
-  const cartagenaLunes = new Date(cartagena);
-  cartagenaLunes.setDate(cartagena.getDate() + ((8 - cartagena.getDay()) % 7));
-  holidays.push({ date: formatMMDD(cartagenaLunes), name: 'Independencia de Cartagena' });
-
-  // 17. Inmaculada Concepción (fijo)
-  holidays.push({ date: '12-08', name: 'Inmaculada Concepción' });
-
-  // 18. Navidad (fijo)
-  holidays.push({ date: '12-25', name: 'Navidad' });
-
-  return holidays.sort((a, b) => a.date.localeCompare(b.date));
-}
-
-// Lista de festivos calculada dinámicamente para el año actual
-const COMMON_HOLIDAYS = getColombianHolidays(new Date().getFullYear());
+import {
+  useSpecialSchedules,
+  useSpecialSchedulesUI,
+  useHolidays,
+  SCHEDULE_TYPES,
+  COMMON_HOLIDAYS,
+  getColombianHolidays,
+} from '../../features/specialschedules';
 
 export default function SpecialSchedule() {
   const { business } = useAuth();
-  const { colors } = useTheme();
-  const [employees, setEmployees]       = useState([]);
-  const [schedules, setSchedules]       = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [form, setForm] = useState({
-    employeeId: '',
-    specificDate: '',
-    startTime: '08:00',
-    endTime: '17:00',
-    type: 'work',
-    description: '',
-    isRecurringYearly: false,
-  });
-  const [saving, setSaving]             = useState(false);
-  const [showModal, setShowModal]       = useState(false);
-  const [showHolidayConfirm, setShowHolidayConfirm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [scheduleToDelete, setScheduleToDelete] = useState(null);
-  const [editingSchedule, setEditingSchedule] = useState(null);
-  const [toast, setToast]               = useState(null);
-  const [filterMonth, setFilterMonth]   = useState('');
-  const [currentPage, setCurrentPage]   = useState(1);
-  const itemsPerPage = 5;
+  const {
+    employees,
+    schedules,
+    loading,
+    saving,
+    form,
+    editingSchedule,
+    scheduleToDelete,
+    setScheduleToDelete,
+    setEditSchedule,
+    resetForm,
+    updateFormField,
+    saveSchedule,
+    deleteSchedule,
+    getEmployeeName,
+    load,
+  } = useSpecialSchedules(business?.id);
+
+  const {
+    showModal,
+    showHolidayConfirm,
+    showDeleteConfirm,
+    filterMonth,
+    currentPage,
+    totalPages,
+    groupedSchedules,
+    paginatedDates,
+    filteredDates,
+    openModal,
+    closeModal,
+    openHolidayConfirm,
+    closeHolidayConfirm,
+    closeDeleteConfirm,
+    openDeleteConfirm,
+    setFilterMonth,
+    goToNextPage,
+    goToPrevPage,
+  } = useSpecialSchedulesUI(schedules);
+
+  const { createAllHolidays, getHolidayFormData } = useHolidays(business?.id, schedules, load);
+
+  const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  const load = async () => {
-    if (!business?.id) return;
-    setLoading(true);
-    try {
-      const [empRes, schedRes] = await Promise.all([
-        api.get(`/employees?businessId=${business.id}`),
-        api.get(`/special-schedules/business/${business.id}`),
-      ]);
-      setEmployees(empRes.data || []);
-      setSchedules(schedRes.data || []);
-    } catch (e) {
-      console.error('[SpecialSchedule] Error al cargar:', e);
-      showToast('Error al cargar datos: ' + (e.response?.data?.error || e.message), 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, [business]);
-
-  const resetForm = () => {
-    setForm({
-      employeeId: '',
-      specificDate: '',
-      startTime: '08:00',
-      endTime: '17:00',
-      type: 'work',
-      description: '',
-      isRecurringYearly: false,
-    });
-    setEditingSchedule(null);
-  };
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const data = {
-        ...form,
-        businessId: business.id,
-        employeeId: form.employeeId || null, // null = aplica a todos
-      };
-
-      if (editingSchedule) {
-        await api.put(`/special-schedules/${editingSchedule.id}`, data);
-      } else {
-        await api.post('/special-schedules', data);
-      }
-      await load();
-      resetForm();
-      setShowModal(false);
-      showToast(editingSchedule ? 'Horario especial actualizado' : 'Horario especial creado');
-    } catch (e) {
-      showToast(e.response?.data?.error || 'Error al guardar horario especial', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = (id) => {
-    setScheduleToDelete(id);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!scheduleToDelete) return;
-    try {
-      await api.delete(`/special-schedules/${scheduleToDelete}`);
-      await load();
-      showToast('Horario especial eliminado');
-    } catch (e) {
-      showToast(e.response?.data?.error || 'Error al eliminar', 'error');
-    } finally {
-      setShowDeleteConfirm(false);
-      setScheduleToDelete(null);
-    }
-  };
-
-  const cancelDelete = () => {
-    setShowDeleteConfirm(false);
-    setScheduleToDelete(null);
-  };
-
-  const startEdit = (sched) => {
-    setEditingSchedule(sched);
-    setForm({
-      employeeId: sched.employeeId || '',
-      specificDate: sched.specificDate,
-      startTime: sched.startTime,
-      endTime: sched.endTime,
-      type: sched.type,
-      description: sched.description || '',
-      isRecurringYearly: sched.isRecurringYearly,
-    });
-    setShowModal(true);
-  };
-
   const getTypeInfo = (type) => SCHEDULE_TYPES.find(t => t.value === type) || SCHEDULE_TYPES[0];
-
-  const getEmployeeName = (employeeId) => {
-    if (!employeeId) return '🏢 Todos los empleados';
-    const emp = employees.find(e => e.id === employeeId);
-    return emp ? `👤 ${emp.User?.name || 'Empleado'}` : '👤 Empleado';
-  };
-
-  // Agrupar horarios por fecha
-  const groupedSchedules = schedules.reduce((acc, sched) => {
-    const key = sched.specificDate;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(sched);
-    return acc;
-  }, {});
-
-  // Ordenar fechas
-  const sortedDates = Object.keys(groupedSchedules).sort();
-
-  // Filtrar por mes si hay filtro
-  const filteredDates = filterMonth 
-    ? sortedDates.filter(date => date.startsWith(filterMonth))
-    : sortedDates;
-
-  // Paginación
-  const totalPages = Math.ceil(filteredDates.length / itemsPerPage);
-  const paginatedDates = filteredDates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const applyHoliday = (monthDay, name) => {
-    const currentYear = new Date().getFullYear();
-    setForm(f => ({
-      ...f,
-      specificDate: `${currentYear}-${monthDay}`,
-      description: name,
-      type: 'closed',
-      isRecurringYearly: true,
-    }));
-  };
-
-  // Crear todos los festivos de Colombia de una vez
-  const openHolidayConfirm = () => {
-    setShowHolidayConfirm(true);
-  };
-
-  const createAllHolidays = async () => {
-    setShowHolidayConfirm(false);
-    
-    // Determinar el año a usar (del filtro o el actual)
-    const currentYear = filterMonth ? parseInt(filterMonth.split('-')[0]) : new Date().getFullYear();
-    
-    // Recalcular festivos para el año seleccionado
-    const yearHolidays = getColombianHolidays(currentYear);
-    
-    let created = 0;
-    let skipped = 0;
-
-    // Verificar cuáles ya existen
-    const existingDates = new Set(schedules.map(s => s.specificDate));
-
-    for (const holiday of yearHolidays) {
-      const fullDate = `${currentYear}-${holiday.date}`;
-      
-      // Si ya existe un horario para esta fecha, saltar
-      if (existingDates.has(fullDate)) {
-        skipped++;
-        continue;
-      }
-
-      try {
-        await api.post('/special-schedules', {
-          businessId: business.id,
-          employeeId: null, // Aplica a todos
-          specificDate: fullDate,
-          startTime: '00:00',
-          endTime: '23:59',
-          type: 'closed',
-          description: holiday.name,
-          isRecurringYearly: true,
-        });
-        created++;
-      } catch (e) {
-        console.error(`Error creando festivo ${holiday.name}:`, e);
-      }
-    }
-
-    await load();
-    showToast(`✅ ${created} festivos creados${skipped > 0 ? `, ${skipped} omitidos (ya existían)` : ''}`);
-  };
-
   const isClosed = (type) => type === 'closed';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await saveSchedule(
+      (msg) => {
+        showToast(msg);
+        closeModal();
+      },
+      (err) => showToast(err, 'error')
+    );
+  };
+
+  const handleDeleteConfirm = async () => {
+    await deleteSchedule(
+      (msg) => {
+        showToast(msg);
+        closeDeleteConfirm();
+      },
+      (err) => showToast(err, 'error')
+    );
+  };
+
+  const handleCreateAllHolidays = async () => {
+    const year = filterMonth ? parseInt(filterMonth.split('-')[0]) : new Date().getFullYear();
+    const { created, skipped } = await createAllHolidays(year);
+    showToast(`✅ ${created} festivos creados${skipped > 0 ? `, ${skipped} omitidos (ya existían)` : ''}`);
+    closeHolidayConfirm();
+  };
+
+  const handleApplyHoliday = (monthDay, name) => {
+    const holidayData = getHolidayFormData(monthDay, name);
+    Object.entries(holidayData).forEach(([field, value]) => {
+      updateFormField(field, value);
+    });
+  };
 
   return (
     <AdminLayout>
@@ -386,7 +113,7 @@ export default function SpecialSchedule() {
           </div>
           <button
             className="btn-primary"
-            onClick={() => { resetForm(); setShowModal(true); }}
+            onClick={() => { resetForm(); openModal(); }}
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           >
             <Plus size={18} /> Nuevo horario especial
@@ -422,7 +149,7 @@ export default function SpecialSchedule() {
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <select 
             value={filterMonth} 
-            onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => setFilterMonth(e.target.value)}
             style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-color)' }}
           >
             <option value="">📅 Todos los meses</option>
@@ -569,7 +296,7 @@ export default function SpecialSchedule() {
                           </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                              onClick={() => startEdit(sched)}
+                              onClick={() => { setEditSchedule(sched); openModal(); }}
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: 6,
@@ -585,7 +312,7 @@ export default function SpecialSchedule() {
                               <Edit2 size={16} color={typeInfo.color} />
                             </button>
                             <button
-                              onClick={() => handleDelete(sched.id)}
+                              onClick={() => { setScheduleToDelete(sched.id); openDeleteConfirm(); }}
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: 6,
@@ -622,7 +349,7 @@ export default function SpecialSchedule() {
                 borderRadius: 8
               }}>
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={goToPrevPage}
                   disabled={currentPage === 1}
                   style={{
                     padding: '8px 16px',
@@ -639,7 +366,7 @@ export default function SpecialSchedule() {
                   Página {currentPage} de {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={goToNextPage}
                   disabled={currentPage === totalPages}
                   style={{
                     padding: '8px 16px',
@@ -705,7 +432,7 @@ export default function SpecialSchedule() {
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={createAllHolidays}
+                  onClick={handleCreateAllHolidays}
                   style={{ 
                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                     border: 'none'
@@ -720,7 +447,7 @@ export default function SpecialSchedule() {
 
         {/* Modal de confirmación para eliminar */}
         {showDeleteConfirm && (
-          <div className="modal-overlay" onClick={cancelDelete}>
+          <div className="modal-overlay" onClick={closeDeleteConfirm}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
               <div className="modal-header" style={{ textAlign: 'center' }}>
                 <div style={{
@@ -759,14 +486,14 @@ export default function SpecialSchedule() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={cancelDelete}
+                  onClick={closeDeleteConfirm}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={confirmDelete}
+                  onClick={handleDeleteConfirm}
                   style={{
                     background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                     border: 'none'
@@ -782,14 +509,14 @@ export default function SpecialSchedule() {
 
         {/* Modal */}
         {showModal && (
-          <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-overlay" onClick={closeModal}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
               <div className="modal-header">
                 <h3>{editingSchedule ? 'Editar Horario Especial' : 'Nuevo Horario Especial'}</h3>
-                <button onClick={() => setShowModal(false)}><X size={20} /></button>
+                <button onClick={closeModal}><X size={20} /></button>
               </div>
 
-              <form onSubmit={handleCreate}>
+              <form onSubmit={handleSubmit}>
                 <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Selector de Festivos */}
                   {!editingSchedule && (
@@ -803,14 +530,7 @@ export default function SpecialSchedule() {
                         onChange={(e) => {
                           if (e.target.value) {
                             const [monthDay, name] = e.target.value.split('|');
-                            const currentYear = new Date().getFullYear();
-                            setForm(f => ({
-                              ...f,
-                              specificDate: `${currentYear}-${monthDay}`,
-                              description: name,
-                              type: 'closed',
-                              isRecurringYearly: true,
-                            }));
+                            handleApplyHoliday(monthDay, name);
                           }
                         }}
                         style={{ width: '100%' }}
@@ -834,7 +554,7 @@ export default function SpecialSchedule() {
                     <input
                       type="date"
                       value={form.specificDate}
-                      onChange={(e) => setForm({ ...form, specificDate: e.target.value })}
+                      onChange={(e) => updateFormField('specificDate', e.target.value)}
                       required
                       style={{ width: '100%' }}
                     />
@@ -848,7 +568,7 @@ export default function SpecialSchedule() {
                     <label>Aplicar a *</label>
                     <select
                       value={form.employeeId}
-                      onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+                      onChange={(e) => updateFormField('employeeId', e.target.value)}
                       style={{ width: '100%' }}
                       disabled={loading}
                     >
@@ -878,7 +598,7 @@ export default function SpecialSchedule() {
                     <label>Tipo de horario *</label>
                     <select
                       value={form.type}
-                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                      onChange={(e) => updateFormField('type', e.target.value)}
                       style={{ width: '100%' }}
                     >
                       {SCHEDULE_TYPES.map(t => (
@@ -902,7 +622,7 @@ export default function SpecialSchedule() {
                         <input
                           type="time"
                           value={form.startTime}
-                          onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                          onChange={(e) => updateFormField('startTime', e.target.value)}
                           required
                         />
                       </div>
@@ -911,7 +631,7 @@ export default function SpecialSchedule() {
                         <input
                           type="time"
                           value={form.endTime}
-                          onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                          onChange={(e) => updateFormField('endTime', e.target.value)}
                           required
                         />
                       </div>
@@ -924,7 +644,7 @@ export default function SpecialSchedule() {
                     <input
                       type="text"
                       value={form.description}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      onChange={(e) => updateFormField('description', e.target.value)}
                       placeholder="Ej: Festivo, Día especial, Horario de verano..."
                     />
                   </div>
@@ -935,7 +655,7 @@ export default function SpecialSchedule() {
                       type="checkbox"
                       id="isRecurring"
                       checked={form.isRecurringYearly}
-                      onChange={(e) => setForm({ ...form, isRecurringYearly: e.target.checked })}
+                      onChange={(e) => updateFormField('isRecurringYearly', e.target.checked)}
                       style={{ width: 'auto' }}
                     />
                     <label htmlFor="isRecurring" style={{ margin: 0, cursor: 'pointer' }}>
@@ -983,7 +703,7 @@ export default function SpecialSchedule() {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => { setShowModal(false); resetForm(); }}
+                    onClick={() => { closeModal(); resetForm(); }}
                   >
                     Cancelar
                   </button>

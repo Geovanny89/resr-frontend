@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import EmployeeLayout from '../../components/EmployeeLayout';
 import api from '../../api/client';
 import { 
   User, 
@@ -278,20 +277,17 @@ export default function EmployeeProfile() {
 
   if (loading) {
     return (
-      <EmployeeLayout>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-          <div style={{ textAlign: 'center' }}>
-            <Loader2 size={40} className="spin" style={{ animation: 'spin 1s linear infinite', color: colors.primary }} />
-            <p style={{ marginTop: 16, color: colors.textSecondary }}>Cargando perfil...</p>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={40} className="spin" style={{ animation: 'spin 1s linear infinite', color: colors.primary }} />
+          <p style={{ marginTop: 16, color: colors.textSecondary }}>Cargando perfil...</p>
         </div>
-      </EmployeeLayout>
+      </div>
     );
   }
 
   return (
-    <EmployeeLayout>
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 16px' }}>
         {error && (
           <div style={{
             background: colors.isDark ? '#7f1d1d' : '#fed7d7',
@@ -736,6 +732,5 @@ export default function EmployeeProfile() {
           </div>
         )}
       </div>
-    </EmployeeLayout>
   );
 }

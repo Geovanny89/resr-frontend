@@ -19,15 +19,18 @@ function getSocketUrl() {
   const apiUrl = import.meta.env.VITE_API_URL;
   
   if (!apiUrl || apiUrl.startsWith('/')) {
-    // URL relativa - construir usando window.location
-    // Eliminar '/api' si está presente para obtener solo el origen
-    const origin = window.location.origin;
-    // Si estás usando proxy de Vite, el backend está en :4000
-    return 'http://localhost:4000';
+    // URL relativa - usar el mismo origen (aprovechar proxy de Vite)
+    // El proxy de Vite manejará '/socket.io' -> 'http://localhost:4000/socket.io'
+    return window.location.origin;
   }
   
-  // URL absoluta ya configurada
-  return apiUrl;
+  // URL absoluta ya configurada - extraer solo el origen
+  try {
+    const url = new URL(apiUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return apiUrl;
+  }
 }
 
 const SOCKET_URL = getSocketUrl();
@@ -45,6 +48,9 @@ const SOCKET_URL = getSocketUrl();
  * @param {Function} options.onAppointmentUpdated - Callback cuando se actualiza una cita
  * @param {Function} options.onAppointmentCancelled - Callback cuando se cancela una cita
  * @param {Function} options.onNewAssigned - Callback cuando se asigna nueva cita a empleado
+ * @param {Function} options.onServiceCreated - Callback cuando se crea un servicio
+ * @param {Function} options.onServiceUpdated - Callback cuando se actualiza un servicio
+ * @param {Function} options.onServiceDeleted - Callback cuando se elimina un servicio
  * @param {Function} options.onConnect - Callback cuando se conecta
  * @param {Function} options.onDisconnect - Callback cuando se desconecta
  */
@@ -58,6 +64,9 @@ export function useSocket({
   onAppointmentUpdated,
   onAppointmentCancelled,
   onNewAssigned,
+  onServiceCreated,
+  onServiceUpdated,
+  onServiceDeleted,
   onConnect,
   onDisconnect
 }) {
@@ -73,6 +82,9 @@ export function useSocket({
     onAppointmentUpdated,
     onAppointmentCancelled,
     onNewAssigned,
+    onServiceCreated,
+    onServiceUpdated,
+    onServiceDeleted,
     onConnect,
     onDisconnect
   });
@@ -88,17 +100,45 @@ export function useSocket({
       onAppointmentUpdated,
       onAppointmentCancelled,
       onNewAssigned,
+      onServiceCreated,
+      onServiceUpdated,
+      onServiceDeleted,
       onConnect,
       onDisconnect
     };
-  }, [onAppointmentCreated, onAppointmentUpdated, onAppointmentCancelled, onNewAssigned, onConnect, onDisconnect]);
+  }, [onAppointmentCreated, onAppointmentUpdated, onAppointmentCancelled, onNewAssigned, onServiceCreated, onServiceUpdated, onServiceDeleted, onConnect, onDisconnect]);
 
   // Inicializar conexión - Solo cuando cambia businessId
   // El employeeId se lee directamente de los props en cada ejecución
   useEffect(() => {
-    if (!businessId || !autoConnect) return;
+    console.log('[useSocket] useEffect triggered. businessId:', businessId, 'autoConnect:', autoConnect, 'role:', role);
+    if (!businessId || !autoConnect) {
+      console.log('[useSocket] Skipping connection - missing businessId or autoConnect disabled');
+      // Si hay una conexión existente, desconectarla
+      if (socketRef.current) {
+        console.log('[useSocket] Desconectando socket existente por businessId inválido');
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setIsConnected(false);
+      }
+      return;
+    }
+
+    // Si ya hay una conexión activa con el mismo businessId, no reconectar
+    if (socketRef.current?.connected && socketRef.current?.auth?.businessId === businessId) {
+      console.log('[useSocket] Socket ya conectado con mismo businessId, skipping');
+      return;
+    }
+
+    // Desconectar socket anterior si existe
+    if (socketRef.current) {
+      console.log('[useSocket] Desconectando socket anterior antes de reconectar');
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
 
     const token = getToken();
+    console.log('[useSocket] Connecting to:', SOCKET_URL, 'with businessId:', businessId, 'role:', role, 'userId:', userId);
 
     // Configurar socket con auth - usar valores directamente
     const socket = io(SOCKET_URL, {
@@ -121,6 +161,9 @@ export function useSocket({
 
     // Evento de conexión exitosa
     socket.on('connect', () => {
+      console.log('[useSocket] Connected! Socket ID:', socket.id);
+      console.log('[useSocket] Salas actuales:', socket.rooms ? Array.from(socket.rooms) : 'N/A (server-side only)');
+      console.log('[useSocket] Auth enviado:', { businessId, role, userId, employeeId });
       setIsConnected(true);
       setConnectionError(null);
       callbacksRef.current.onConnect?.();
@@ -128,12 +171,14 @@ export function useSocket({
 
     // Evento de desconexión
     socket.on('disconnect', (reason) => {
+      console.log('[useSocket] Disconnected. Reason:', reason);
       setIsConnected(false);
       callbacksRef.current.onDisconnect?.(reason);
     });
 
     // Evento de error de conexión
     socket.on('connect_error', (error) => {
+      console.error('[useSocket] Connection error:', error.message);
       setConnectionError(error.message);
     });
 
@@ -156,13 +201,26 @@ export function useSocket({
       callbacksRef.current.onNewAssigned?.(data);
     });
 
-    // 🔔 Evento: Cita actualizada
+    // Evento: Cita actualizada
     socket.on('appointment:updated', (data) => {
+      console.log('[useSocket] ⬇️ appointment:updated recibido:', {
+        id: data.id,
+        status: data.status,
+        technicianStatus: data.technicianStatus,
+        employeeId: data.employeeId,
+        businessId: data.businessId
+      });
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'updated', data, time: new Date() }
       }));
-      callbacksRef.current.onAppointmentUpdated?.(data);
+      const callback = callbacksRef.current.onAppointmentUpdated;
+      console.log('[useSocket] onAppointmentUpdated callback existe?', !!callback);
+      if (callback) {
+        console.log('[useSocket] Llamando onAppointmentUpdated...');
+        callback(data);
+        console.log('[useSocket] onAppointmentUpdated completado');
+      }
     });
 
     // 🔔 Evento: Cita cancelada
@@ -177,6 +235,31 @@ export function useSocket({
     // Evento de actualización por fecha (para recargar calendarios)
     socket.on('appointment:date_update', (data) => {
       // Fecha actualizada: data.date
+    });
+
+    // 🔔 Eventos de servicios
+    socket.on('service:created', (data) => {
+      setStats(prev => ({
+        receivedEvents: prev.receivedEvents + 1,
+        lastEvent: { type: 'service_created', data, time: new Date() }
+      }));
+      callbacksRef.current.onServiceCreated?.(data);
+    });
+
+    socket.on('service:updated', (data) => {
+      setStats(prev => ({
+        receivedEvents: prev.receivedEvents + 1,
+        lastEvent: { type: 'service_updated', data, time: new Date() }
+      }));
+      callbacksRef.current.onServiceUpdated?.(data);
+    });
+
+    socket.on('service:deleted', (data) => {
+      setStats(prev => ({
+        receivedEvents: prev.receivedEvents + 1,
+        lastEvent: { type: 'service_deleted', data, time: new Date() }
+      }));
+      callbacksRef.current.onServiceDeleted?.(data);
     });
 
     // Limpiar al desmontar o cuando cambia businessId

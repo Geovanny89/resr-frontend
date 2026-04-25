@@ -1,97 +1,57 @@
 import { useEffect, useState } from 'react';
 import SuperAdminLayout from '../../components/SuperAdminLayout';
+import BusinessCard from '../../components/businesses/BusinessCard';
+import { 
+  BusinessDetailModal, 
+  SubscriptionModal, 
+  ScreenshotModal, 
+  QuickAddUsersModal, 
+  DeleteConfirmModal 
+} from '../../components/businesses/modals';
+import { useBusinessSubscriptions } from '../../hooks/useBusinessSubscriptions';
 import api from '../../api/client';
-import {
-  Building2, Search, Eye, Lock, Unlock, CheckCircle, XCircle,
-  Clock, AlertTriangle, Image, X, RefreshCw, Filter,
-  CreditCard, Calendar, User, Trash2, Check, Store, UserPlus
-} from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import '../../styles/responsive.css';
 
-// Extraer la URL base del backend desde el cliente API
-const API_BASE_URL = api.defaults.baseURL || '';
-const BACKEND_URL = API_BASE_URL.replace(/\/api$/, ''); // Quitar el sufijo /api si existe
-
-function getImgUrl(url) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  // Asegurar que la URL comience con / si no lo tiene
-  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${BACKEND_URL}${cleanUrl}`;
-}
-
-const SUB_LABELS = {
-  pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7', text: '#92400e' },
-  paid:    { label: 'Pagado',    color: '#10b981', bg: '#d1fae5', text: '#065f46' },
-  overdue: { label: 'Vencido',    color: '#ef4444', bg: '#fee2e2', text: '#991b1b' },
-};
+const ITEMS_PER_PAGE = 6;
 
 export default function BusinessesResponsive() {
-  const [businesses, setBusinesses]     = useState([]);
+  const [businesses, setBusinesses] = useState([]);
   const [businessTypes, setBusinessTypes] = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [search, setSearch]             = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterSub, setFilterSub]       = useState('all');
-  const [screenshot, setScreenshot]     = useState(null);
-  const [detailBiz, setDetailBiz]       = useState(null);
-  const [subModal, setSubModal]         = useState(null);
-  const [subForm, setSubForm]           = useState({ 
-    subscriptionStatus: '', 
-    lastPaymentDate: '',
-    subscriptionStartDate: '',
-    subscriptionEndDate: '',
-    subscriptionPlan: 'basic',
-    additionalUsers: 0
-  });
-  const [availablePlans, setAvailablePlans] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   
-  // Planes predefinidos
-  const PLANS = {
-    basic: { name: 'Básico', price: 70000, includedUsers: 3 },
-    pro: { name: 'Pro', price: 90000, includedUsers: 5 },
-    premium: { name: 'Premium', price: 130000, includedUsers: 10 }
-  };
-  const ADDITIONAL_USER_PRICE = 20000;
+  // Toast state
+  const [toast, setToast] = useState(null);
   
-  // Estado para modal rápido de agregar usuarios
-  const [quickAddModal, setQuickAddModal] = useState(null);
-  const [quickAddCount, setQuickAddCount] = useState(1);
-  const [quickAdding, setQuickAdding] = useState(false);
-  const [saving, setSaving]             = useState(false);
-  const [toast, setToast]               = useState(null);
-  const [currentPage, setCurrentPage]     = useState(1);
-  const ITEMS_PER_PAGE = 6;
+  // Modal states
+  const [detailBiz, setDetailBiz] = useState(null);
+  const [screenshotBiz, setScreenshotBiz] = useState(null);
+  const [businessToDelete, setBusinessToDelete] = useState(null);
 
-  const handleApprovePayment = async (bizId) => {
-    try {
-      const response = await api.post(`/businesses/${bizId}/approve-payment`);
-      setBusinesses(prev => prev.map(b => 
-        b.id === bizId ? { ...b, ...response.data.business, subscriptionStatus: 'paid' } : b
-      ));
-      setScreenshot(null);
-      showToast('Pago aprobado correctamente. Suscripción activada por 30 días.');
-    } catch (err) {
-      showToast('Error al aprobar el pago', 'error');
-    }
-  };
-
-  const handleApproveBranch = async (bizId, approve) => {
-    try {
-      await api.post(`/businesses/${bizId}/approve-branch`, { approve });
-      setBusinesses(prev => prev.map(b => 
-        b.id === bizId ? { 
-          ...b, 
-          branchStatus: approve ? 'approved' : 'rejected', 
-          status: approve ? 'active' : 'blocked',
-          subscriptionStatus: approve ? 'paid' : b.subscriptionStatus
-        } : b
-      ));
-      showToast(approve ? 'Sucursal aprobada y activada' : 'Sucursal rechazada');
-    } catch (err) {
-      showToast('Error al procesar la sucursal', 'error');
-    }
-  };
+  // Use subscription hook
+  const {
+    PLANS,
+    subModal,
+    setSubModal,
+    subForm,
+    updateSubForm,
+    quickAddModal,
+    setQuickAddModal,
+    quickAddCount,
+    setQuickAddCount,
+    quickAdding,
+    saving,
+    calculateTotal,
+    openSubscriptionModal,
+    handleSubscriptionUpdate,
+    handleQuickAddUsers,
+    handleApprovePayment,
+    handleApproveBranch,
+    openQuickAddModal
+  } = useBusinessSubscriptions({ businesses, setBusinesses, showToast });
 
   useEffect(() => {
     loadAll();
@@ -114,18 +74,10 @@ export default function BusinessesResponsive() {
     }
   };
 
-  const showToast = (msg, type = 'success') => {
+  function showToast(msg, type = 'success') {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
-  };
-
-  const getTypeInfo = (typeId) => {
-    const type = businessTypes.find(t => t.id === typeId);
-    return type ? {
-      icon: <Building2 size={14} />,
-      label: type.name
-    } : { icon: <Building2 size={14} />, label: 'Desconocido' };
-  };
+  }
 
   const filtered = (businesses || []).filter(biz => {
     const name = biz.name || '';
@@ -138,19 +90,18 @@ export default function BusinessesResponsive() {
       ownerName.toLowerCase().includes(search.toLowerCase());
     
     const matchStatus = filterStatus === 'all' || biz.status === filterStatus;
-    const matchSub = filterSub === 'all' || biz.subscriptionStatus === filterSub;
     
-    return matchSearch && matchStatus && matchSub;
+    return matchSearch && matchStatus;
   });
 
-  // Paginación
+  // Pagination
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   
-  // Reset a página 1 cuando cambian los filtros
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStatus, filterSub]);
+  }, [search, filterStatus]);
 
   const handleStatusToggle = async (biz) => {
     try {
@@ -165,96 +116,31 @@ export default function BusinessesResponsive() {
     }
   };
 
-  const handleSubscriptionUpdate = async () => {
-    setSaving(true);
+  const handleDelete = async () => {
+    if (!businessToDelete) return;
     try {
-      // Actualizar fechas de suscripción
-      const response = await api.patch(`/businesses/${subModal.id}/subscription-dates`, {
-        subscriptionStatus: subForm.subscriptionStatus,
-        lastPaymentDate: subForm.lastPaymentDate,
-        subscriptionStartDate: subForm.subscriptionStartDate,
-        subscriptionEndDate: subForm.subscriptionEndDate
-      });
-      
-      // Actualizar plan y usuarios adicionales
-      await api.put(`/businesses/${subModal.id}/subscription-plan`, {
-        subscriptionPlan: subForm.subscriptionPlan,
-        additionalUsers: parseInt(subForm.additionalUsers) || 0
-      });
-      
-      setBusinesses(prev => prev.map(b => 
-        b.id === subModal.id ? { ...b, ...response.data } : b
-      ));
-      showToast('Suscripción y plan actualizados');
-      setSubModal(null);
-    } catch (err) {
-      console.error('Error:', err);
-      showToast('Error al actualizar suscripción', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-  
-  // Calcular precio total
-  const calculateTotal = () => {
-    const plan = PLANS[subForm.subscriptionPlan] || PLANS.basic;
-    const additional = subForm.additionalUsers === '' ? 0 : (parseInt(subForm.additionalUsers) || 0);
-    return plan.price + (additional * ADDITIONAL_USER_PRICE);
-  };
-  
-  // Agregar usuarios rápidamente (sin cambiar plan ni fechas)
-  const handleQuickAddUsers = async () => {
-    if (!quickAddModal || quickAddCount < 1) return;
-    
-    setQuickAdding(true);
-    try {
-      await api.post(`/businesses/${quickAddModal.id}/additional-users`, {
-        count: parseInt(quickAddCount)
-      });
-      
-      // Actualizar el negocio en la lista
-      setBusinesses(prev => prev.map(b => 
-        b.id === quickAddModal.id 
-          ? { ...b, additionalUsers: (b.additionalUsers || 0) + parseInt(quickAddCount) }
-          : b
-      ));
-      
-      showToast(`✅ Se agregaron ${quickAddCount} usuarios a ${quickAddModal.name}`);
-      setQuickAddModal(null);
-      setQuickAddCount(1);
-    } catch (err) {
-      showToast('Error al agregar usuarios', 'error');
-    } finally {
-      setQuickAdding(false);
-    }
-  };
-
-  const handleDelete = async (biz) => {
-    if (!confirm(`¿Estás seguro de eliminar el negocio "${biz.name}"?\n\nEsta acción no se puede deshacer y eliminará todos los datos asociados (citas, servicios, empleados).`)) {
-      return;
-    }
-    try {
-      await api.delete(`/businesses/${biz.id}`);
-      setBusinesses(prev => prev.filter(b => b.id !== biz.id));
+      await api.delete(`/businesses/${businessToDelete.id}`);
+      setBusinesses(prev => prev.filter(b => b.id !== businessToDelete.id));
       showToast('Negocio eliminado correctamente');
+      setBusinessToDelete(null);
     } catch (err) {
       showToast('Error al eliminar negocio', 'error');
     }
   };
 
   const handleViewScreenshot = async (biz) => {
-    setScreenshot({ url: biz.paymentScreenshot || biz.branchPaymentScreenshot, business: biz });
-    // Marcar como visto inmediatamente en UI
+    setScreenshotBiz(biz);
+    // Mark as viewed in UI immediately
     if (!biz.paymentScreenshotViewed) {
       setBusinesses(prev => prev.map(b => 
         b.id === biz.id ? { ...b, paymentScreenshotViewed: true } : b
       ));
-      // Luego llamar al backend
+      // Then call backend
       try {
         await api.patch(`/businesses/${biz.id}/screenshot-viewed`);
       } catch (e) {
         console.error('Error al marcar como visto:', e);
-        // Revertir si falla
+        // Revert if fails
         setBusinesses(prev => prev.map(b => 
           b.id === biz.id ? { ...b, paymentScreenshotViewed: false } : b
         ));
@@ -262,199 +148,20 @@ export default function BusinessesResponsive() {
     }
   };
 
-  const BusinessCard = ({ biz }) => {
-    const typeInfo = getTypeInfo(biz.type);
-    const subInfo  = SUB_LABELS[biz.subscriptionStatus] || SUB_LABELS.pending;
-    
-    return (
-      <div className="card" style={{ 
-        padding: 20, border: '1px solid var(--border)',
-        borderRadius: 16, background: 'var(--surface)',
-        display: 'flex', flexDirection: 'column', height: '100%',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 14, flexShrink: 0,
-            background: biz.status === 'active' ? 'linear-gradient(135deg, var(--gray-50), var(--gray-100))' : 'var(--gray-100)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-            border: '1px solid var(--border)'
-          }}>
-            {biz.logoUrl
-              ? <img src={getImgUrl(biz.logoUrl)} alt="" style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
-              : typeInfo.icon
-            }
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{biz.name}</h3>
-            <p style={{ margin: '2px 0 4px', fontSize: 12, color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace' }}>/{biz.slug}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{biz.Owner?.name || '—'}</p>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{biz.Owner?.email || '—'}</p>
-            </div>
-          </div>
-        </div>
+  const handleCloseScreenshot = () => {
+    setScreenshotBiz(null);
+  };
 
-        {/* Badges */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 'auto', flexWrap: 'wrap' }}>
-          <span className="badge" style={{ 
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-            background: biz.status === 'active' ? 'var(--success-bg)' : 'var(--danger-bg)', 
-            color: biz.status === 'active' ? 'var(--success-text)' : 'var(--danger-text)',
-            display: 'flex', alignItems: 'center', gap: 4
-          }}>
-            {biz.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
-            {biz.status === 'active' ? 'Activa' : 'Bloqueada'}
-          </span>
-          <span className="badge" style={{ 
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-            background: subInfo.bg, color: subInfo.text,
-            display: 'flex', alignItems: 'center', gap: 4
-          }}>
-            {biz.subscriptionStatus === 'paid' && <CheckCircle size={12} />}
-            {biz.subscriptionStatus === 'pending' && <Clock size={12} />}
-            {biz.subscriptionStatus === 'overdue' && <AlertTriangle size={12} />}
-            {subInfo.label}
-          </span>
-          
-          {/* Badge del Plan */}
-          <span className="badge" style={{ 
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-            background: biz.subscriptionPlan === 'premium' ? '#fef3c7' : biz.subscriptionPlan === 'pro' ? '#e0e7ff' : '#d1fae5',
-            color: biz.subscriptionPlan === 'premium' ? '#92400e' : biz.subscriptionPlan === 'pro' ? '#3730a3' : '#065f46',
-            display: 'flex', alignItems: 'center', gap: 4
-          }}>
-            <Building2 size={12} />
-            {biz.subscriptionPlan === 'basic' && 'Básico'}
-            {biz.subscriptionPlan === 'pro' && 'Pro'}
-            {biz.subscriptionPlan === 'premium' && 'Premium'}
-            {!biz.subscriptionPlan && 'Básico'}
-            ({(biz.includedUsers || 3) + (biz.additionalUsers || 0)} empleados)
-          </span>
-          
-          {biz.isBranch && (
-            <span className="badge" style={{ 
-              padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-              background: biz.branchStatus === 'approved' ? '#e0f2fe' : '#fef3c7', 
-              color: biz.branchStatus === 'approved' ? '#0369a1' : '#92400e',
-              display: 'flex', alignItems: 'center', gap: 4,
-              border: biz.branchStatus === 'pending_approval' ? '2px solid #f59e0b' : 'none',
-              animation: biz.branchStatus === 'pending_approval' ? 'pulse 2s infinite' : 'none'
-            }}>
-              <Store size={12} />
-              {biz.branchStatus === 'pending_approval' ? 'NUEVA SUCURSAL' : 'Sucursal'}
-            </span>
-          )}
-          {(biz.paymentScreenshot || biz.branchPaymentScreenshot) && (!biz.paymentScreenshotViewed) && (
-            <span className="badge" style={{ 
-              padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-              background: 'var(--info-bg)', color: 'var(--info-text)',
-              display: 'flex', alignItems: 'center', gap: 4
-            }}>
-              <Image size={12} />
-              Nuevo comprobante
-            </span>
-          )}
-        </div>
+  const handleApprovePaymentAndClose = async (bizId) => {
+    const success = await handleApprovePayment(bizId);
+    if (success) {
+      setScreenshotBiz(null);
+    }
+  };
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          {(biz.paymentScreenshot || biz.branchPaymentScreenshot) && (
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <button 
-                className="btn-icon" 
-                onClick={() => handleViewScreenshot(biz)}
-                title="Ver comprobante"
-                style={{ 
-                  background: !biz.paymentScreenshotViewed ? 'var(--info-bg)' : 'var(--gray-100)', 
-                  color: !biz.paymentScreenshotViewed ? 'var(--info-text)' : 'var(--text-muted)',
-                  border: (!biz.paymentScreenshotViewed || biz.branchStatus === 'pending_approval') ? '2px solid var(--primary)' : '1px solid var(--border)',
-                  position: 'relative'
-                }}
-              >
-                <Image size={18} />
-                {!biz.paymentScreenshotViewed && (
-                  <span style={{
-                    position: 'absolute',
-                    top: -5,
-                    right: -5,
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    background: 'var(--danger)',
-                    border: '2px solid var(--surface)'
-                  }} />
-                )}
-              </button>
-            </div>
-          )}
-          {biz.branchStatus === 'pending_approval' && (
-            <>
-              <button 
-                className="btn-icon" 
-                onClick={() => handleApproveBranch(biz.id, true)}
-                title="Aprobar sucursal"
-                style={{ background: 'var(--success-bg)', color: 'var(--success-text)' }}
-              >
-                <CheckCircle size={18} />
-              </button>
-              <button 
-                className="btn-icon" 
-                onClick={() => handleApproveBranch(biz.id, false)}
-                title="Rechazar sucursal"
-                style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)' }}
-              >
-                <XCircle size={18} />
-              </button>
-            </>
-          )}
-          {/* Botón rápido para agregar usuarios */}
-          <button 
-            className="btn-icon" 
-            onClick={() => {
-              setQuickAddModal(biz);
-              setQuickAddCount(1);
-            }}
-            title="Agregar usuarios rápido"
-            style={{ background: '#e0e7ff', color: '#3730a3' }}
-          >
-            <UserPlus size={18} />
-          </button>
-          
-          <button 
-            className="btn-icon" 
-            onClick={() => setDetailBiz(biz)}
-            title="Ver detalles"
-            style={{ background: 'var(--info-bg)', color: 'var(--info-text)' }}
-          >
-            <Eye size={18} />
-          </button>
-          <button 
-            className="btn-icon" 
-            onClick={() => handleStatusToggle(biz)}
-            title={biz.status === 'active' ? 'Bloquear' : 'Desbloquear'}
-            style={{ 
-              background: biz.status === 'active' ? 'var(--danger-bg)' : 'var(--success-bg)', 
-              color: biz.status === 'active' ? 'var(--danger-text)' : 'var(--success-text)' 
-            }}
-          >
-            {biz.status === 'active' ? <Lock size={18} /> : <Unlock size={18} />}
-          </button>
-          <button 
-            className="btn-icon" 
-            onClick={() => handleDelete(biz)}
-            title="Eliminar negocio"
-            style={{ 
-              background: 'var(--danger-bg)', 
-              color: 'var(--danger-text)'
-            }}
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      </div>
-    );
+  const handleOpenSubscriptionFromDetail = () => {
+    setDetailBiz(null);
+    openSubscriptionModal(detailBiz);
   };
 
   return (
@@ -509,10 +216,22 @@ export default function BusinessesResponsive() {
       ) : (
         <>
           <div className="sa-biz-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-            {paginatedItems.map(biz => <BusinessCard key={biz.id} biz={biz} />)}
+            {paginatedItems.map(biz => (
+              <BusinessCard 
+                key={biz.id} 
+                biz={biz} 
+                businessTypes={businessTypes}
+                onViewScreenshot={handleViewScreenshot}
+                onApproveBranch={handleApproveBranch}
+                onQuickAddUsers={openQuickAddModal}
+                onViewDetails={setDetailBiz}
+                onToggleStatus={handleStatusToggle}
+                onDelete={setBusinessToDelete}
+              />
+            ))}
           </div>
           
-          {/* Paginación */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ 
               display: 'flex', 
@@ -582,353 +301,45 @@ export default function BusinessesResponsive() {
         </>
       )}
 
-      {detailBiz && (
-        <div className="modal-overlay">
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{detailBiz.name}</h3>
-                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>Información detallada del negocio</p>
-              </div>
-              <button className="btn-icon" onClick={() => setDetailBiz(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)' }}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div style={{ padding: 28 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                    <Search size={20} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Identificador</p>
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>/{detailBiz.slug}</p>
-                  </div>
-                </div>
+      {/* Modals */}
+      <BusinessDetailModal
+        business={detailBiz}
+        onClose={() => setDetailBiz(null)}
+        onOpenSubscription={handleOpenSubscriptionFromDetail}
+      />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success-text)' }}>
-                    <User size={20} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Propietario</p>
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{detailBiz.Owner?.email}</p>
-                  </div>
-                </div>
+      <SubscriptionModal
+        business={subModal}
+        form={subForm}
+        onClose={() => setSubModal(null)}
+        onUpdate={handleSubscriptionUpdate}
+        onChange={updateSubForm}
+        saving={saving}
+        calculateTotal={calculateTotal}
+      />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '20px', background: 'var(--gray-100)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                  <div>
-                    <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Suscripción desde</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Calendar size={16} color="var(--primary)" />
-                      <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>
-                        {detailBiz.subscriptionStartDate ? new Date(detailBiz.subscriptionStartDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No definida'}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vence el día</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Clock size={16} color="var(--danger)" />
-                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--danger)' }}>
-                        {detailBiz.subscriptionEndDate ? new Date(detailBiz.subscriptionEndDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No definida'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+      <ScreenshotModal
+        screenshot={screenshotBiz?.paymentScreenshot || screenshotBiz?.branchPaymentScreenshot}
+        business={screenshotBiz}
+        onClose={handleCloseScreenshot}
+        onApprove={handleApprovePaymentAndClose}
+      />
 
-                <button 
-                  className="btn-primary" 
-                  style={{ width: '100%', padding: '14px', borderRadius: 10, fontWeight: 700, marginTop: 4, fontSize: 15 }}
-                  onClick={() => {
-                    setSubForm({
-                      subscriptionStatus: detailBiz.subscriptionStatus || 'pending',
-                      lastPaymentDate: detailBiz.lastPaymentDate ? detailBiz.lastPaymentDate.split('T')[0] : '',
-                      subscriptionStartDate: detailBiz.subscriptionStartDate ? detailBiz.subscriptionStartDate.split('T')[0] : '',
-                      subscriptionEndDate: detailBiz.subscriptionEndDate ? detailBiz.subscriptionEndDate.split('T')[0] : '',
-                      subscriptionPlan: detailBiz.subscriptionPlan || 'basic',
-                      additionalUsers: detailBiz.additionalUsers || 0
-                    });
-                    setSubModal(detailBiz);
-                    setDetailBiz(null);
-                  }}
-                >
-                  <CreditCard size={18} style={{ marginRight: 8 }} />
-                  Actualizar Suscripción
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuickAddUsersModal
+        business={quickAddModal}
+        count={quickAddCount}
+        onClose={() => setQuickAddModal(null)}
+        onConfirm={handleQuickAddUsers}
+        onChangeCount={setQuickAddCount}
+        adding={quickAdding}
+      />
 
-      {subModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: '98%', maxHeight: '90vh', padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Actualizar Suscripción</h2>
-                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{subModal.name}</p>
-              </div>
-              <button onClick={() => setSubModal(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
-              <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
-              
-              {/* Sección: Plan de Suscripción */}
-              <div style={{ background: 'var(--gray-100)', padding: '16px', borderRadius: 12, border: '1px solid var(--border)' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>📦 Plan de Suscripción</h4>
-                
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plan</label>
-                  <select 
-                    value={subForm.subscriptionPlan} 
-                    onChange={e => setSubForm(prev => ({ ...prev, subscriptionPlan: e.target.value }))} 
-                    style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }}
-                  >
-                    <option value="basic">💚 Básico - $70.000 (3 empleados)</option>
-                    <option value="pro">💙 Pro - $90.000 (5 empleados)</option>
-                    <option value="premium">💛 Premium - $130.000 (10 empleados)</option>
-                  </select>
-                </div>
-                
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Empleados extras</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={subForm.additionalUsers} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        // Permitir string vacío o número válido
-                        if (val === '') {
-                          setSubForm(prev => ({ ...prev, additionalUsers: '' }));
-                        } else {
-                          const num = parseInt(val);
-                          if (!isNaN(num) && num >= 0) {
-                            setSubForm(prev => ({ ...prev, additionalUsers: num }));
-                          }
-                        }
-                      }}
-                      onBlur={e => {
-                        // Al salir del campo, si está vacío poner 0
-                        if (e.target.value === '') {
-                          setSubForm(prev => ({ ...prev, additionalUsers: 0 }));
-                        }
-                      }}
-                      style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }} 
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total mensual</label>
-                    <div style={{ padding: '10px', borderRadius: 8, background: 'var(--success-bg)', color: 'var(--success-text)', fontWeight: 700, fontSize: 16, textAlign: 'center' }}>
-                      ${calculateTotal().toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                  {PLANS[subForm.subscriptionPlan]?.includedUsers} incluidos + {subForm.additionalUsers === '' ? 0 : (subForm.additionalUsers || 0)} extras = {PLANS[subForm.subscriptionPlan]?.includedUsers + (subForm.additionalUsers === '' ? 0 : (parseInt(subForm.additionalUsers) || 0))} empleados totales (admin no cuenta)
-                </div>
-              </div>
-              
-              {/* Sección: Estado de Suscripción */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de suscripción</label>
-                <select value={subForm.subscriptionStatus} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStatus: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }}>
-                  <option value="pending">⏳ Pendiente</option>
-                  <option value="paid">✅ Al día</option>
-                  <option value="overdue">❌ Vencido</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inicio</label>
-                  <input type="date" value={subForm.subscriptionStartDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionStartDate: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vencimiento</label>
-                  <input type="date" value={subForm.subscriptionEndDate} onChange={e => setSubForm(prev => ({ ...prev, subscriptionEndDate: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text)' }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                <button className="btn-secondary" style={{ flex: 1, padding: '10px', borderRadius: 8, fontWeight: 600, fontSize: 14 }} onClick={() => setSubModal(null)}>Cancelar</button>
-                <button className="btn-primary" style={{ flex: 2, padding: '10px', borderRadius: 8, fontWeight: 700, fontSize: 14 }} onClick={handleSubscriptionUpdate} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {screenshot && (
-        <div className="modal-overlay" style={{ zIndex: 10000 }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ 
-            maxWidth: 500, 
-            maxHeight: '90vh',
-            background: 'var(--surface)', 
-            padding: 0, 
-            borderRadius: 16,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #10b981, #059669)', 
-              padding: '16px 20px', 
-              color: 'white', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Image size={20} />
-                <span style={{ fontWeight: 600 }}>Comprobante de Pago</span>
-              </div>
-              <button 
-                onClick={() => setScreenshot(null)} 
-                style={{ 
-                  color: 'white', 
-                  background: 'rgba(255,255,255,0.2)', 
-                  border: 'none', 
-                  borderRadius: 8, 
-                  width: 32, 
-                  height: 32, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  cursor: 'pointer' 
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div style={{ padding: 20, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
-              <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
-              <img 
-                src={getImgUrl(screenshot.url)} 
-                alt="Comprobante de Pago" 
-                style={{ 
-                  width: '100%', 
-                  maxHeight: '60vh',
-                  borderRadius: 8,
-                  objectFit: 'contain'
-                }} 
-              />
-            </div>
-            <div style={{ padding: '0 20px 20px', display: 'flex', gap: 12 }}>
-              <button 
-                className="btn-primary" 
-                style={{ 
-                  flex: 1, 
-                  background: 'var(--success)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  gap: 8,
-                  fontSize: 15,
-                  fontWeight: 700
-                }} 
-                onClick={() => handleApprovePayment(screenshot.business.id)}
-              >
-                <Check size={20} />
-                Aprobar Pago (+30 días)
-              </button>
-              <button 
-                className="btn-secondary" 
-                style={{ flex: 1, padding: '12px', borderRadius: 8, fontWeight: 600 }} 
-                onClick={() => setScreenshot(null)}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Modal rápido para agregar usuarios */}
-      {quickAddModal && (
-        <div className="modal-overlay" onClick={() => setQuickAddModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, width: '98%', padding: 0, overflow: 'hidden', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div style={{ background: 'linear-gradient(135deg, #3730a3, #6366f1)', padding: '24px 28px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>➕ Agregar Empleados</h2>
-                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{quickAddModal.name} (el admin no cuenta)</p>
-              </div>
-              <button onClick={() => setQuickAddModal(null)} style={{ color: 'white', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: 'var(--gray-100)', padding: '16px', borderRadius: 12, border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Plan actual:</span>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[quickAddModal.subscriptionPlan]?.name || 'Básico'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados incluidos:</span>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[quickAddModal.subscriptionPlan]?.includedUsers || 2}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados extras:</span>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{quickAddModal.additionalUsers || 0}</span>
-                </div>
-                <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Total empleados permitidos:</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-                    {(PLANS[quickAddModal.subscriptionPlan]?.includedUsers || 2) + (quickAddModal.additionalUsers || 0)}
-                  </span>
-                </div>
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Empleados a agregar
-                </label>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={quickAddCount}
-                    onChange={e => setQuickAddCount(Math.max(1, parseInt(e.target.value) || 1))}
-                    style={{ flex: 1, padding: '12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, background: 'var(--surface)', color: 'var(--text)', textAlign: 'center', fontWeight: 600 }}
-                  />
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Costo adicional</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--success-text)' }}>
-                      ${(quickAddCount * ADDITIONAL_USER_PRICE).toLocaleString()}/mes
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                  Cada usuario adicional cuesta ${ADDITIONAL_USER_PRICE.toLocaleString()} COP/mes
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button 
-                  className="btn-secondary" 
-                  style={{ flex: 1, padding: '12px', borderRadius: 8, fontWeight: 600, fontSize: 14 }} 
-                  onClick={() => setQuickAddModal(null)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  className="btn-primary" 
-                  style={{ flex: 2, padding: '12px', borderRadius: 8, fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg, #3730a3, #6366f1)' }} 
-                  onClick={handleQuickAddUsers}
-                  disabled={quickAdding}
-                >
-                  {quickAdding ? 'Agregando...' : `➕ Agregar ${quickAddCount} empleado${quickAddCount > 1 ? 's' : ''}`}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        business={businessToDelete}
+        onClose={() => setBusinessToDelete(null)}
+        onConfirm={handleDelete}
+        saving={saving}
+      />
     </SuperAdminLayout>
   );
 }

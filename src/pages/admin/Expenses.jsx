@@ -35,11 +35,18 @@ export default function Expenses() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
+  // Toast notification state
+  const [statusMsg, setStatusMsg] = useState(null);
+  const showStatus = (text, type = 'success') => {
+    setStatusMsg({ text, type });
+    setTimeout(() => setStatusMsg(null), 3500);
+  };
+
   useEffect(() => {
     if (business?.id) loadExpenses();
   }, [business, filterMonth]);
 
-  const loadExpenses = async () => {
+  const loadExpenses = async (skipCache = false) => {
     setLoading(true);
     try {
       const [year, month] = filterMonth.split('-');
@@ -52,7 +59,8 @@ export default function Expenses() {
         params: { 
           businessId: business.id,
           startDate,
-          endDate
+          endDate,
+          noCache: skipCache || undefined
         }
       });
       setExpenses(res.data.expenses || []);
@@ -84,9 +92,9 @@ export default function Expenses() {
         });
       }
       closeModal();
-      loadExpenses();
+      loadExpenses(true);
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al guardar');
+      showStatus(e.response?.data?.error || 'Error al guardar', 'error');
     } finally {
       setSaving(false);
     }
@@ -117,10 +125,10 @@ export default function Expenses() {
     setShowDeleteConfirm(false);
     try {
       await api.delete(`/expenses/${deleteTarget.id}`);
-      setExpenses(expenses.filter(e => e.id !== deleteTarget.id));
+      await loadExpenses(true);
       setDeleteTarget(null);
     } catch (e) {
-      alert('Error al eliminar');
+      showStatus('Error al eliminar', 'error');
     }
   };
 
@@ -583,6 +591,23 @@ export default function Expenses() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {statusMsg && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
+          color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
+          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {statusMsg.type === 'error' ? <X size={16} /> : <TrendingDown size={16} />}
+          {statusMsg.text}
         </div>
       )}
     </AdminLayout>
