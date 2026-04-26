@@ -1,39 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { io } from 'socket.io-client';
-import { Capacitor } from '@capacitor/core';
-
-// Helper para obtener token del localStorage
-const getToken = () => localStorage.getItem('token');
-
-// Detectar si estamos en APK (Capacitor) o web
-const isNative = Capacitor.isNativePlatform();
-
-// Construir URL del socket correctamente
-function getSocketUrl() {
-  // En APK usar producción
-  if (isNative) {
-    return 'https://reservas.k-dice.com';
-  }
-  
-  // En web, verificar si VITE_API_URL es relativa (ej: '/api') o absoluta
-  const apiUrl = import.meta.env.VITE_API_URL;
-  
-  if (!apiUrl || apiUrl.startsWith('/')) {
-    // URL relativa - usar el mismo origen (aprovechar proxy de Vite)
-    // El proxy de Vite manejará '/socket.io' -> 'http://localhost:4000/socket.io'
-    return window.location.origin;
-  }
-  
-  // URL absoluta ya configurada - extraer solo el origen
-  try {
-    const url = new URL(apiUrl);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return apiUrl;
-  }
-}
-
-const SOCKET_URL = getSocketUrl();
+import { 
+  getSocket, 
+  subscribeToEvent, 
+  unsubscribeFromEvent, 
+  isSocketConnected,
+  disconnectSocket 
+} from './socketSingleton';
 
 /**
  * Hook personalizado para manejar la conexión Socket.io
@@ -70,13 +42,11 @@ export function useSocket({
   onConnect,
   onDisconnect
 }) {
-  const socketRef = useRef(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(isSocketConnected());
   const [connectionError, setConnectionError] = useState(null);
   const [stats, setStats] = useState({ receivedEvents: 0, lastEvent: null });
 
-  // REFS ESTABLES - Guardar valores para evitar reconexiones innecesarias
-  const authRef = useRef({ userId, role, employeeId });
+  // REF para almacenar los callbacks actuales sin causar re-renders
   const callbacksRef = useRef({
     onAppointmentCreated,
     onAppointmentUpdated,
@@ -89,11 +59,7 @@ export function useSocket({
     onDisconnect
   });
 
-  // Actualizar refs sin causar re-renders
-  useEffect(() => {
-    authRef.current = { userId, role, employeeId };
-  }, [userId, role, employeeId]);
-
+  // Actualizar callbacks sin causar re-renders
   useEffect(() => {
     callbacksRef.current = {
       onAppointmentCreated,
@@ -108,105 +74,65 @@ export function useSocket({
     };
   }, [onAppointmentCreated, onAppointmentUpdated, onAppointmentCancelled, onNewAssigned, onServiceCreated, onServiceUpdated, onServiceDeleted, onConnect, onDisconnect]);
 
-  // Inicializar conexión - Solo cuando cambia businessId
-  // El employeeId se lee directamente de los props en cada ejecución
+  // Inicializar/Conectar socket usando el singleton
   useEffect(() => {
     console.log('[useSocket] useEffect triggered. businessId:', businessId, 'autoConnect:', autoConnect, 'role:', role);
+    
     if (!businessId || !autoConnect) {
       console.log('[useSocket] Skipping connection - missing businessId or autoConnect disabled');
-      // Si hay una conexión existente, desconectarla
-      if (socketRef.current) {
-        console.log('[useSocket] Desconectando socket existente por businessId inválido');
-        socketRef.current.disconnect();
-        socketRef.current = null;
-        setIsConnected(false);
-      }
       return;
     }
 
-    // Si ya hay una conexión activa con el mismo businessId, no reconectar
-    if (socketRef.current?.connected && socketRef.current?.auth?.businessId === businessId) {
-      console.log('[useSocket] Socket ya conectado con mismo businessId, skipping');
+    // Obtener o crear conexión singleton
+    const socket = getSocket(businessId, role, userId, employeeId);
+    
+    if (!socket) {
+      console.error('[useSocket] No se pudo obtener socket');
       return;
     }
 
-    // Desconectar socket anterior si existe
-    if (socketRef.current) {
-      console.log('[useSocket] Desconectando socket anterior antes de reconectar');
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
+    console.log('[useSocket] Socket obtenido. Conectado:', socket.connected);
+    setIsConnected(socket.connected);
 
-    const token = getToken();
-    console.log('[useSocket] Connecting to:', SOCKET_URL, 'with businessId:', businessId, 'role:', role, 'userId:', userId);
-
-    // Configurar socket con auth - usar valores directamente
-    const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
-      auth: {
-        token,
-        businessId,
-        userId,
-        role,
-        employeeId
-      }
-    });
-
-    socketRef.current = socket;
-
-    // Evento de conexión exitosa
-    socket.on('connect', () => {
+    // Callback wrappers que llaman a los refs actuales
+    const handleConnect = () => {
       console.log('[useSocket] Connected! Socket ID:', socket.id);
-      console.log('[useSocket] Salas actuales:', socket.rooms ? Array.from(socket.rooms) : 'N/A (server-side only)');
-      console.log('[useSocket] Auth enviado:', { businessId, role, userId, employeeId });
       setIsConnected(true);
       setConnectionError(null);
       callbacksRef.current.onConnect?.();
-    });
+    };
 
-    // Evento de desconexión
-    socket.on('disconnect', (reason) => {
+    const handleDisconnect = (reason) => {
       console.log('[useSocket] Disconnected. Reason:', reason);
       setIsConnected(false);
       callbacksRef.current.onDisconnect?.(reason);
-    });
+    };
 
-    // Evento de error de conexión
-    socket.on('connect_error', (error) => {
+    const handleConnectError = (error) => {
       console.error('[useSocket] Connection error:', error.message);
       setConnectionError(error.message);
-    });
+    };
 
-
-    // 🔔 Evento: Nueva cita creada (para admins)
-    socket.on('appointment:created', (data) => {
+    const handleAppointmentCreated = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'created', data, time: new Date() }
       }));
       callbacksRef.current.onAppointmentCreated?.(data);
-    });
+    };
 
-    // 🔔 Evento: Nueva cita asignada a empleado
-    socket.on('appointment:new_assigned', (data) => {
+    const handleNewAssigned = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'new_assigned', data, time: new Date() }
       }));
       callbacksRef.current.onNewAssigned?.(data);
-    });
+    };
 
-    // Evento: Cita actualizada
-    socket.on('appointment:updated', (data) => {
+    const handleAppointmentUpdated = (data) => {
       console.log('[useSocket] ⬇️ appointment:updated recibido:', {
         id: data.id,
         status: data.status,
-        technicianStatus: data.technicianStatus,
         employeeId: data.employeeId,
         businessId: data.businessId
       });
@@ -214,66 +140,80 @@ export function useSocket({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'updated', data, time: new Date() }
       }));
-      const callback = callbacksRef.current.onAppointmentUpdated;
-      console.log('[useSocket] onAppointmentUpdated callback existe?', !!callback);
-      if (callback) {
-        console.log('[useSocket] Llamando onAppointmentUpdated...');
-        callback(data);
-        console.log('[useSocket] onAppointmentUpdated completado');
-      }
-    });
+      callbacksRef.current.onAppointmentUpdated?.(data);
+    };
 
-    // 🔔 Evento: Cita cancelada
-    socket.on('appointment:cancelled', (data) => {
+    const handleAppointmentCancelled = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'cancelled', data, time: new Date() }
       }));
       callbacksRef.current.onAppointmentCancelled?.(data);
-    });
+    };
 
-    // Evento de actualización por fecha (para recargar calendarios)
-    socket.on('appointment:date_update', (data) => {
-      // Fecha actualizada: data.date
-    });
-
-    // 🔔 Eventos de servicios
-    socket.on('service:created', (data) => {
+    const handleServiceCreated = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'service_created', data, time: new Date() }
       }));
       callbacksRef.current.onServiceCreated?.(data);
-    });
+    };
 
-    socket.on('service:updated', (data) => {
+    const handleServiceUpdated = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'service_updated', data, time: new Date() }
       }));
       callbacksRef.current.onServiceUpdated?.(data);
-    });
+    };
 
-    socket.on('service:deleted', (data) => {
+    const handleServiceDeleted = (data) => {
       setStats(prev => ({
         receivedEvents: prev.receivedEvents + 1,
         lastEvent: { type: 'service_deleted', data, time: new Date() }
       }));
       callbacksRef.current.onServiceDeleted?.(data);
-    });
+    };
 
-    // Limpiar al desmontar o cuando cambia businessId
+    // Suscribir a eventos usando el singleton
+    const unsubConnect = subscribeToEvent('connect', handleConnect);
+    const unsubDisconnect = subscribeToEvent('disconnect', handleDisconnect);
+    const unsubConnectError = subscribeToEvent('connect_error', handleConnectError);
+    const unsubCreated = subscribeToEvent('appointment:created', handleAppointmentCreated);
+    const unsubNewAssigned = subscribeToEvent('appointment:new_assigned', handleNewAssigned);
+    const unsubUpdated = subscribeToEvent('appointment:updated', handleAppointmentUpdated);
+    const unsubCancelled = subscribeToEvent('appointment:cancelled', handleAppointmentCancelled);
+    const unsubServiceCreated = subscribeToEvent('service:created', handleServiceCreated);
+    const unsubServiceUpdated = subscribeToEvent('service:updated', handleServiceUpdated);
+    const unsubServiceDeleted = subscribeToEvent('service:deleted', handleServiceDeleted);
+
+    // Si ya está conectado, llamar onConnect inmediatamente
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    // Cleanup: solo desuscribir listeners, NO desconectar el socket
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      console.log('[useSocket] Cleanup - desuscribiendo listeners (socket sigue conectado)');
+      unsubConnect();
+      unsubDisconnect();
+      unsubConnectError();
+      unsubCreated();
+      unsubNewAssigned();
+      unsubUpdated();
+      unsubCancelled();
+      unsubServiceCreated();
+      unsubServiceUpdated();
+      unsubServiceDeleted();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId, autoConnect]); // Solo reconectar cuando cambia businessId
+  }, [businessId, autoConnect, role]); // Reconectar solo si cambia businessId o role
 
   // Función para suscribirse a citas de empleado específico
   const subscribeToEmployeeAppointments = useCallback((empId, date) => {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('subscribe_appointments', {
+    const socket = getCurrentSocket();
+    if (socket?.connected) {
+      socket.emit('subscribe_appointments', {
         employeeId: empId,
         date
       });
@@ -282,8 +222,9 @@ export function useSocket({
 
   // Función para desuscribirse
   const unsubscribeFromAppointments = useCallback((empId, date) => {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('unsubscribe_appointments', {
+    const socket = getCurrentSocket();
+    if (socket?.connected) {
+      socket.emit('unsubscribe_appointments', {
         employeeId: empId,
         date
       });
@@ -292,20 +233,20 @@ export function useSocket({
 
   // Reconectar manualmente
   const reconnect = useCallback(() => {
-    if (socketRef.current) {
-      socketRef.current.connect();
+    const socket = getCurrentSocket();
+    if (socket) {
+      socket.connect();
     }
   }, []);
 
-  // Desconectar manualmente
+  // Desconectar manualmente (solo para cerrar sesión)
   const disconnect = useCallback(() => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
+    disconnectSocket();
+    setIsConnected(false);
   }, []);
 
   return {
-    socket: socketRef.current,
+    socket: getCurrentSocket(),
     isConnected,
     connectionError,
     stats,
