@@ -70,6 +70,10 @@ export function getSocket(businessId, role, userId, employeeId) {
     console.log('[SocketSingleton] Desconectado:', reason);
   });
 
+  socket.on('connect_error', (error) => {
+    console.error('[SocketSingleton] Error de conexión:', error.message);
+  });
+
   return socket;
 }
 
