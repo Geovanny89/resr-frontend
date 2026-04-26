@@ -2,6 +2,7 @@
   "appId": "com.kdice.app",
   "appName": "KDice Reservas",
   "webDir": "dist",
+  "version": "1.1.0",
   "server": {
     "androidScheme": "https",
     "hostname": "kdice.app",
