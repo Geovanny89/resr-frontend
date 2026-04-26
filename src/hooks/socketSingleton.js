@@ -20,6 +20,7 @@ function getSocketUrl() {
 }
 
 const SOCKET_URL = getSocketUrl();
+console.log('[SocketSingleton] SOCKET_URL:', SOCKET_URL, 'isNative:', isNative);
 
 // Singleton instance
 let socket = null;
