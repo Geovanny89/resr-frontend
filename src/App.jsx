@@ -44,6 +44,7 @@ import APKHome from './pages/APKHome';
 import EmployeeLayout from './components/EmployeeLayout';
 import { useAuth } from './context/AuthContext';
 import notificationService from './services/notificationService';
+import fcmService from './services/fcmService';
 import UpdateChecker from './components/UpdateChecker';
 // ===== PANEL SUPER ADMIN (independiente) =====
 import SuperAdminHome  from './pages/superadmin/SuperAdminHome';
@@ -166,6 +167,7 @@ export default function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       notificationService.initialize();
+      fcmService.initialize();
     }
   }, []);
 
