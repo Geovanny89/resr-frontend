@@ -4,7 +4,8 @@ import {
   subscribeToEvent, 
   unsubscribeFromEvent, 
   isSocketConnected,
-  disconnectSocket 
+  disconnectSocket,
+  getCurrentSocket
 } from './socketSingleton';
 
 /**
