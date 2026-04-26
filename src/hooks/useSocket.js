@@ -12,7 +12,7 @@ const isNative = Capacitor.isNativePlatform();
 function getSocketUrl() {
   // En APK usar producción
   if (isNative) {
-    return import.meta.env.VITE_API_URL_PROD || 'https://tudominio.com';
+    return 'https://reservas.k-dice.com';
   }
   
   // En web, verificar si VITE_API_URL es relativa (ej: '/api') o absoluta
