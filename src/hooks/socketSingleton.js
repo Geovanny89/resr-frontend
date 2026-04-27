@@ -7,16 +7,8 @@ function getSocketUrl() {
   if (isNative) {
     return 'https://reservas.k-dice.com';
   }
-  const apiUrl = import.meta.env.VITE_API_URL;
-  if (!apiUrl || apiUrl.startsWith('/')) {
-    return window.location.origin;
-  }
-  try {
-    const url = new URL(apiUrl);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return apiUrl;
-  }
+  // Usar URL relativa para que funcione con el proxy de Vite
+  return window.location.origin;
 }
 
 const SOCKET_URL = getSocketUrl();
@@ -54,7 +46,8 @@ export function getSocket(businessId, role, userId, employeeId) {
   console.log('[SocketSingleton] Conectando:', { businessId, role, userId, employeeId });
 
   socket = io(SOCKET_URL, {
-    transports: ['polling', 'websocket'], // Polling primero como workaround
+    path: '/socket.io/',
+    transports: isNative ? ['websocket', 'polling'] : ['polling'], // WebSocket en móvil, polling en web
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
@@ -67,13 +60,20 @@ export function getSocket(businessId, role, userId, employeeId) {
     callbacks.forEach(cb => socket.on(event, cb));
   });
 
+  socket.on('connect', () => {
+    console.log('[SocketSingleton] ✅ Conectado! Socket ID:', socket.id);
+  });
+
   socket.on('disconnect', (reason) => {
     console.log('[SocketSingleton] Desconectado:', reason);
   });
 
   socket.on('connect_error', (error) => {
-    console.error('[SocketSingleton] Error de conexión:', error.message);
+    console.error('[SocketSingleton] Error de conexión:', error.message, error);
   });
+
+  // Log inicial del estado
+  console.log('[SocketSingleton] Estado inicial - connecting:', socket.connecting, 'connected:', socket.connected);
 
   return socket;
 }
