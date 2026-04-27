@@ -54,7 +54,7 @@ export function getSocket(businessId, role, userId, employeeId) {
   console.log('[SocketSingleton] Conectando:', { businessId, role, userId, employeeId });
 
   socket = io(SOCKET_URL, {
-    transports: ['websocket', 'polling'], // WebSocket primero para mejor estabilidad
+    transports: ['polling', 'websocket'], // Polling primero como workaround
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,

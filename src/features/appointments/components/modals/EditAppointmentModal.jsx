@@ -59,7 +59,16 @@ export function EditAppointmentModal({
 
       try {
         const allowPast = !business?.hasFieldTechnicians;
-        const res = await api.get(`/appointments/availability?date=${form.selectedDate}&employeeId=${form.employeeId}&serviceId=${form.serviceId}&businessId=${business.id}&allowPast=${allowPast}`, { params: { noCache: true } });
+        const res = await api.get(`/appointments/availability`, {
+          params: {
+            date: form.selectedDate,
+            employeeId: form.employeeId,
+            serviceId: form.serviceId,
+            businessId: business.id,
+            allowPast: allowPast,
+            noCache: true
+          }
+        });
         setAvailableSlots(res.data.availableSlots || []);
       } catch (e) {
         setAvailableSlots([]);
