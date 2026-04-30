@@ -65,7 +65,7 @@ export default function DeleteEmployeeModal({
             color: colors.text
           }}
         >
-          ¿Eliminar empleado?
+          ¿Eliminar profesional?
         </h3>
 
         {/* Descripción */}

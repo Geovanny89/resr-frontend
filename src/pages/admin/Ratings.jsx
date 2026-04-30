@@ -63,7 +63,7 @@ const Ratings = () => {
   }, [employees]);
 
   return (
-    <AdminLayout title="Calificaciones" subtitle="Gestión de feedback y desempeño de empleados">
+    <AdminLayout title="Calificaciones" subtitle="Gestión de feedback y desempeño de profesionales">
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         
         {/* Stats Cards */}
@@ -91,12 +91,12 @@ const Ratings = () => {
         {/* Search and Table */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Lista de Empleados</h3>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Lista de Profesionales</h3>
             <div style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
               <Search size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: colors.textSecondary }} />
               <input 
                 type="text" 
-                placeholder="Buscar empleado..."
+                placeholder="Buscar profesional..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
@@ -116,7 +116,7 @@ const Ratings = () => {
             columns={[
               {
                 key: 'employee',
-                label: 'Empleado',
+                label: 'Profesional',
                 render: (v, row) => (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ 
@@ -168,7 +168,7 @@ const Ratings = () => {
             data={paginatedEmployees}
             onRowClick={handleOpenModal}
             loading={loading}
-            emptyMessage="No se encontraron empleados"
+            emptyMessage="No se encontraron profesionales"
             fullWidthActions={false}
             actions={[
               {

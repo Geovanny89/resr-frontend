@@ -1,5 +1,5 @@
 /* KDICE POS — Global Styles v2.0 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Fuentes cargadas vía index.html para evitar bloqueo de renderizado */
 
 :root {
   --primary:#4f46e5;--primary-dark:#3730a3;--primary-light:#818cf8;--primary-bg:#eef2ff;

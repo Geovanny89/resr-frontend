@@ -10,7 +10,7 @@ import notificacionImg from '../../assets/notificacion.jpg';
 
 export const carouselImages = [
   { src: citasImg, title: 'Gestión de Citas', desc: 'Organiza tus citas fácilmente' },
-  { src: empleadosImg, title: 'Control de Empleados', desc: 'Gestiona tu equipo de trabajo' },
+  { src: empleadosImg, title: 'Control de Profesionales', desc: 'Gestiona tu equipo de trabajo' },
   { src: horariosImg, title: 'Configura Horarios', desc: 'Define tu disponibilidad' },
   { src: negocioImg, title: 'Tu Negocio', desc: 'Personaliza tu perfil' },
   { src: pagosImg, title: 'Reportes de Pagos', desc: 'Controla tus ingresos' },
@@ -24,8 +24,8 @@ export const features = [
   { icon: '📅', title: 'Gestión de Citas', desc: 'Sistema completo de reservas online con confirmación automática' },
   { icon: '📱', title: 'App Móvil ', desc: 'APK para tu negocio, descargable directamente' },
   { icon: '💬', title: 'Recordatorios Automáticos', desc: 'Notificaciones por email y APK 1 hora antes de cada cita' },
-  { icon: '👥', title: 'Gestión de Empleados', desc: 'Horarios, comisiones y disponibilidad en tiempo real' },
-  { icon: '💰', title: 'Reportes y Pagos', desc: 'Seguimiento de ingresos y comisiones por empleado' },
+  { icon: '👥', title: 'Gestión de Profesionales', desc: 'Horarios, comisiones y disponibilidad en tiempo real' },
+  { icon: '💰', title: 'Reportes y Pagos', desc: 'Seguimiento de ingresos y comisiones por profesional' },
   { icon: '🎨', title: 'Branding Personalizado', desc: 'Colores, logo y diseño según tu marca' },
 ];
 
@@ -39,7 +39,7 @@ export const plans = [
     popular: false,
     users: 3,
     features: [
-      '✅ 3 empleados incluidos',
+      '✅ 3 profesionales incluidos',
       '✅ Citas ilimitadas',
       '✅ App móvil personalizada (APK)',
       '✅ Página web de reservas',
@@ -47,7 +47,7 @@ export const plans = [
       '✅ Reportes básicos',
       '✅ Soporte por email',
       '✅ Personalización de marca',
-      '+ $20,000/empleado adicional'
+      '+ $20,000/profesional adicional'
     ],
     cta: 'Comenzar Ahora',
   },
@@ -60,14 +60,14 @@ export const plans = [
     popular: true,
     users: 5,
     features: [
-      '✅ 5 empleados incluidos',
+      '✅ 5 profesionales incluidos',
       '✅ Todo lo del plan Básico',
       '✅ Recordatorios por WhatsApp',
       '✅ Reportes de ingresos y comisiones',
       '✅ Soporte prioritario',
       '✅ Galería de fotos y horarios',
-      '✅ Gestión de empleados avanzada',
-      '+ $20,000/empleado adicional'
+      '✅ Gestión de profesionales avanzada',
+      '+ $20,000/profesional adicional'
     ],
     cta: 'Más Popular',
   },
@@ -80,14 +80,14 @@ export const plans = [
     popular: false,
     users: 10,
     features: [
-      '✅ 10 empleados incluidos',
+      '✅ 10 profesionales incluidos',
       '✅ Todo lo del plan Pro',
       '✅ Reportes avanzados y analytics',
       '✅ Soporte VIP 24/7',
       '✅ Configuración de anticipos/depositos',
       '✅ Módulo de inventario',
       '✅ Módulo de gastos',
-      '+ $20,000/empleado adicional'
+      '+ $20,000/profesional adicional'
     ],
     cta: 'Elegir Premium',
   },
@@ -96,7 +96,7 @@ export const plans = [
 export const testimonials = [
   { name: 'María García', business: 'Salón La Belleza', text: '"Aumentamos nuestras citas un 40% en el primer mes. Los clientes aman la app."', avatar: '👩‍💼' },
   { name: 'Carlos López', business: 'Barbería Premium', text: '"El sistema de recordatorios redujo nuestras cancelaciones a la mitad."', avatar: '👨‍💼' },
-  { name: 'Ana Martínez', business: 'Spa Relax', text: '"Ahora mis empleados saben exactamente cuándo trabajan. Excelente herramienta."', avatar: '👩‍🦱' },
+  { name: 'Ana Martínez', business: 'Spa Relax', text: '"Ahora mis profesionales saben exactamente cuándo trabajan. Excelente herramienta."', avatar: '👩‍🦱' },
 ];
 
 export const navLinks = [

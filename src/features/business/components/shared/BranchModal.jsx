@@ -59,17 +59,6 @@ export default function BranchModal({
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: 20 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={branchForm.isTechnicalServices} 
-                onChange={e => onUpdateField('isTechnicalServices', e.target.checked)}
-                style={{ width: 18, height: 18 }}
-              />
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Es empresa de servicios Especializados</span>
-            </label>
-          </div>
 
           <div className="form-group">
             <label>Comprobante de Pago (50% de descuento) *</label>

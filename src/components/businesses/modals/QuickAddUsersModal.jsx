@@ -34,7 +34,7 @@ export default function QuickAddUsersModal({
           justifyContent: 'space-between', alignItems: 'center' 
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>➕ Agregar Empleados</h2>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>➕ Agregar Profesionales</h2>
             <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 13 }}>{business.name} (el admin no cuenta)</p>
           </div>
           <button 
@@ -56,15 +56,15 @@ export default function QuickAddUsersModal({
               <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[business.subscriptionPlan]?.name || 'Básico'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados incluidos:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Profesionales incluidos:</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{PLANS[business.subscriptionPlan]?.includedUsers || 2}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Empleados extras:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Profesionales extras:</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{business.additionalUsers || 0}</span>
             </div>
             <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Total empleados permitidos:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Total profesionales permitidos:</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
                 {(PLANS[business.subscriptionPlan]?.includedUsers || 2) + (business.additionalUsers || 0)}
               </span>
@@ -76,7 +76,7 @@ export default function QuickAddUsersModal({
               display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', 
               marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' 
             }}>
-              Empleados a agregar
+              Profesionales a agregar
             </label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <input 
@@ -119,7 +119,7 @@ export default function QuickAddUsersModal({
               onClick={onConfirm}
               disabled={adding}
             >
-              {adding ? 'Agregando...' : `➕ Agregar ${count} empleado${count > 1 ? 's' : ''}`}
+              {adding ? 'Agregando...' : `➕ Agregar ${count} profesional${count > 1 ? 'es' : ''}`}
             </button>
           </div>
         </div>

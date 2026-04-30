@@ -131,7 +131,7 @@ export function TransferModal({
             }
           </select>
           <p style={{ margin: '8px 0 0 0', fontSize: 12, color: colors.textSecondary }}>
-            Solo se muestran empleados disponibles
+            Solo se muestran profesionales disponibles
           </p>
         </div>
 

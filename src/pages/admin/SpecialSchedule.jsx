@@ -140,7 +140,7 @@ export default function SpecialSchedule() {
               <li>Para una fecha específica, el sistema usará estos horarios en lugar de los regulares</li>
               <li>Puedes marcar un día como <strong>"Cerrado"</strong> para que no aparezcan horarios disponibles</li>
               <li>Activa <strong>"Repetir anualmente"</strong> para festivos que ocurren todos los años (ej: Navidad)</li>
-              <li>Si no seleccionas empleado, aplica a <strong>todos los empleados</strong> del negocio</li>
+              <li>Si no seleccionas profesional, aplica a <strong>todos los profesionales</strong> del negocio</li>
             </ul>
           </div>
         </div>
@@ -572,8 +572,8 @@ export default function SpecialSchedule() {
                       style={{ width: '100%' }}
                       disabled={loading}
                     >
-                      <option value="">🏢 Todos los empleados del negocio</option>
-                      <optgroup label={`Empleados disponibles (${employees.length}):`}>
+                      <option value="">🏢 Todos los profesionales del negocio</option>
+                      <optgroup label={`Profesionales disponibles (${employees.length}):`}>
                         {employees.map((emp) => (
                           <option key={emp.id} value={emp.id}>
                             👤 {emp.User?.name || emp.user?.name || emp.name || 'Sin nombre'} 
@@ -584,12 +584,12 @@ export default function SpecialSchedule() {
                     </select>
                     <small style={{ color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                       {loading 
-                        ? "Cargando empleados..." 
+                        ? "Cargando profesionales..." 
                         : employees.length === 0 
-                          ? "⚠️ No se detectaron empleados activos. Verifica que tengas empleados creados."
+                          ? "⚠️ No se detectaron profesionales activos. Verifica que tengas profesionales creados."
                           : form.employeeId 
-                            ? "Este horario solo aplicará al empleado seleccionado" 
-                            : "Este horario aplicará a TODOS los empleados del negocio"}
+                            ? "Este horario solo aplicará al profesional seleccionado" 
+                            : "Este horario aplicará a TODOS los profesionales del negocio"}
                     </small>
                   </div>
 
@@ -609,7 +609,7 @@ export default function SpecialSchedule() {
                     </select>
                     {form.type === 'closed' && (
                       <div className="alert alert-info" style={{ marginTop: 8, padding: '8px 12px', fontSize: 12 }}>
-                        ℹ️ El negocio o empleado aparecerá como <strong>cerrado</strong> este día. No se mostrarán horarios disponibles.
+                        ℹ️ El negocio o profesional aparecerá como <strong>cerrado</strong> este día. No se mostrarán horarios disponibles.
                       </div>
                     )}
                   </div>

@@ -92,7 +92,7 @@ class NotificationService {
 
         const businessName = appointment.Business?.name || 'Negocio';
         const serviceName = appointment.Service?.name || 'Servicio';
-        const employeeName = appointment.Employee?.User?.name || appointment.Employee?.name || 'Profesional';
+        const employeeName = appointment.Employee?.User?.name || appointment.Employee?.name || 'Empleado';
 
         // Formatear la hora de la cita
         const appointmentTime = new Date(appointment.startTime).toLocaleTimeString('es-CO', {

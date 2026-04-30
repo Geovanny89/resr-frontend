@@ -304,8 +304,14 @@ export default function BusinessesResponsive() {
       {/* Modals */}
       <BusinessDetailModal
         business={detailBiz}
+        allBusinesses={businesses}
+        businessTypes={businessTypes}
         onClose={() => setDetailBiz(null)}
         onOpenSubscription={handleOpenSubscriptionFromDetail}
+        onUpdateBusiness={(id, updates) => {
+          setBusinesses(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+          if (detailBiz?.id === id) setDetailBiz({ ...detailBiz, ...updates });
+        }}
       />
 
       <SubscriptionModal

@@ -62,7 +62,7 @@ export default function Payments() {
   };
 
   return (
-    <AdminLayout title="Pagos a Empleados" subtitle="Comisiones y saldo del negocio">
+    <AdminLayout title="Pagos a Profesionales" subtitle="Comisiones y saldo del negocio">
       <style>{`
         @media (max-width: 640px) {
           .payments-controls-row {
@@ -161,9 +161,9 @@ export default function Payments() {
               <div className="stat-icon blue"><Users size={22} /></div>
               <div className="stat-body">
                 <div className="stat-value" style={{ fontSize: 22 }}>{fmt(report.totals?.employeeTotal)}</div>
-                <div className="stat-label">Total a pagar empleados</div>
+                <div className="stat-label">Total a pagar profesionales</div>
                 <div className="stat-change" style={{ color: 'var(--warning)' }}>
-                  <Users size={11} /> {employees.length} empleado(s) activos
+                  <Users size={11} /> {employees.length} profesional(es) activos
                 </div>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function Payments() {
                     Negocio: {((report.totals.ownerTotal / report.totals.total) * 100).toFixed(1)}%
                   </span>
                   <span style={{ color: 'var(--info)', fontWeight: 600 }}>
-                    Empleados: {((report.totals.employeeTotal / report.totals.total) * 100).toFixed(1)}%
+                    Profesionales: {((report.totals.employeeTotal / report.totals.total) * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div style={{ height: 12, background: 'var(--gray-200)', borderRadius: 999, overflow: 'hidden', display: 'flex' }}>

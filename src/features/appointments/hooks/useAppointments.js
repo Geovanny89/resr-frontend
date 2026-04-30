@@ -43,9 +43,9 @@ export function useAppointments(businessId, options = {}) {
     loadAppointments();
   }, [loadAppointments]);
 
-  // Filtrar citas por fecha y empleado
+  // Filtrar citas por fecha y empleado y ordenarlas por hora
   const filteredAppointments = useMemo(() => {
-    return appointments.filter(apt => {
+    const filtered = appointments.filter(apt => {
       const aptDate = new Date(apt.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       const selectedDateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       
@@ -54,6 +54,9 @@ export function useAppointments(businessId, options = {}) {
       
       return matchesDate && matchesEmployee;
     });
+
+    // Ordenar por hora de inicio (ascendente)
+    return filtered.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   }, [appointments, selectedDate, selectedEmployeeId]);
 
   // Paginación

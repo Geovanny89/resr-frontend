@@ -18,7 +18,9 @@ export function useBusinessSubscriptions({ businesses, setBusinesses, showToast 
     subscriptionEndDate: '',
     subscriptionPlan: 'basic',
     additionalUsers: 0,
-    customMonthlyPrice: ''
+    customMonthlyPrice: '',
+    paymentAmount: '',
+    paymentReference: ''
   });
   const [saving, setSaving] = useState(false);
   
@@ -32,7 +34,7 @@ export function useBusinessSubscriptions({ businesses, setBusinesses, showToast 
     
     if (subForm.customMonthlyPrice && subForm.customMonthlyPrice !== '') {
       const customPrice = parseInt(subForm.customMonthlyPrice) || 0;
-      return customPrice + (additional * ADDITIONAL_USER_PRICE);
+      return customPrice;
     }
     
     const plan = PLANS[subForm.subscriptionPlan] || PLANS.basic;
@@ -47,7 +49,9 @@ export function useBusinessSubscriptions({ businesses, setBusinesses, showToast 
       subscriptionEndDate: business.subscriptionEndDate ? business.subscriptionEndDate.split('T')[0] : '',
       subscriptionPlan: business.subscriptionPlan || 'basic',
       additionalUsers: business.additionalUsers || 0,
-      customMonthlyPrice: business.customMonthlyPrice || ''
+      customMonthlyPrice: business.customMonthlyPrice || '',
+      paymentAmount: business.paymentAmount || '',
+      paymentReference: business.paymentReference || ''
     });
     setSubModal(business);
   }, []);
@@ -57,12 +61,16 @@ export function useBusinessSubscriptions({ businesses, setBusinesses, showToast 
     
     setSaving(true);
     try {
-      // Actualizar fechas de suscripción
+      // Limpiar fechas para evitar 'Invalid date' o strings vacíos que rompan Postgres
+      const cleanDate = (d) => (d && d !== '' && d !== 'Invalid date') ? d : null;
+
       const response = await api.patch(`/businesses/${subModal.id}/subscription-dates`, {
         subscriptionStatus: subForm.subscriptionStatus,
-        lastPaymentDate: subForm.lastPaymentDate,
-        subscriptionStartDate: subForm.subscriptionStartDate,
-        subscriptionEndDate: subForm.subscriptionEndDate
+        lastPaymentDate: cleanDate(subForm.lastPaymentDate),
+        subscriptionStartDate: cleanDate(subForm.subscriptionStartDate),
+        subscriptionEndDate: cleanDate(subForm.subscriptionEndDate),
+        paymentAmount: subForm.paymentAmount === '' ? null : parseInt(subForm.paymentAmount),
+        paymentReference: subForm.paymentReference
       });
       
       // Actualizar plan y usuarios adicionales
@@ -110,13 +118,18 @@ export function useBusinessSubscriptions({ businesses, setBusinesses, showToast 
     }
   }, [quickAddModal, quickAddCount, setBusinesses, showToast]);
 
-  const handleApprovePayment = useCallback(async (bizId) => {
+  const handleApprovePayment = useCallback(async (bizId, includeBranches = false) => {
     try {
-      const response = await api.post(`/businesses/${bizId}/approve-payment`);
+      const response = await api.post(`/businesses/${bizId}/approve-payment`, { includeBranches });
       setBusinesses(prev => prev.map(b => 
         b.id === bizId ? { ...b, ...response.data.business, subscriptionStatus: 'paid' } : b
       ));
-      showToast('Pago aprobado correctamente. Suscripción activada por 30 días.');
+      
+      const msg = includeBranches 
+        ? 'Pago y sucursales aprobados correctamente. Todo activado por 30 días.'
+        : 'Pago aprobado correctamente. Suscripción activada por 30 días.';
+        
+      showToast(msg);
       return true;
     } catch (err) {
       showToast('Error al aprobar el pago', 'error');

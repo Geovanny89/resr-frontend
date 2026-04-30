@@ -29,6 +29,7 @@ export default function RegisterVendor() {
     address: '',
     businessMode: 'normal', // normal, technical_services, field_technicians
     subscriptionPlan: 'basic',
+    referredByCode: '',
   });
 
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function RegisterVendor() {
         isTechnicalServices: form.businessMode === 'technical_services',
         hasFieldTechnicians: form.businessMode === 'field_technicians',
         subscriptionPlan: form.subscriptionPlan,
+        referredByCode: form.referredByCode,
       });
 
       // Mostrar pantalla de éxito
@@ -622,6 +624,40 @@ export default function RegisterVendor() {
                 />
               </div>
 
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: colors.text
+                }}>
+                  ¿Te refirió un amigo? (Código opcional)
+                </label>
+                <input
+                  type="text"
+                  name="referredByCode"
+                  placeholder="Ej: LATOTTY"
+                  value={form.referredByCode}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                    background: isDark ? colors.bgSecondary : 'white',
+                    color: colors.text,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    textTransform: 'uppercase'
+                  }}
+                  onFocus={e => e.target.style.borderColor = colors.primary}
+                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
+                />
+              </div>
+
               {/* Select para Tipo de Negocio */}
               <div>
                 <label style={{
@@ -752,9 +788,9 @@ export default function RegisterVendor() {
                   onFocus={e => e.target.style.borderColor = colors.primary}
                   onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
                 >
-                  <option value="basic">Básico - $70.000/mes (3 empleados)</option>
-                  <option value="pro">Pro - $90.000/mes (5 empleados)</option>
-                  <option value="premium">Premium - $130.000/mes (10 empleados)</option>
+                  <option value="basic">Básico - $70.000/mes (3 profesionales)</option>
+                  <option value="pro">Pro - $90.000/mes (5 profesionales)</option>
+                  <option value="premium">Premium - $130.000/mes (10 profesionales)</option>
                 </select>
               </div>
 
@@ -774,7 +810,7 @@ export default function RegisterVendor() {
                         <strong style={{ color: colors.text }}>Plan Básico</strong> - Ideal para pequeños negocios
                       </p>
                       <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
-                        <li>3 empleados incluidos</li>
+                        <li>3 profesionales incluidos</li>
                         <li>Gestión de citas básica</li>
                         <li>Recordatorios por WhatsApp</li>
                         <li>Soporte por email</li>
@@ -787,7 +823,7 @@ export default function RegisterVendor() {
                         <strong style={{ color: colors.text }}>Plan Pro</strong> - Para negocios en crecimiento
                       </p>
                       <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
-                        <li>5 empleados incluidos</li>
+                        <li>5 profesionales incluidos</li>
                         <li>Todas las funciones del plan Básico</li>
                         <li>Reportes avanzados</li>
                         <li>Soporte prioritario</li>
@@ -800,7 +836,7 @@ export default function RegisterVendor() {
                         <strong style={{ color: colors.text }}>Plan Premium</strong> - Máxima capacidad
                       </p>
                       <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 13, color: colors.textSecondary }}>
-                        <li>10 empleados incluidos</li>
+                        <li>10 profesionales incluidos</li>
                         <li>Todas las funciones del plan Pro</li>
                         <li>API access</li>
                         <li>Soporte 24/7</li>

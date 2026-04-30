@@ -117,15 +117,15 @@ export function EditAppointmentModal({
           </select>
         </div>
 
-        {/* Profesional */}
+        {/* Empleado */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Profesional</label>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Empleado</label>
           <select
             value={form.employeeId}
             onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
             style={{ width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
           >
-            <option value="">Selecciona profesional</option>
+            <option value="">Selecciona empleado</option>
             {employees.map(e => <option key={e.id} value={e.id}>{e.User?.name}</option>)}
           </select>
         </div>

@@ -1,59 +1,73 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login            from './pages/Login';
-import ResetPassword    from './pages/ResetPassword';
-import RegisterChoice   from './pages/RegisterChoice';
-import RegisterClient   from './pages/RegisterClient';
-import RegisterVendor   from './pages/RegisterVendor';
-import BusinessLanding  from './pages/public/BusinessLanding';
-import BookAppointment  from './pages/public/BookAppointment';
-import RateEmployee     from './pages/public/RateEmployee';
-import MyAppointments   from './pages/client/MyAppointments';
-import Dashboard    from './pages/admin/Dashboard';
-import MyBusiness   from './pages/admin/MyBusiness';
-import Services     from './pages/admin/Services';
-import Employees    from './pages/admin/Employees';
-import Schedule     from './pages/admin/Schedule';
-import SpecialSchedule from './pages/admin/SpecialSchedule';
-import EmployeeVacations from './pages/admin/EmployeeVacations';
-import Appointments from './pages/admin/Appointments';
-import Promotions   from './pages/admin/Promotions';
-import Ratings      from './pages/admin/Ratings';
-import Reports      from './pages/admin/Reports';
-import Payments     from './pages/admin/Payments';
-import SubmitPayment from './pages/admin/SubmitPayment';
-import Clients      from './pages/admin/Clients';
-import Expenses     from './pages/admin/Expenses';
-import Inventory    from './pages/admin/Inventory';
-import Deposits     from './pages/admin/Deposits';
-import Agenda       from './pages/admin/Agenda';
-import EmployeeDashboard from './pages/employee/EmployeeDashboard';
-import EmployeeCommissions from './pages/employee/EmployeeCommissions';
-import EmployeeProfile from './pages/employee/EmployeeProfile';
-import EmployeeRatings from './pages/employee/EmployeeRatings';
-import EmployeeClients from './pages/employee/EmployeeClients';
-import Landing from './pages/Landing';
-import DownloadAPK from './pages/admin/DownloadAPK';
-import ChangePassword from './pages/admin/ChangePassword';
-import DownloadAPKPublic from './pages/DownloadAPKPublic';
-import APKHome from './pages/APKHome';
+
+// ===== CARGA DINÁMICA (LAZY LOADING) =====
+const Login            = lazy(() => import('./pages/Login'));
+const ResetPassword    = lazy(() => import('./pages/ResetPassword'));
+const RegisterChoice   = lazy(() => import('./pages/RegisterChoice'));
+const RegisterClient   = lazy(() => import('./pages/RegisterClient'));
+const RegisterVendor   = lazy(() => import('./pages/RegisterVendor'));
+const BusinessLanding  = lazy(() => import('./pages/public/BusinessLanding'));
+const BookAppointment  = lazy(() => import('./pages/public/BookAppointment'));
+const RateEmployee     = lazy(() => import('./pages/public/RateEmployee'));
+const MyAppointments   = lazy(() => import('./pages/client/MyAppointments'));
+
+// Admin Pages
+const Dashboard    = lazy(() => import('./pages/admin/Dashboard'));
+const Referrals    = lazy(() => import('./pages/admin/Referrals'));
+const MyBusiness   = lazy(() => import('./pages/admin/MyBusiness'));
+const Services     = lazy(() => import('./pages/admin/Services'));
+const Employees    = lazy(() => import('./pages/admin/Employees'));
+const Schedule     = lazy(() => import('./pages/admin/Schedule'));
+const SpecialSchedule = lazy(() => import('./pages/admin/SpecialSchedule'));
+const EmployeeVacations = lazy(() => import('./pages/admin/EmployeeVacations'));
+const Appointments = lazy(() => import('./pages/admin/Appointments'));
+const Promotions   = lazy(() => import('./pages/admin/Promotions'));
+const Ratings      = lazy(() => import('./pages/admin/Ratings'));
+const Reports      = lazy(() => import('./pages/admin/Reports'));
+const Payments     = lazy(() => import('./pages/admin/Payments'));
+const SubmitPayment = lazy(() => import('./pages/admin/SubmitPayment'));
+const Clients      = lazy(() => import('./pages/admin/Clients'));
+const Expenses     = lazy(() => import('./pages/admin/Expenses'));
+const Inventory    = lazy(() => import('./pages/admin/Inventory'));
+const Deposits     = lazy(() => import('./pages/admin/Deposits'));
+const CashRegister = lazy(() => import('./pages/admin/CashRegister'));
+const Agenda       = lazy(() => import('./pages/admin/Agenda'));
+const DownloadAPK  = lazy(() => import('./pages/admin/DownloadAPK'));
+const ChangePassword = lazy(() => import('./pages/admin/ChangePassword'));
+
+// Employee Pages
+const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
+const EmployeeCommissions = lazy(() => import('./pages/employee/EmployeeCommissions'));
+const EmployeeProfile = lazy(() => import('./pages/employee/EmployeeProfile'));
+const EmployeeRatings = lazy(() => import('./pages/employee/EmployeeRatings'));
+const EmployeeClients = lazy(() => import('./pages/employee/EmployeeClients'));
+
+// Super Admin Pages
+const SuperAdminHome  = lazy(() => import('./pages/superadmin/SuperAdminHome'));
+const Businesses      = lazy(() => import('./pages/superadmin/Businesses'));
+const Branches        = lazy(() => import('./pages/superadmin/Branches'));
+const BusinessTypes   = lazy(() => import('./pages/superadmin/BusinessTypes'));
+const Users           = lazy(() => import('./pages/superadmin/Users'));
+const ActivityLogs    = lazy(() => import('./pages/superadmin/ActivityLogs'));
+const GlobalReports   = lazy(() => import('./pages/superadmin/GlobalReports'));
+const PlatformReviews = lazy(() => import('./pages/superadmin/PlatformReviews'));
+
+// Other
+const Landing = lazy(() => import('./pages/Landing'));
+const DownloadAPKPublic = lazy(() => import('./pages/DownloadAPKPublic'));
+const APKHome = lazy(() => import('./pages/APKHome'));
+
+// Layouts y otros
 import EmployeeLayout from './components/EmployeeLayout';
 import { useAuth } from './context/AuthContext';
 import notificationService from './services/notificationService';
 import fcmService from './services/fcmService';
 import UpdateChecker from './components/UpdateChecker';
-// ===== PANEL SUPER ADMIN (independiente) =====
-import SuperAdminHome  from './pages/superadmin/SuperAdminHome';
-import Businesses      from './pages/superadmin/Businesses';
-import Branches        from './pages/superadmin/Branches';
-import BusinessTypes   from './pages/superadmin/BusinessTypes';
-import Users           from './pages/superadmin/Users';
-import ActivityLogs    from './pages/superadmin/ActivityLogs';
-import GlobalReports   from './pages/superadmin/GlobalReports';
 
 const PREFERRED_SLUG_KEY = 'preferredBusinessSlug';
 const RESERVED_FIRST_SEGMENTS = new Set([
@@ -175,7 +189,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <MobileSlugBridge />
-        <Routes>
+        <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>Cargando...</div>}>
+          <Routes>
           <Route path="/" element={<RootRoute />} />
           <Route path="/login"           element={<Login />} />
           <Route path="/reset-password"  element={<ResetPassword />} />
@@ -198,10 +213,12 @@ export default function App() {
             <Route path="payments"     element={<Payments />} />
             <Route path="submit-payment" element={<SubmitPayment />} />
             <Route path="clients"      element={<Clients />} />
+            <Route path="cash-register" element={<CashRegister />} />
             <Route path="expenses"     element={<Expenses />} />
             <Route path="inventory"    element={<Inventory />} />
             <Route path="deposits"     element={<Deposits />} />
             <Route path="agenda"       element={<Agenda />} />
+            <Route path="referrals"    element={<Referrals />} />
             <Route path="change-password" element={<ChangePassword />} />
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
@@ -222,6 +239,7 @@ export default function App() {
             <Route path="users"          element={<Users />} />
             <Route path="activity-logs"  element={<ActivityLogs />} />
             <Route path="reports"        element={<GlobalReports />} />
+            <Route path="reviews"        element={<PlatformReviews />} />
           </Route>
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>
             <Route index element={<MyAppointments />} />
@@ -235,6 +253,7 @@ export default function App() {
           <Route path="/:slug" element={<BusinessLanding />} />
           <Route path="/:slug/book" element={<BookAppointment />} />
         </Routes>
+        </Suspense>
         <UpdateChecker />
       </BrowserRouter>
     </AuthProvider>

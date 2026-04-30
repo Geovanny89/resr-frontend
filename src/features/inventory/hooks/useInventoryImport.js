@@ -15,8 +15,8 @@ export function useInventoryImport(businessId, onImportSuccess) {
 
   const downloadTemplate = useCallback(() => {
     const headers = ['Nombre', 'Descripción', 'Unidad', 'Stock', 'Stock Minimo', 'Costo', 'Proveedor'];
-    const exampleRow = ['Shampoo Profesional', 'Shampoo para cabello graso', 'mililitros', '500', '100', '15000', 'Distribuidora Belleza SAS'];
-    const exampleRow2 = ['Tijeras Profesionales', 'Tijeras de corte', 'unidad', '5', '2', '45000', 'Equipos Peluqueria LTDA'];
+    const exampleRow = ['Shampoo Empleado', 'Shampoo para cabello graso', 'mililitros', '500', '100', '15000', 'Distribuidora Belleza SAS'];
+    const exampleRow2 = ['Tijeras Empleados', 'Tijeras de corte', 'unidad', '5', '2', '45000', 'Equipos Peluqueria LTDA'];
     
     const csvContent = [
       headers.join(';'),

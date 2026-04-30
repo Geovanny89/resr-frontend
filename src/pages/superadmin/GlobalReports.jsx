@@ -225,23 +225,42 @@ export default function GlobalReports() {
           </div>
         </div>
 
-        {/* Ingresos */}
+        {/* Ventas de Negocios (GMV) */}
         {financial && (
           <div className="card" style={{ padding: 20, borderLeft: '4px solid #f59e0b' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <DollarSign size={20} color="#f59e0b" />
+                <TrendingUp size={20} color="#f59e0b" />
               </div>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Ingresos Totales</div>
-                <div style={{ fontSize: 28, fontWeight: 800 }}>
-                  ${financial.summary?.totalRevenue?.toLocaleString('es-CO') || 0}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ventas de Negocios (GMV)</div>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>
+                  ${financial.summary?.totalGmv?.toLocaleString('es-CO') || 0}
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {financial.summary?.totalAppointments || 0} citas • 
-              Promedio: ${financial.summary?.averagePerAppointment?.toLocaleString('es-CO', { maximumFractionDigits: 0 }) || 0}
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Flujo total procesado por el sistema
+            </div>
+          </div>
+        )}
+
+        {/* Tus Ganancias (Suscripciones) */}
+        {financial && (
+          <div className="card" style={{ padding: 20, borderLeft: '4px solid #10b981', background: 'linear-gradient(to right, #ffffff, #f0fdf4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={20} color="#10b981" />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Tus Ganancias (Suscripciones)</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#059669' }}>
+                  ${financial.summary?.platformRevenue?.toLocaleString('es-CO') || 0}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: '#059669', fontWeight: 500 }}>
+              Dinero real recibido por la plataforma
             </div>
           </div>
         )}

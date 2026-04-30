@@ -14,7 +14,7 @@ export function Pricing() {
             Planes que crecen contigo
           </h2>
           <p style={{ color: colors.textSecondary, fontSize: 18 }}>
-            Elige el plan perfecto para tu equipo. Empleados adicionales a solo $20.000 cada uno. El admin no cuenta.
+            Elige el plan perfecto para tu equipo. Profesionales adicionales a solo $20.000 cada uno. El admin no cuenta.
           </p>
         </div>
 
@@ -26,7 +26,7 @@ export function Pricing() {
 
         <div style={{ textAlign: 'center', marginTop: 48, padding: '24px', background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: '16px' }}>
           <p style={{ color: colors.textSecondary, fontSize: 14, margin: 0 }}>
-            💡 <strong>¿Necesitas más empleados?</strong> Cada empleado adicional cuesta $20.000 COP/mes sin importar tu plan. El administrador no cuenta en el límite.
+            💡 <strong>¿Necesitas más profesionales?</strong> Cada profesional adicional cuesta $20.000 COP/mes sin importar tu plan. El administrador no cuenta en el límite.
           </p>
         </div>
       </div>
@@ -76,7 +76,7 @@ function PricingCard({ plan, isDark, colors, onCtaClick }) {
         marginBottom: 24
       }}>
         <div style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 4 }}>
-          {plan.users} empleados incluidos
+          {plan.users} profesionales incluidos
         </div>
         <div style={{ fontSize: 'clamp(32px, 6vw, 44px)', fontWeight: 800, color: plan.color }}>
           {plan.price}

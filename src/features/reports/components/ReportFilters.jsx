@@ -52,7 +52,7 @@ export function ReportFilters({
 
   return (
     <div className="card mb-6" style={{ background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)', border: '1px solid #667eea30' }}>
-      {/* Header profesional */}
+      {/* Header empleado */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ 
@@ -180,7 +180,7 @@ export function ReportFilters({
                 }}
               >
                 <Users size={14} color="#667eea" />
-                Filtro Empleados
+                Filtro Profesionales
               </label>
               <select
                 className="form-input"
@@ -372,7 +372,7 @@ export function ReportFilters({
             <span style={{ fontWeight: 600 }}>Filtros avanzados activos:</span>
             <span>
               Análisis: {analysisOptions.find(o => o.value === analysisType)?.label} | 
-              Empleados: {filterOptions.find(o => o.value === employeeFilter)?.label}
+              Profesionales: {filterOptions.find(o => o.value === employeeFilter)?.label}
             </span>
           </div>
         </div>

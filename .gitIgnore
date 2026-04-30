@@ -42,3 +42,12 @@ scripts/
 *.njsproj
 *.sln
 *.sw?
+
+# Archivos de backup y duplicados (NO subir)
+src/pages/admin/AppointmentsBackup.jsx
+src/pages/admin/Dashboard.jsx.backup
+src/pages/admin/MyBusinessbackup.jsx
+src/pages/admin/DashboardRefactored.example.jsx
+src/pages/admin/AppointmentsRefactored.example.jsx
+src/pages/admin/Reports2.jsx
+src/pages/admin/EmployeesRefactored.jsx

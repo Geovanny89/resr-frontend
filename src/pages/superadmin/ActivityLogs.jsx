@@ -4,8 +4,9 @@ import api from '../../api/client';
 import {
   Activity, Search, Filter, Calendar, User, RefreshCw,
   CheckCircle, XCircle, AlertTriangle, Eye, X, Download,
-  LogIn, LogOut, Edit, Trash2, Plus, Lock, Unlock, Key
+  LogIn, LogOut, Edit, Trash2, Plus, Lock, Unlock, Key, Building2
 } from 'lucide-react';
+
 
 const ACTION_ICONS = {
   LOGIN: LogIn,
@@ -19,8 +20,13 @@ const ACTION_ICONS = {
   IMPERSONATE_USER: Eye,
   CREATE: Plus,
   UPDATE: Edit,
-  DELETE: Trash2
+  DELETE: Trash2,
+  CREATE_APPOINTMENT: Calendar,
+  UPDATE_APPOINTMENT_STATUS: RefreshCw,
+  UPDATE_BUSINESS: Building2,
+  DELETE_BUSINESS: Trash2
 };
+
 
 const ACTION_LABELS = {
   LOGIN: { label: 'Inicio de sesión', color: '#10b981' },
@@ -34,8 +40,13 @@ const ACTION_LABELS = {
   IMPERSONATE_USER: { label: 'Ingresó como usuario', color: '#7c3aed' },
   CREATE: { label: 'Creó', color: '#3b82f6' },
   UPDATE: { label: 'Actualizó', color: '#f59e0b' },
-  DELETE: { label: 'Eliminó', color: '#ef4444' }
+  DELETE: { label: 'Eliminó', color: '#ef4444' },
+  CREATE_APPOINTMENT: { label: 'Agendó Cita', color: '#10b981' },
+  UPDATE_APPOINTMENT_STATUS: { label: 'Cambió Estado Cita', color: '#3b82f6' },
+  UPDATE_BUSINESS: { label: 'Actualizó Negocio', color: '#f59e0b' },
+  DELETE_BUSINESS: { label: 'Eliminó Negocio', color: '#ef4444' }
 };
+
 
 export default function ActivityLogs() {
   const [logs, setLogs] = useState([]);
@@ -47,25 +58,35 @@ export default function ActivityLogs() {
   const [endDate, setEndDate] = useState('');
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showDetail, setShowDetail] = useState(null);
+  const [businesses, setBusinesses] = useState([]);
+  const [businessFilter, setBusinessFilter] = useState('');
   const [toast, setToast] = useState(null);
 
-  useEffect(() => { loadLogs(); }, [pagination.page, actionFilter, startDate, endDate]);
-  useEffect(() => { loadStats(); }, []);
+
+  useEffect(() => { loadLogs(); }, [pagination.page, actionFilter, businessFilter, startDate, endDate]);
+  useEffect(() => { 
+    loadStats(); 
+    loadBusinesses();
+  }, []);
+
 
   const loadLogs = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: pagination.page,
-        limit: 50,
+        limit: 10,
         ...(actionFilter && { action: actionFilter }),
+        ...(businessFilter && { businessId: businessFilter }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       });
+
       
       const res = await api.get(`/superadmin/activity-logs?${params}`);
-      setLogs(res.data.logs);
-      setPagination(res.data.pagination);
+      setLogs(res.data?.logs || []);
+      setPagination(res.data?.pagination || { page: 1, pages: 1, total: 0 });
+
     } catch (err) {
       showToast('Error al cargar logs', 'error');
     } finally {
@@ -81,6 +102,16 @@ export default function ActivityLogs() {
       console.error('Error cargando estadísticas:', err);
     }
   };
+  
+  const loadBusinesses = async () => {
+    try {
+      const res = await api.get('/businesses');
+      setBusinesses(res.data || []);
+    } catch (err) {
+      console.error('Error cargando empresas:', err);
+    }
+  };
+
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -109,11 +140,53 @@ export default function ActivityLogs() {
     <SuperAdminLayout title="Logs de Actividad" subtitle="Auditoría de acciones en el sistema">
       <style>{`
         @media (max-width: 768px) {
-          .logs-toolbar { flex-direction: column; }
-          .logs-filters { flex-direction: column; }
-          .logs-table th:nth-child(3), .logs-table td:nth-child(3),
-          .logs-table th:nth-child(5), .logs-table td:nth-child(5) { display: none; }
+          .logs-toolbar { padding: 12px !important; }
+          .logs-filters { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+          .logs-filters select, .logs-filters input { width: 100% !important; }
+          .date-range-container { flex-direction: column; align-items: stretch !important; }
+          
+          /* Transformar tabla en tarjetas robustas con GRID */
+          .logs-table thead { display: none; }
+          .logs-table tr { 
+            display: grid !important;
+            grid-template-areas: 
+              "date details"
+              "action action"
+              "user user";
+            grid-template-columns: 1fr auto;
+            padding: 16px !important; 
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+          }
+          
+          .logs-table td { 
+            padding: 0 !important; 
+            border: none !important; 
+            display: flex;
+            align-items: center;
+          }
+          
+          .col-date { grid-area: date; font-weight: 600; }
+          .col-details { grid-area: details; justify-content: flex-end; }
+          .col-action { grid-area: action; }
+          .col-user { 
+            grid-area: user;
+            padding-top: 10px !important;
+            border-top: 1px dashed var(--border) !important;
+            width: 100% !important;
+          }
+          
+          .col-ip, .col-entity { display: none !important; }
         }
+        
+        .pagination-btn {
+          width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+          background: #fff; color: var(--text); cursor: pointer; font-weight: 600;
+          display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .pagination-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
       {/* Toast */}
@@ -164,8 +237,20 @@ export default function ActivityLogs() {
               <option key={key} value={key}>{label}</option>
             ))}
           </select>
+
+          <select 
+            value={businessFilter} 
+            onChange={e => setBusinessFilter(e.target.value)}
+            style={{ width: 180 }}
+          >
+            <option value="">Todas las empresas</option>
+            {businesses.map(biz => (
+              <option key={biz.id} value={biz.id}>{biz.name}</option>
+            ))}
+          </select>
+
           
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="date-range-container" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
               type="date"
               value={startDate}
@@ -189,16 +274,16 @@ export default function ActivityLogs() {
 
       {/* Tabla */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-container" style={{ overflowX: 'auto' }}>
           <table className="logs-table table">
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Acción</th>
-                <th>Usuario</th>
-                <th>Entidad</th>
-                <th>IP</th>
-                <th style={{ textAlign: 'right' }}>Detalles</th>
+                <th className="col-date">Fecha</th>
+                <th className="col-action">Acción</th>
+                <th className="col-user">Usuario</th>
+                <th className="col-entity">Entidad</th>
+                <th className="col-ip">IP</th>
+                <th className="col-details" style={{ textAlign: 'right' }}>Detalles</th>
               </tr>
             </thead>
             <tbody>
@@ -209,16 +294,17 @@ export default function ActivityLogs() {
                   <Activity size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
                   <p>No se encontraron registros</p>
                 </td></tr>
-              ) : logs.map(log => {
-                const actionInfo = getActionInfo(log.action);
-                const ActionIcon = getActionIcon(log.action);
+              ) : (logs || []).map(log => {
+                const actionInfo = getActionInfo(log?.action);
+                const ActionIcon = getActionIcon(log?.action);
+
                 
                 return (
                   <tr key={log.id}>
-                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td className="col-date" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {formatDate(log.createdAt)}
                     </td>
-                    <td>
+                    <td className="col-action">
                       <span style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600,
@@ -230,7 +316,7 @@ export default function ActivityLogs() {
                         {actionInfo.label}
                       </span>
                     </td>
-                    <td>
+                    <td className="col-user">
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 500, fontSize: 13 }}>
                           {log.User?.name || log.userEmail || 'Sistema'}
@@ -240,15 +326,15 @@ export default function ActivityLogs() {
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td className="col-entity">
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         {log.entityType || '-'}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    <td className="col-ip" style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                       {log.ipAddress || '-'}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="col-details" style={{ textAlign: 'right' }}>
                       <button 
                         className="btn-outline btn-sm"
                         onClick={() => setShowDetail(log)}
@@ -263,23 +349,72 @@ export default function ActivityLogs() {
           </table>
         </div>
         
-        {/* Paginación */}
+        {/* Paginación Mejorada */}
         {pagination.pages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: 16, borderTop: '1px solid var(--border)' }}>
-            {Array.from({ length: pagination.pages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPagination(p => ({ ...p, page: i + 1 }))}
-                style={{
-                  width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)',
-                  background: pagination.page === i + 1 ? 'var(--primary)' : '#fff',
-                  color: pagination.page === i + 1 ? '#fff' : 'var(--text)',
-                  cursor: 'pointer', fontWeight: 600
-                }}
-              >
-                {i + 1}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '16px 12px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: 1 }))}
+              disabled={pagination.page === 1}
+              title="Primera página"
+            >
+              «
+            </button>
+            <button 
+              type="button"
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+              disabled={pagination.page === 1}
+            >
+              ‹
+            </button>
+
+            {/* Ventana de páginas (máximo 5) */}
+            {(() => {
+              const current = pagination.page;
+              const total = pagination.pages;
+              let start = Math.max(1, current - 2);
+              let end = Math.min(total, start + 4);
+              if (end - start < 4) start = Math.max(1, end - 4);
+              
+              const pages = [];
+              for (let i = start; i <= end; i++) {
+                pages.push(
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPagination(p => ({ ...p, page: i }))}
+                    className={`pagination-btn ${current === i ? 'active' : ''}`}
+                  >
+                    {i}
+                  </button>
+                );
+              }
+              return pages;
+            })()}
+
+            <button 
+              type="button"
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: Math.min(pagination.pages, p.page + 1) }))}
+              disabled={pagination.page === pagination.pages}
+            >
+              ›
+            </button>
+            <button 
+              type="button"
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: pagination.pages }))}
+              disabled={pagination.page === pagination.pages}
+              title="Última página"
+            >
+              »
+            </button>
+            
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8, width: '100%', textAlign: 'center', marginTop: 8 }}>
+              Página {pagination.page} de {pagination.pages} ({pagination.total} registros)
+            </div>
           </div>
         )}
       </div>

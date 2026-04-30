@@ -48,6 +48,7 @@ export function Hero({ currentSlide, nextSlide, prevSlide, goToSlide, setVideoMo
             <img
               src={carouselImages[currentSlide].src}
               alt={carouselImages[currentSlide].title}
+              loading="lazy"
               style={{
                 width: '100%',
                 height: 'auto',

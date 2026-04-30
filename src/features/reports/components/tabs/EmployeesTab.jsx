@@ -20,7 +20,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
       }}>
         <Users size={48} color="#9CA3AF" style={{ marginBottom: 16 }} />
         <p style={{ color: '#6B7280', fontSize: 14, fontWeight: 500, margin: 0 }}>
-          Sin datos de empleados para mostrar
+          Sin datos de profesionales para mostrar
         </p>
         <p style={{ color: '#9CA3AF', fontSize: 12, margin: '8px 0 0 0' }}>
           Se necesitan asignaciones de citas para generar el análisis
@@ -110,7 +110,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
   const trendData = enhancedData.slice(0, 5).map(emp => {
     const actual = emp.done || 0;
     return {
-      name: (emp.name || 'Empleado').split(' ')[0],
+      name: (emp.name || 'Profesional').split(' ')[0],
       actual: actual,
       anterior: Math.round(actual * (0.8 + Math.random() * 0.4)), // Simulación
       meta: Math.round(actual * (1.1 + Math.random() * 0.3)) // Simulación
@@ -124,7 +124,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
 
   return (
     <div>
-      {/* Header profesional al estilo TrackingTab */}
+      {/* Header empleado al estilo TrackingTab */}
       <div
         style={{
           display: 'flex',
@@ -135,7 +135,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
           gap: 12,
         }}
       >
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>👥 Análisis de Empleados</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>👥 Análisis de Profesionales</h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* KPIs rápidos */}
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -194,7 +194,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
       >
         <span>
           Mostrando {startIndex + 1}-{Math.min(startIndex + perPage, enhancedData.length)} de{' '}
-          {enhancedData.length} empleados
+          {enhancedData.length} profesionales
         </span>
         {showAdvancedFilters && (
           <span style={{ 
@@ -561,7 +561,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
       ) : (
         <div style={{ textAlign: 'center', padding: 40 }}>
           <Users size={40} color="#cbd5e1" />
-          <p style={{ color: '#94a3b8', marginTop: 12 }}>No hay datos de empleados en este período</p>
+          <p style={{ color: '#94a3b8', marginTop: 12 }}>No hay datos de profesionales en este período</p>
         </div>
       )}
     </div>

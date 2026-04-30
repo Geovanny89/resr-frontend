@@ -87,6 +87,9 @@ export function FinancialToggle({ showFullFinancial, setShowFullFinancial, enabl
             <span style={{ color: enabledModules.deposits ? '#10b981' : '#9ca3af' }}>
               {enabledModules.deposits ? '✓' : '✗'} Depósitos
             </span>
+            <span style={{ color: enabledModules.cashRegister ? '#eab308' : '#9ca3af' }}>
+              {enabledModules.cashRegister ? '✓' : '✗'} Caja
+            </span>
           </div>
           {!enabledModules.expenses && !enabledModules.inventory && !enabledModules.deposits && (
             <div style={{ marginTop: 4, fontSize: 10, color: '#f59e0b' }}>

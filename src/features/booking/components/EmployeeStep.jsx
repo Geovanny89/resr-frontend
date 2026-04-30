@@ -61,7 +61,7 @@ export default function EmployeeStep({
             }}
           >
             <img src="/kdice.png" alt="KDice" style={{ width: 40, height: 40, marginBottom: 8, objectFit: 'cover', borderRadius: '50%' }} />
-            <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier disponible</div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Cualquier profesional</div>
             <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Ver todos los horarios</div>
           </div>
         )}
@@ -151,7 +151,7 @@ export default function EmployeeStep({
           <div style={{ fontSize: 40, marginBottom: 12 }}>👤</div>
           <p style={{ color: colors.text, fontWeight: 600, marginBottom: 8 }}>No hay especialistas disponibles</p>
           <p style={{ color: colors.textSecondary, fontSize: 13 }}>
-            Ningún empleado tiene asignado este servicio.<br />
+            Ningún profesional tiene asignado este servicio.<br />
             Contacta al negocio para más información.
           </p>
         </div>

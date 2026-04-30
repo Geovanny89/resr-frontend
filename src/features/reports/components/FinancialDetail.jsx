@@ -94,6 +94,55 @@ export function FinancialDetail({ financialReport, enabledModules, financialData
         </table>
       </div>
 
+      {/* Sección Caja (solo si está habilitada) */}
+      {enabledModules.cashRegister && financialReport?.details?.cashRegister?.shiftsCount > 0 && (
+        <div style={{ marginTop: 16, padding: 12, background: '#fefce8', borderRadius: 8, border: '1px solid #fde047' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: 13, fontWeight: 700, color: '#854d0e', display: 'flex', alignItems: 'center', gap: 6 }}>
+            🏦 Control de Caja - {financialReport.details.cashRegister.shiftsCount} turno(s)
+          </h4>
+          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: '4px 0', color: '#64748b' }}>Base de Caja (Apertura)</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>
+                  {fmt(financialReport.details.cashRegister.totalOpeningAmount)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: '#166534' }}>+ Ingresos en caja</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', color: '#166534', fontWeight: 600 }}>
+                  {fmt(financialReport.details.cashRegister.totalIncome)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: '#dc2626' }}>- Gastos en caja</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', color: '#dc2626', fontWeight: 600 }}>
+                  -{fmt(financialReport.details.cashRegister.totalExpenses)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: '#ea580c' }}>- Retiros</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', color: '#ea580c', fontWeight: 600 }}>
+                  -{fmt(financialReport.details.cashRegister.totalWithdrawals)}
+                </td>
+              </tr>
+              <tr style={{ borderTop: '1px dashed #fde047', borderBottom: '1px dashed #fde047' }}>
+                <td style={{ padding: '6px 0', color: '#854d0e', fontSize: 11, fontStyle: 'italic' }}>Flujo Neto (Movimientos)</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', color: '#854d0e', fontSize: 11, fontStyle: 'italic' }}>
+                  {fmt(financialReport.details.cashRegister.totalDifference)}
+                </td>
+              </tr>
+              <tr style={{ borderTop: '1px solid #fde047' }}>
+                <td style={{ padding: '8px 0', fontWeight: 800, color: '#854d0e', fontSize: 13 }}>= Efectivo Total Esperado</td>
+                <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 800, color: '#854d0e', fontSize: 14 }}>
+                  {fmt(financialReport.details.cashRegister.totalOpeningAmount + financialReport.details.cashRegister.totalDifference)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Nota al pie */}
       <div style={{ marginTop: 12, padding: 8, background: '#f0f9ff', borderRadius: 6, fontSize: 11, color: '#0369a1' }}>
         💡 Utilidad neta = Ingresos - Gastos - Insumos. Depósitos retenidos = anticipos sin aplicar.

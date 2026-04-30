@@ -399,7 +399,7 @@ export async function generateExcelWithCharts({
     kpiData.push(
       { label: 'INGRESOS TOTALES', value: formatCurrency(totalRev), color: '8B5CF6', row: 6, col: 1 },
       { label: 'GANANCIA NEGOCIO', value: formatCurrency(totalRev - empRev), color: '059669', row: 6, col: 3 },
-      { label: 'PAGO EMPLEADOS', value: formatCurrency(empRev), color: 'DC2626', row: 6, col: 5 },
+      { label: 'PAGO PROFESIONALES', value: formatCurrency(empRev), color: 'DC2626', row: 6, col: 5 },
       { label: 'TASA EXITO', value: `${completionRate}%`, color: '0891B2', row: 6, col: 7 }
     );
   }
@@ -539,7 +539,7 @@ export async function generateExcelWithCharts({
     rowIndex++;
   });
 
-  // ==================== HOJA 3: ANÁLISIS PROFESIONAL POR EMPLEADO ====================
+  // ==================== HOJA 3: ANÁLISIS PROFESIONAL POR PROFESIONAL ====================
   const employeeData = {};
   filteredAppointments.forEach((a) => {
     const empName = a.Employee?.User?.name || 'Sin asignar';
@@ -593,7 +593,7 @@ export async function generateExcelWithCharts({
     .sort((a, b) => b.performanceScore - a.performanceScore)
     .map((emp, index) => ({ ...emp, rank: index + 1 }));
 
-  const wsEmployees = wb.addWorksheet('Por Empleado', { tabColor: { argb: 'F59E0B' } });
+  const wsEmployees = wb.addWorksheet('Por Profesional', { tabColor: { argb: 'F59E0B' } });
   
   // Título
   wsEmployees.mergeCells('A1:J1');
@@ -605,7 +605,7 @@ export async function generateExcelWithCharts({
 
   // Header
   wsEmployees.getCell('A3').value = 'RANK';
-  wsEmployees.getCell('B3').value = 'EMPLEADO';
+  wsEmployees.getCell('B3').value = 'PROFESIONAL';
   wsEmployees.getCell('C3').value = 'TOTAL';
   wsEmployees.getCell('D3').value = 'COMPLETADAS';
   wsEmployees.getCell('E3').value = 'TASA ÉXITO';
@@ -760,7 +760,7 @@ export async function generateExcelWithCharts({
   // Generar gráfica de top empleados
   if (employeesChartData.length > 0) {
     const employeesChartImage = await generateChartImage('bar', employeesChartData, {
-      title: 'Top 10 Empleados',
+      title: 'Top 10 Profesionales',
       width: 600,
       height: 400,
       barColor: '#F59E0B'
@@ -813,7 +813,7 @@ export async function generateExcel({
   // ==================== HOJA 1: DASHBOARD CON GRAFICAS ====================
   const wsDashboard = wb.addWorksheet('Dashboard', { tabColor: { argb: '4F46E5' } });
 
-  // Logo y titulo profesional
+  // Logo y titulo empleado
   wsDashboard.getCell('A1').value = `${business?.name?.toUpperCase() || 'MI NEGOCIO'}`;
   wsDashboard.getCell('A1').font = { bold: true, size: 18, color: { argb: '1E40AF' } };
   wsDashboard.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -859,7 +859,7 @@ export async function generateExcel({
 
   const completionRate = appointments.length > 0 ? ((done.length / appointments.length) * 100).toFixed(1) : 0;
 
-  // Definir tarjetas KPI con colores profesionales
+  // Definir tarjetas KPI con colores empleados
   const kpiCards = [
     { label: 'TOTAL CITAS', value: appointments.length, color: '3B82F6', icon: '', row: 7, col: 1 },
     { label: 'COMPLETADAS', value: done.length, color: '10B981', icon: '', row: 7, col: 3 },

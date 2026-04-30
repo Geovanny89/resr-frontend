@@ -202,11 +202,11 @@ export default function Schedule() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>Gestión de Horarios</h1>
-          <p>Define jornadas, almuerzos y permisos por empleado</p>
+          <p>Define jornadas, almuerzos y permisos por profesional</p>
         </div>
         <div className="page-header-actions">
           <button className="btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
-            <Plus size={16} /> Agregar horario
+            <Plus size={16} /> Agregar horario a profesional
           </button>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function Schedule() {
       {/* Lista de empleados */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="card-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <div className="card-title">Horarios por Empleado</div>
+          <div className="card-title">Horarios por Profesional</div>
         </div>
 
         {loading ? (
@@ -245,8 +245,8 @@ export default function Schedule() {
         ) : employees.length === 0 ? (
           <div className="empty-state" style={{ padding: 48 }}>
             <Calendar size={40} style={{ color: 'var(--text-muted)', marginBottom: 12 }} />
-            <h3>Sin empleados</h3>
-            <p>Registra empleados primero para asignarles horarios.</p>
+            <h3>Sin profesionales</h3>
+            <p>Registra profesionales primero para asignarles horarios.</p>
           </div>
         ) : (
           <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -261,7 +261,7 @@ export default function Schedule() {
                   boxShadow: isExpanded ? 'var(--shadow-sm)' : 'none',
                   transition: 'box-shadow 0.2s',
                 }}>
-                  {/* Cabecera empleado */}
+                  {/* Cabecera profesional */}
                   <div
                     style={{
                       padding: '12px 16px', background: colors.bgSecondary,
@@ -293,7 +293,7 @@ export default function Schedule() {
                           setShowModal(true);
                         }}
                         className="btn-outline btn-sm"
-                        title="Agregar horario a este empleado"
+                        title="Agregar horario a este profesional"
                       >
                         <Plus size={13} /> Agregar
                       </button>
@@ -466,13 +466,13 @@ export default function Schedule() {
             <form onSubmit={handleCreate}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Empleado *</label>
+                  <label>Profesional *</label>
                   <select
                     value={form.employeeId}
                     onChange={e => setForm({ ...form, employeeId: e.target.value })}
                     required
                   >
-                    <option value="">Seleccionar empleado</option>
+                    <option value="">Seleccionar profesional</option>
                     {employees.map(e => (
                       <option key={e.id} value={e.id}>{e.User?.name}</option>
                     ))}

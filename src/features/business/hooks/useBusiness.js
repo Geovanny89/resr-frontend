@@ -49,7 +49,7 @@ const defaultFormState = {
   showMissionVision: false,
   useParentWhatsApp: true,
   googleMapsUrl: '',
-  enabledModules: { expenses: false, inventory: false, deposits: false },
+  enabledModules: { cashRegister: true, expenses: false, inventory: false, deposits: false },
   depositConfig: {
     required: false,
     amount: 0,
@@ -57,7 +57,8 @@ const defaultFormState = {
     cancelationHours: 24,
     penaltyEnabled: true,
     termsText: 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'
-  }
+  },
+  includeTransfersInCashRegister: true
 };
 
 export function useBusiness(ctxBiz, refreshBusiness) {
@@ -118,7 +119,7 @@ export function useBusiness(ctxBiz, refreshBusiness) {
         showMissionVision: biz.showMissionVision || false,
         useParentWhatsApp: biz.useParentWhatsApp !== undefined ? biz.useParentWhatsApp : true,
         googleMapsUrl: biz.googleMapsUrl || '',
-        enabledModules: biz.enabledModules || { expenses: false, inventory: false, deposits: false },
+        enabledModules: biz.enabledModules || { cashRegister: true, expenses: false, inventory: false, deposits: false },
         depositConfig: biz.depositConfig || {
           required: false,
           amount: 0,
@@ -126,7 +127,8 @@ export function useBusiness(ctxBiz, refreshBusiness) {
           cancelationHours: 24,
           penaltyEnabled: true,
           termsText: 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'
-        }
+        },
+        includeTransfersInCashRegister: biz.includeTransfersInCashRegister !== undefined ? biz.includeTransfersInCashRegister : true
       });
 
       return { business: biz, gallery: gal, paymentMethods: pmt };
@@ -202,17 +204,22 @@ export function useBusiness(ctxBiz, refreshBusiness) {
   }, []);
 
   const updateModuleEnabled = useCallback((module, enabled) => {
-    setForm(prev => ({ 
-      ...prev, 
+    setForm(prev => ({
+      ...prev,
       enabledModules: { ...prev.enabledModules, [module]: enabled }
     }));
   }, []);
 
   const updateDepositConfig = useCallback((field, value) => {
-    setForm(prev => ({ 
-      ...prev, 
-      depositConfig: { ...(prev.depositConfig || {}), [field]: value }
-    }));
+    // Si el campo es includeTransfersInCashRegister, actualizarlo directamente en el form
+    if (field === 'includeTransfersInCashRegister') {
+      setForm(prev => ({ ...prev, includeTransfersInCashRegister: value }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        depositConfig: { ...(prev.depositConfig || {}), [field]: value }
+      }));
+    }
   }, []);
 
   const publicUrl = business ? `${window.location.origin}/${business.slug}` : '';

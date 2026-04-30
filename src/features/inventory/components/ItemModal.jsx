@@ -42,7 +42,7 @@ export function ItemModal({
               type="text"
               value={form.name}
               onChange={(e) => onUpdateField('name', e.target.value)}
-              placeholder="Ej: Shampoo profesional"
+              placeholder="Ej: Shampoo empleado"
               required
               style={{
                 width: '100%', padding: 10, borderRadius: 8,

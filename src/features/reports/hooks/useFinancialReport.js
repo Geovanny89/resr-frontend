@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../../api/client';
 
+// Helper para formatear fecha a YYYY-MM-DD
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toISOString().slice(0, 10);
+};
+
 export function useFinancialReport({ business, range, showFullFinancial, period }) {
   const [financialReport, setFinancialReport] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -8,6 +15,7 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
     expenses: false,
     inventory: false,
     deposits: false,
+    cashRegister: false,
   });
 
   const loadFinancialReport = async () => {
@@ -15,15 +23,22 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
 
     setLoading(true);
     try {
-      const year = range.start.getFullYear();
-      const month = String(range.start.getMonth() + 1).padStart(2, '0');
+      const params = {
+        businessId: business.id,
+      };
+
+      // Para períodos day y week, usar startDate/endDate
+      // Para month, mantener compatibilidad con year/month
+      if (period === 'month') {
+        params.year = range.start.getFullYear();
+        params.month = String(range.start.getMonth() + 1).padStart(2, '0');
+      } else {
+        params.startDate = formatDate(range.start);
+        params.endDate = formatDate(range.end);
+      }
 
       const res = await api.get('/financial-report', {
-        params: {
-          businessId: business.id,
-          year,
-          month,
-        },
+        params,
       });
 
       setFinancialReport(res.data);
@@ -36,10 +51,10 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
   };
 
   useEffect(() => {
-    if (showFullFinancial && period === 'month') {
+    if (showFullFinancial && (period === 'month' || period === 'day' || period === 'week')) {
       loadFinancialReport();
     }
-  }, [showFullFinancial, period, business?.id, range?.start?.getTime()]);
+  }, [showFullFinancial, period, business?.id, range?.start?.getTime(), range?.end?.getTime()]);
 
   // Computed values for display
   const financialData = financialReport?.summary || {};

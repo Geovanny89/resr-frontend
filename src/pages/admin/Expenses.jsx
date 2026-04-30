@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
-import { DollarSign, Plus, TrendingDown, Calendar, FileText, Pencil, Trash2, X } from 'lucide-react';
+import { DollarSign, Plus, TrendingDown, Calendar, FileText, Pencil, X } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'arriendo', label: '🏠 Arriendo', color: '#8b5cf6' },
@@ -32,8 +32,9 @@ export default function Expenses() {
   const [saving, setSaving] = useState(false);
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editingId, setEditingId] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false);
+  const [voidTarget, setVoidTarget] = useState(null);
+  const [voidReason, setVoidReason] = useState('');
 
   // Toast notification state
   const [statusMsg, setStatusMsg] = useState(null);
@@ -113,22 +114,27 @@ export default function Expenses() {
     setShowModal(true);
   };
 
-  // Abrir modal de confirmación para eliminar
-  const openDeleteConfirm = (expense) => {
-    setDeleteTarget(expense);
-    setShowDeleteConfirm(true);
+  // Abrir modal de confirmación para anular
+  const openVoidConfirm = (expense) => {
+    setVoidTarget(expense);
+    setVoidReason('');
+    setShowVoidConfirm(true);
   };
 
-  // Eliminar gasto
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setShowDeleteConfirm(false);
+  // Anular gasto (flujo contable recomendado)
+  const handleVoid = async () => {
+    if (!voidTarget) return;
+    setShowVoidConfirm(false);
     try {
-      await api.delete(`/expenses/${deleteTarget.id}`);
+      await api.post(`/expenses/${voidTarget.id}/void`, {
+        reason: voidReason || undefined
+      });
       await loadExpenses(true);
-      setDeleteTarget(null);
+      showStatus('Gasto anulado correctamente');
+      setVoidTarget(null);
+      setVoidReason('');
     } catch (e) {
-      showStatus('Error al eliminar', 'error');
+      showStatus(e.response?.data?.error || 'Error al anular gasto', 'error');
     }
   };
 
@@ -317,10 +323,10 @@ export default function Expenses() {
                   <Pencil size={14} />
                 </button>
                 <button
-                  onClick={() => openDeleteConfirm(row)}
+                  onClick={() => openVoidConfirm(row)}
                   style={{
                     padding: '6px 10px',
-                    background: '#ef4444',
+                    background: '#f59e0b',
                     color: 'white',
                     border: 'none',
                     borderRadius: 6,
@@ -329,9 +335,9 @@ export default function Expenses() {
                     alignItems: 'center',
                     gap: 4
                   }}
-                  title="Eliminar"
+                  title="Anular"
                 >
-                  <Trash2 size={14} />
+                  Anular
                 </button>
               </div>
             )
@@ -342,13 +348,13 @@ export default function Expenses() {
         emptyMessage="No hay gastos registrados este mes"
       />
 
-      {/* Modal de confirmación para eliminar */}
-      {showDeleteConfirm && (
+      {/* Modal de confirmación para anular */}
+      {showVoidConfirm && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 1000
-        }} onClick={() => setShowDeleteConfirm(false)}>
+        }} onClick={() => setShowVoidConfirm(false)}>
           <div style={{
             background: 'white', borderRadius: 12, padding: 24,
             maxWidth: 400, width: '90%',
@@ -357,31 +363,49 @@ export default function Expenses() {
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{
                 width: 60, height: 60, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '0 auto 16px', fontSize: 28
               }}>
-                🗑️
+                ⚠️
               </div>
-              <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>¿Eliminar gasto?</h3>
+              <h3 style={{ margin: '0 0 8px', fontSize: 20 }}>¿Anular gasto?</h3>
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>
-                Esta acción no se puede deshacer
+                Se conserva trazabilidad contable. No se borra físicamente.
               </p>
-              {deleteTarget && (
+              {voidTarget && (
                 <div style={{
-                  background: '#fef2f2', padding: 12, borderRadius: 8,
-                  marginTop: 12, fontSize: 13, color: '#991b1b'
+                  background: '#fffbeb', padding: 12, borderRadius: 8,
+                  marginTop: 12, fontSize: 13, color: '#92400e'
                 }}>
-                  <strong>{deleteTarget.description}</strong><br />
-                  ${deleteTarget.amount?.toLocaleString('es-CO')} - {deleteTarget.category}
+                  <strong>{voidTarget.description}</strong><br />
+                  ${voidTarget.amount?.toLocaleString('es-CO')} - {voidTarget.category}
                 </div>
               )}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
+                Motivo (opcional)
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Ej: Error de digitación"
+                rows={3}
+                style={{
+                  width: '100%', padding: 10, borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.inputBg, color: colors.text,
+                  resize: 'vertical'
+                }}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 type="button"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => setShowVoidConfirm(false)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 10,
                   border: `1px solid ${colors.border}`,
@@ -393,16 +417,16 @@ export default function Expenses() {
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={handleVoid}
                 style={{
                   flex: 1, padding: 12, borderRadius: 10,
                   border: 'none',
-                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                   color: 'white', fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
-                Sí, eliminar
+                Sí, anular
               </button>
             </div>
           </div>

@@ -195,7 +195,7 @@ export async function generatePDF({
   if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
     summaryBody.push(['Ingresos totales', fmt(totalRev)]);
     summaryBody.push(['Ganancia del negocio', fmt(ownerRev)]);
-    summaryBody.push(['Pago a empleados', fmt(empRev)]);
+    summaryBody.push(['Pago a profesionales', fmt(empRev)]);
   }
 
   // Informe financiero completo
@@ -274,8 +274,8 @@ export async function generatePDF({
     doc.setTextColor(...colors.black);
     doc.text(
       business?.isTechnicalServices || business?.hasFieldTechnicians
-        ? 'Citas por Empleado'
-        : 'Resumen de Pagos a Empleados',
+        ? 'Citas por Profesional'
+        : 'Resumen de Pagos a Profesionales',
       margin,
       yPos
     );
@@ -283,8 +283,8 @@ export async function generatePDF({
     yPos += 8;
     const empHead =
       business?.isTechnicalServices || business?.hasFieldTechnicians
-        ? [['Empleado', 'Citas completadas']]
-        : [['Empleado', 'Citas completadas', 'Total a pagar']];
+        ? [['Profesional', 'Citas completadas']]
+        : [['Profesional', 'Citas completadas', 'Total a pagar']];
 
     const empBody = employeeList.map((emp) => {
       const row = [emp.name, emp.citas.toString()];
@@ -344,8 +344,8 @@ export async function generatePDF({
 
   const appointmentsHead =
     business?.isTechnicalServices || business?.hasFieldTechnicians
-      ? [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Estado']]
-      : [['Fecha', 'Cliente', 'Servicio', 'Empleado', 'Precio', 'Adicional', 'Pago', 'Estado']];
+      ? [['Fecha', 'Cliente', 'Servicio', 'Profesional', 'Estado']]
+      : [['Fecha', 'Cliente', 'Servicio', 'Profesional', 'Precio', 'Adicional', 'Pago', 'Estado']];
 
   const appointmentsBody = appointments.map((a) => {
     const row = [

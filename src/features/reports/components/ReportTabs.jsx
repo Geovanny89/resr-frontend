@@ -1,7 +1,7 @@
 export function ReportTabs({ activeTab, setActiveTab, hasFieldTechnicians }) {
   const tabs = [
     { id: 'overview', label: 'Resumen' },
-    { id: 'employees', label: 'Por empleado' },
+    { id: 'employees', label: 'Por profesional' },
     { id: 'services', label: 'Por servicio' },
     ...(hasFieldTechnicians ? [{ id: 'tracking', label: '📍 Seguimiento' }] : []),
   ];

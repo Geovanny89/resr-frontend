@@ -138,13 +138,13 @@ export function CreateAppointmentModal({
 
         {/* Empleado */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Empleado *</label>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Profesional *</label>
           <select
             value={form.employeeId}
             onChange={(e) => setForm({ ...form, employeeId: e.target.value, additionalEmployeeIds: [] })}
             style={{ width: '100%', padding: 10, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 14, background: colors.inputBg, color: colors.text }}
           >
-            <option value="">Selecciona un empleado</option>
+            <option value="">Selecciona un profesional</option>
             {employees.map(emp => (
               <option key={emp.id} value={emp.id}>{emp.User?.name || emp.name}</option>
             ))}
@@ -155,7 +155,7 @@ export function CreateAppointmentModal({
         {form.employeeId && employees.filter(e => e.id !== form.employeeId).length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
-              🤝 Empleados adicionales (Cita Grupal)
+              🤝 Profesionales adicionales (Cita Grupal)
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {employees.filter(emp => emp.id !== form.employeeId).map(emp => {
@@ -183,7 +183,7 @@ export function CreateAppointmentModal({
             </div>
             {form.additionalEmployeeIds.length > 0 && (
               <div style={{ marginTop: 8, fontSize: 12, color: '#059669' }}>
-                ✓ {form.additionalEmployeeIds.length} empleado(s) adicional(es)
+                ✓ {form.additionalEmployeeIds.length} profesional(es) adicional(es)
               </div>
             )}
           </div>

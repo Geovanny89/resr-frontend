@@ -335,7 +335,7 @@ export default function APKHome() {
                   fontSize: '14px',
                   color: '#64748b'
                 }}>
-                  Sistema de Reservas Profesional
+                  Sistema de Reservas Empleado
                 </p>
               </div>
             </div>

@@ -127,7 +127,7 @@ export default function EmployeeVacations() {
 
   const getEmployeeName = (employeeId) => {
     const emp = employees.find(e => e.id === employeeId);
-    return emp ? emp.User?.name || 'Empleado' : 'Desconocido';
+    return emp ? emp.User?.name || 'Profesional' : 'Desconocido';
   };
 
   const formatDate = (dateStr) => {
@@ -169,10 +169,10 @@ export default function EmployeeVacations() {
           <div>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
               <Palmtree size={28} color="#10b981" />
-              Vacaciones de Empleados
+              Vacaciones de Profesionales
             </h1>
             <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-              Gestiona los períodos de vacaciones. Los empleados en vacaciones no aparecerán disponibles en la agenda.
+              Gestiona los períodos de vacaciones. Los profesionales en vacaciones no aparecerán disponibles en la agenda.
             </p>
           </div>
           <button
@@ -212,9 +212,9 @@ export default function EmployeeVacations() {
           <div>
             <strong>¿Cómo funcionan las vacaciones?</strong>
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-              <li>Define un rango de fechas (inicio y fin) para cada empleado</li>
-              <li>Durante este período, el empleado no aparecerá en la agenda para nuevas citas</li>
-              <li>No afecta los horarios regulares del empleado</li>
+              <li>Define un rango de fechas (inicio y fin) para cada profesional</li>
+              <li>Durante este período, el profesional no aparecerá en la agenda para nuevas citas</li>
+              <li>No afecta los horarios regulares del profesional</li>
               <li>Citas existentes programadas antes no se ven afectadas</li>
             </ul>
           </div>
@@ -523,7 +523,7 @@ export default function EmployeeVacations() {
                       color: colors.text
                     }}>
                       <Users size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      Empleado *
+                      Profesional *
                     </label>
                     <select
                       value={form.employeeId}
@@ -540,16 +540,16 @@ export default function EmployeeVacations() {
                         fontSize: 14
                       }}
                     >
-                      <option value="">Seleccionar empleado</option>
+                      <option value="">Seleccionar profesional</option>
                       {employees.map(emp => (
                         <option key={emp.id} value={emp.id}>
-                          {emp.User?.name || 'Empleado'}
+                          {emp.User?.name || 'Profesional'}
                         </option>
                       ))}
                     </select>
                     {editingVacation && (
                       <p style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
-                        No se puede cambiar el empleado al editar
+                        No se puede cambiar el profesional al editar
                       </p>
                     )}
                   </div>

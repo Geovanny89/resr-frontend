@@ -227,7 +227,7 @@ export function AppointmentList({
               <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Hora</th>
               <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Cliente</th>
               <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Servicio</th>
-              <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Profesional</th>
+              <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Empleado</th>
               <th style={{ padding: '12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Estado</th>
               <th style={{ padding: '12px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: colors.textSecondary }}>Acciones</th>
             </tr>

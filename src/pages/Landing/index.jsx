@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useScrollHide } from './hooks/useScrollHide';
 import { useCarousel } from './hooks/useCarousel';
@@ -28,6 +28,21 @@ export default function Landing() {
   const [navOpen, setNavOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(null);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+
+  // Lógica de auto-descarga si viene del actualizador de la app
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autodownload') === 'true') {
+      const link = document.createElement('a');
+      link.href = '/apk/kdice-reservas.apk';
+      link.download = 'kdice-reservas.apk';
+      document.body.appendChild(link);
+      setTimeout(() => {
+        link.click();
+        document.body.removeChild(link);
+      }, 1000);
+    }
+  }, []);
 
   // Set CSS variables for theming
   const cssVars = {

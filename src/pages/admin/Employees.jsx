@@ -155,7 +155,7 @@ export default function Employees() {
   };
 
   return (
-    <AdminLayout title="Empleados" subtitle="Gestiona tu equipo de trabajo">
+    <AdminLayout title="Profesionales" subtitle="Gestiona tu equipo de trabajo">
       <style>{`
         @media (max-width: 480px) {
           .employees-modal-close {
@@ -186,11 +186,11 @@ export default function Employees() {
           }}
           disabled={subscriptionInfo?.availableUsers === 0}
         >
-          ➕ Nuevo empleado
+          ➕ Nuevo profesional
         </button>
         {subscriptionInfo?.availableUsers === 0 && (
           <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
-            Has usado todos tus empleados permitidos ({subscriptionInfo?.currentEmployees} de {subscriptionInfo?.totalUsersAllowed}).
+            Has usado todos tus profesionales permitidos ({subscriptionInfo?.currentEmployees} de {subscriptionInfo?.totalUsersAllowed}).
             El admin no cuenta. Contacta al administrador para agregar más cupos.
           </div>
         )}
@@ -200,9 +200,9 @@ export default function Employees() {
       <div className="card">
         <div className="card-header" style={{ marginBottom: 16 }}>
           <div>
-            <div className="card-title">👥 Empleados registrados</div>
+            <div className="card-title">👥 Profesionales registrados</div>
             <div className="card-subtitle">
-              {paginatedEmployees.length} empleado{paginatedEmployees.length !== 1 ? 's' : ''}
+              {paginatedEmployees.length} profesional{paginatedEmployees.length !== 1 ? 'es' : ''}
             </div>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function Employees() {
           ]}
           fullWidthActions={false}
           loading={loading}
-          emptyMessage="No hay empleados. ¡Crea uno para empezar!"
+          emptyMessage="No hay profesionales. ¡Crea uno para empezar!"
         />
 
         {/* Paginación */}
@@ -311,7 +311,7 @@ function SubscriptionBanner({ subscriptionInfo, colors }) {
           Plan {subscriptionInfo.planName}
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700 }}>
-          {subscriptionInfo.currentEmployees} de {subscriptionInfo.totalUsersAllowed} empleados
+          {subscriptionInfo.currentEmployees} de {subscriptionInfo.totalUsersAllowed} profesionales
         </div>
         <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>
           {subscriptionInfo.includedUsers} incluidos + {subscriptionInfo.additionalUsers} adicionales (el admin no cuenta)

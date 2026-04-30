@@ -3,7 +3,7 @@ import SuperAdminLayout from '../../components/SuperAdminLayout';
 import api from '../../api/client';
 import {
   Building2, Tag, CheckCircle, XCircle, Clock, TrendingUp,
-  AlertTriangle, ShieldCheck, Users, DollarSign, Activity
+  AlertTriangle, ShieldCheck, Users, DollarSign, Activity, Star, Smartphone
 } from 'lucide-react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -15,7 +15,18 @@ export default function SuperAdminHome() {
   const [businessTypes, setBusinessTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [globalNotif, setGlobalNotif] = useState({ value: '', isActive: false });
+  const [testimonialCampaign, setTestimonialCampaign] = useState({ value: '', isActive: false });
   const [savingNotif, setSavingNotif] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  
+  // App Version Control
+  const [appVersionConfig, setAppVersionConfig] = useState({
+    version: '1.0.0',
+    forceUpdate: false,
+    releaseNotes: '',
+    downloadUrl: 'https://profesional.k-dice.com?autodownload=true#app'
+  });
+  const [savingAppVersion, setSavingAppVersion] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -23,12 +34,21 @@ export default function SuperAdminHome() {
       api.get('/businesses'),
       api.get('/business-types/all'),
       api.get('/system-settings/global_notification'),
-    ]).then(([bRes, tRes, nRes]) => {
+      api.get('/system-settings/testimonial_campaign'),
+      api.get('/apk/version')
+    ]).then(([bRes, tRes, nRes, cRes, aRes]) => {
       setBusinesses(bRes.data || []);
       setBusinessTypes(tRes.data || []);
-      // Si la API devuelve un objeto con value y isActive, lo usamos.
-      // Si devuelve algo con message (porque es el endpoint público), ajustamos.
       setGlobalNotif(nRes.data || { value: '', isActive: false });
+      setTestimonialCampaign(cRes.data || { value: '', isActive: false });
+      if (aRes.data) {
+        setAppVersionConfig({
+          version: aRes.data.version || '1.0.0',
+          forceUpdate: aRes.data.forceUpdate || false,
+          releaseNotes: Array.isArray(aRes.data.releaseNotes) ? aRes.data.releaseNotes.join('\n') : '',
+          downloadUrl: aRes.data.downloadUrl || 'https://profesional.k-dice.com#download'
+        });
+      }
     }).catch((err) => {
       console.error('Error loading SuperAdmin stats:', err);
     }).finally(() => setLoading(false));
@@ -42,7 +62,6 @@ export default function SuperAdminHome() {
   const saveGlobalNotification = async () => {
     setSavingNotif(true);
     try {
-      // Ajustar estructura según el modelo SystemSetting
       const payload = { 
         value: globalNotif.value || '', 
         isActive: globalNotif.isActive || false 
@@ -54,6 +73,23 @@ export default function SuperAdminHome() {
       showToast('Error al guardar: ' + e.message, 'error');
     } finally {
       setSavingNotif(false);
+    }
+  };
+
+  const saveTestimonialCampaign = async () => {
+    setSavingCampaign(true);
+    try {
+      const payload = { 
+        value: 'active', 
+        isActive: testimonialCampaign.isActive 
+      };
+      const res = await api.put('/system-settings/testimonial_campaign', payload);
+      setTestimonialCampaign(res.data);
+      showToast('Campaña de testimonios actualizada');
+    } catch (e) {
+      showToast('Error al guardar campaña', 'error');
+    } finally {
+      setSavingCampaign(false);
     }
   };
 
@@ -112,7 +148,21 @@ export default function SuperAdminHome() {
       </SuperAdminLayout>
     );
   }
-
+  const saveAppVersionConfig = async () => {
+    setSavingAppVersion(true);
+    try {
+      const configToSave = {
+        ...appVersionConfig,
+        releaseNotes: appVersionConfig.releaseNotes.split('\n').filter(n => n.trim() !== '')
+      };
+      await api.put('/system-settings/app_version_config', { value: JSON.stringify(configToSave) });
+      alert('Configuración de App actualizada correctamente');
+    } catch (e) {
+      alert('Error al guardar configuración de App');
+    } finally {
+      setSavingAppVersion(false);
+    }
+  };
   return (
     <SuperAdminLayout title="Dashboard" subtitle="Resumen general del sistema">
       <style>{`
@@ -214,6 +264,97 @@ export default function SuperAdminHome() {
                   {savingNotif ? 'Guardando...' : 'Guardar '}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Campaña de Testimonios */}
+          <div className="card" style={{ padding: 20, marginTop: 16, border: '1px solid #6366f1' }}>
+            <h3 style={{ fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: '#4f46e5' }}>
+              <Star size={18} fill="#4f46e5" /> Solicitar Testimonios (Social Proof)
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+              Al activar esto, todos los negocios verán un banner en su dashboard invitándoles a dejar un testimonio. 
+              <strong> Desaparecerá automáticamente para cada negocio una vez que envíen su reseña.</strong>
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+                <input 
+                  type="checkbox" 
+                  checked={testimonialCampaign.isActive}
+                  onChange={(e) => setTestimonialCampaign({ ...testimonialCampaign, isActive: e.target.checked })}
+                  style={{ width: 20, height: 20 }}
+                />
+                Lanzar campaña de testimonios
+              </label>
+              <button 
+                className="btn-primary" 
+                onClick={saveTestimonialCampaign}
+                disabled={savingCampaign}
+                style={{ padding: '8px 20px', fontSize: 14, background: '#6366f1' }}
+              >
+                {savingCampaign ? 'Guardando...' : 'Aplicar Cambio'}
+              </button>
+            </div>
+          </div>
+
+          {/* Control de Versión de la App */}
+          <div className="card" style={{ padding: 20, marginTop: 16, border: '1px solid #10b981' }}>
+            <h3 style={{ fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: '#059669' }}>
+              <Smartphone size={18} /> Control de Versión App (APK)
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+              Define la versión más reciente. Los usuarios con una versión inferior verán un aviso para descargar la nueva.
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Versión (ej: 1.0.2)</label>
+                <input 
+                  type="text" 
+                  value={appVersionConfig.version}
+                  onChange={(e) => setAppVersionConfig({ ...appVersionConfig, version: e.target.value })}
+                  style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>URL de descarga (Landing)</label>
+                <input 
+                  type="text" 
+                  value={appVersionConfig.downloadUrl}
+                  onChange={(e) => setAppVersionConfig({ ...appVersionConfig, downloadUrl: e.target.value })}
+                  style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Notas de la versión (una por línea)</label>
+              <textarea 
+                value={appVersionConfig.releaseNotes}
+                onChange={(e) => setAppVersionConfig({ ...appVersionConfig, releaseNotes: e.target.value })}
+                placeholder="Ej: Nuevo sistema de pagos&#10;Corrección de errores en agenda"
+                style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border)', minHeight: 80, background: 'var(--bg-input)', color: 'var(--text)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={appVersionConfig.forceUpdate}
+                  onChange={(e) => setAppVersionConfig({ ...appVersionConfig, forceUpdate: e.target.checked })}
+                  style={{ width: 18, height: 18 }}
+                />
+                Forzar actualización (Bloquea la app hasta actualizar)
+              </label>
+              <button 
+                className="btn-primary" 
+                onClick={saveAppVersionConfig}
+                disabled={savingAppVersion}
+                style={{ padding: '8px 20px', fontSize: 14, background: '#10b981' }}
+              >
+                {savingAppVersion ? 'Guardando...' : 'Actualizar Versión'}
+              </button>
             </div>
           </div>
         </div>

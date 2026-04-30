@@ -283,7 +283,7 @@ export default function Reports() {
             <KpiCards stats={stats} business={business} comparison={comparison} />
 
             {/* Financial Toggle */}
-            {period === 'month' && !business?.hasFieldTechnicians && (
+            {(period === 'month' || period === 'day' || period === 'week') && !business?.hasFieldTechnicians && (
               <FinancialToggle
                 showFullFinancial={showFullFinancial}
                 setShowFullFinancial={setShowFullFinancial}
@@ -292,7 +292,7 @@ export default function Reports() {
             )}
 
             {/* Financial KPI Cards */}
-            {showFullFinancial && period === 'month' && (
+            {showFullFinancial && (period === 'month' || period === 'day' || period === 'week') && (
               <FinancialKpiCards
                 displayIncome={displayIncome}
                 displayInventory={displayInventory}
@@ -304,7 +304,7 @@ export default function Reports() {
             )}
 
             {/* Financial Detail */}
-            {showFullFinancial && period === 'month' && (
+            {showFullFinancial && (period === 'month' || period === 'day' || period === 'week') && (
               <FinancialDetail
                 financialReport={financialReport}
                 enabledModules={enabledModules}

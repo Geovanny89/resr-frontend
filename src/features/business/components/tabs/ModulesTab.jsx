@@ -2,6 +2,13 @@ import { Store } from 'lucide-react';
 
 const MODULES = [
   {
+    key: 'cashRegister',
+    icon: '💰',
+    bg: '#f0fdf4',
+    title: 'Caja / Turnos',
+    description: 'Control de turnos, movimientos de efectivo y cortes de caja'
+  },
+  {
     key: 'expenses',
     icon: '📉',
     bg: '#fef2f2',
@@ -178,13 +185,38 @@ export default function ModulesTab({
                     📝 Términos y condiciones (que verá el cliente)
                   </label>
                   <textarea
-                    value={depositConfig.termsText || 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad.'}
+                    value={depositConfig.termsText || 'El anticipo garantiza tu cita. Si cancelas con menos de 24 horas de anticipo o no asistes, el anticipo será retenido como penalidad. Puedes reagendar una vez sin costo adicional.'}
                     onChange={(e) => onDepositConfigUpdate('termsText', e.target.value)}
                     rows={3}
                     style={{
                       width:'100%',padding:'8px 12px',borderRadius:8,border:'1px solid var(--border)',
                       fontSize:13,background:'var(--bg)',color:'var(--text)',resize:'vertical'
                     }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {key === 'cashRegister' && enabledModules[key] && (
+              <div style={{borderTop:'1px solid var(--border)',paddingTop:16}}>
+                <div style={{fontWeight:600,fontSize:14,marginBottom:12,color:'var(--primary)'}}>
+                  ⚙️ Configuración de Caja
+                </div>
+
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                  <div style={{flex:1}}>
+                    <label style={{fontSize:13,fontWeight:500}}>
+                      📲 Incluir transferencias en el total de caja
+                    </label>
+                    <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>
+                      Si está activado, los pagos por transferencia se sumarán al total de caja. Si está desactivado, solo se contará el efectivo.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={form.includeTransfersInCashRegister !== false}
+                    onChange={(e) => onDepositConfigUpdate('includeTransfersInCashRegister', e.target.checked)}
+                    style={{width:18,height:18,cursor:'pointer'}}
                   />
                 </div>
               </div>

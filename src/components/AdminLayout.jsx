@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { Capacitor } from '@capacitor/core';
@@ -9,8 +9,8 @@ import BranchSelector from './BranchSelector';
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
-  MessageCircle, RefreshCw, Smartphone, Tag, UserCircle,
-  TrendingDown, Package, PiggyBank, CalendarDays, CalendarX, Palmtree
+  MessageCircle, RefreshCw, Smartphone, Tag, UserCircle, Gift,
+  TrendingDown, Package, PiggyBank, CalendarDays, CalendarX, Palmtree, Wallet
 } from 'lucide-react';
 
 export default function AdminLayout({ children, title, subtitle }) {
@@ -43,7 +43,7 @@ export default function AdminLayout({ children, title, subtitle }) {
         section: 'Gestión',
         items: [
           { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
-          { to: '/admin/employees', icon: Users,    label: 'Empleados' },
+          { to: '/admin/employees', icon: Users,    label: 'Profesionales' },
           { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
           { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
           { to: '/admin/employee-vacations', icon: Palmtree, label: 'Vacaciones' },
@@ -54,6 +54,8 @@ export default function AdminLayout({ children, title, subtitle }) {
         section: 'Finanzas',
         items: [
           { to: '/admin/payments', icon: CreditCard, label: 'Pagos y Comisiones' },
+          { to: '/admin/submit-payment', icon: DollarSign, label: 'Enviar Pago' },
+          ...(enabledModules.cashRegister ? [{ to: '/admin/cash-register', icon: Wallet, label: 'Caja' }] : []),
           ...(enabledModules.inventory ? [{ to: '/admin/inventory', icon: Package, label: 'Insumos' }] : []),
           ...(enabledModules.expenses ? [{ to: '/admin/expenses', icon: TrendingDown, label: 'Gastos' }] : []),
           ...(enabledModules.deposits ? [{ to: '/admin/deposits', icon: PiggyBank, label: 'Depósitos' }] : []),
@@ -68,6 +70,7 @@ export default function AdminLayout({ children, title, subtitle }) {
       {
         section: 'Configuración',
         items: [
+          { to: '/admin/referrals',       icon: Gift, label: 'Programa de Referidos' },
           { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
         ]
       }
@@ -161,7 +164,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                   {business.subscriptionPlan === 'premium' && '💛 Premium'}
                 </span>
                 <span style={{ opacity: 0.8 }}>·</span>
-                <span>{(business.includedUsers || 2) + (business.additionalUsers || 0)} empleados</span>
+                <span>{(business.includedUsers || 2) + (business.additionalUsers || 0)} profesionales</span>
               </div>
             )}
           </div>
@@ -233,11 +236,7 @@ export default function AdminLayout({ children, title, subtitle }) {
             {/* Si hay sesión guardada o conectada, mostrar como 'Conectado' permanentemente */}
             {/* Para sucursales, verificar el hasFieldTechnicians e isTechnicalServices del negocio padre */}
             {['admin', 'admin_suc'].includes(user?.role) && 
-              !(business?.isBranch 
-                ? (business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) ||
-                  (business?.ParentBusiness?.isTechnicalServices || business?.parentIsTechnicalServices)
-                : business?.hasFieldTechnicians || business?.isTechnicalServices
-              ) && (
+              !(business?.hasFieldTechnicians || business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) && (
               <div 
                 style={{ 
                   display: 'flex', 
@@ -309,6 +308,70 @@ export default function AdminLayout({ children, title, subtitle }) {
         </header>
 
         <div className="page-content fade-in">
+          {/* Alerta de Periodo de Gracia (24h) para nuevos negocios */}
+          {business?.subscriptionStatus === 'pending' && (
+            <div style={{ 
+              marginBottom: 20, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 12, 
+              border: '1px solid #bae6fd', 
+              borderRadius: 12, 
+              padding: '16px 20px', 
+              background: '#f0f9ff',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+            }}>
+              <div style={{ fontSize: 24 }}>🚀</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: '#0369a1', fontSize: 15 }}>¡Bienvenido! Estás en periodo de gracia (24h)</div>
+                <div style={{ fontSize: 13, color: '#075985' }}>
+                  Aprovecha este tiempo para configurar tu negocio. Recuerda <strong>subir tu comprobante de pago</strong> en la sección de suscripción para activar tu cuenta permanentemente.
+                </div>
+              </div>
+              <Link 
+                to="/admin/submit-payment" 
+                style={{ 
+                  padding: '10px 18px', 
+                  fontSize: 13, 
+                  background: '#0ea5e9', 
+                  color: '#fff', 
+                  borderRadius: 10, 
+                  textDecoration: 'none', 
+                  fontWeight: 700, 
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 2px 4px rgba(14, 165, 233, 0.3)'
+                }}
+              >
+                Subir Pago
+              </Link>
+            </div>
+          )}
+
+          {/* Alerta de suscripción por vencer - visible en todas las páginas del admin */}
+          {showSubscriptionWarning && business?.subscriptionStatus !== 'pending' && (
+            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fbd38d', borderRadius: 12, padding: '16px 20px', background: '#fffaf0' }}>
+              <div style={{ fontSize: 24 }}>⏳</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: '#9c4221', fontSize: 15 }}>Tu suscripción está por vencer</div>
+                <div style={{ fontSize: 13, color: '#c05621' }}>Faltan <strong>{subscriptionDaysLeft} días</strong> para que tu cuenta sea bloqueada. Por favor realiza el pago pronto.</div>
+              </div>
+              <Link to="/admin/submit-payment" style={{ padding: '8px 16px', fontSize: 12, background: '#f59e0b', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Ir a pagar
+              </Link>
+            </div>
+          )}
+          {subscriptionDaysLeft !== null && subscriptionDaysLeft <= 0 && (
+            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #feb2b2', borderRadius: 12, padding: '16px 20px', background: '#fff5f5' }}>
+              <div style={{ fontSize: 24 }}>🚫</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: '#9b2c2c', fontSize: 15 }}>Suscripción vencida</div>
+                <div style={{ fontSize: 13, color: '#c53030' }}>Tu suscripción venció hace <strong>{Math.abs(subscriptionDaysLeft)} días</strong>. Tu cuenta está en riesgo de bloqueo total.</div>
+              </div>
+              <Link to="/admin/my-business" style={{ padding: '8px 16px', fontSize: 12, background: '#e53e3e', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Pagar ahora
+              </Link>
+            </div>
+          )}
           {children}
         </div>
       </main>

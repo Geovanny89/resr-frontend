@@ -12,7 +12,7 @@ const ROLE_LABELS = {
   superadmin: { label: 'SuperAdmin', color: '#7c3aed', bg: '#ede9fe' },
   admin: { label: 'Admin', color: '#059669', bg: '#d1fae5' },
   admin_suc: { label: 'Admin Suc.', color: '#0d9488', bg: '#ccfbf1' },
-  employee: { label: 'Empleado', color: '#3b82f6', bg: '#dbeafe' },
+  employee: { label: 'Profesional', color: '#3b82f6', bg: '#dbeafe' },
   client: { label: 'Cliente', color: '#6b7280', bg: '#f3f4f6' }
 };
 
@@ -54,7 +54,7 @@ export default function UsersPage() {
     try {
       const params = new URLSearchParams({
         page: pagination.page,
-        limit: 50,
+        limit: 10,
         ...(search && { search }),
         ...(roleFilter && { role: roleFilter }),
         ...(statusFilter && { status: statusFilter })
@@ -200,12 +200,54 @@ export default function UsersPage() {
     <SuperAdminLayout title="Gestión de Usuarios" subtitle="Administra todos los usuarios del sistema">
       <style>{`
         @media (max-width: 768px) {
-          .users-toolbar { flex-direction: column; align-items: stretch !important; }
-          .users-filters { flex-direction: column; }
-          .users-table { font-size: 12px; }
-          .users-table th:nth-child(4), .users-table td:nth-child(4),
-          .users-table th:nth-child(5), .users-table td:nth-child(5) { display: none; }
+          .users-toolbar { padding: 12px !important; }
+          .users-filters { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+          .users-filters > div, .users-filters select { width: 100% !important; flex: none !important; }
+          
+          /* Escondemos encabezados de tabla excepto el principal */
+          .users-table thead { display: none; }
+          
+          .users-table tr { 
+            display: flex; 
+            flex-direction: column; 
+            padding: 16px !important; 
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+          }
+          
+          .users-table td { 
+            padding: 0 !important; 
+            border: none !important; 
+            width: 100% !important; 
+            display: flex;
+            align-items: center;
+          }
+          
+          /* Estilos específicos para celdas en móvil */
+          .mobile-user-info { order: 1; }
+          .mobile-role { order: 2; display: flex; gap: 8px; align-items: center; }
+          .mobile-status { order: 3; }
+          .mobile-actions { 
+            order: 4; 
+            justify-content: flex-start !important; 
+            margin-top: 10px;
+            padding-top: 10px !important;
+            border-top: 1px dashed var(--border) !important;
+            flex-wrap: wrap;
+          }
+          
+          /* Columnas a ocultar totalmente en móvil */
+          .col-biz, .col-reg { display: none !important; }
         }
+        
+        .pagination-btn {
+          width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+          background: #fff; color: var(--text); cursor: pointer; font-weight: 600;
+          display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .pagination-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
       {/* Toast */}
@@ -242,7 +284,7 @@ export default function UsersPage() {
               <option value="superadmin">SuperAdmin</option>
               <option value="admin">Admin</option>
               <option value="admin_suc">Admin Suc.</option>
-              <option value="employee">Empleado</option>
+              <option value="employee">Profesional</option>
               <option value="client">Cliente</option>
             </select>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 130 }}>
@@ -276,8 +318,8 @@ export default function UsersPage() {
                 <th>Usuario</th>
                 <th>Rol</th>
                 <th>Estado</th>
-                <th>Negocios</th>
-                <th>Registro</th>
+                <th className="col-biz">Negocios</th>
+                <th className="col-reg">Registro</th>
                 <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
@@ -298,7 +340,7 @@ export default function UsersPage() {
                 
                 return (
                   <tr key={user.id}>
-                    <td>
+                    <td className="mobile-user-info">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
                           width: 36, height: 36, borderRadius: '50%',
@@ -314,7 +356,7 @@ export default function UsersPage() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td className="mobile-role">
                       <span style={{
                         fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600,
                         background: role.bg, color: role.color
@@ -322,7 +364,7 @@ export default function UsersPage() {
                         {role.label}
                       </span>
                     </td>
-                    <td>
+                    <td className="mobile-status">
                       <span style={{
                         fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 4,
@@ -333,23 +375,23 @@ export default function UsersPage() {
                         <StatusIcon size={12} /> {status.label}
                       </span>
                     </td>
-                    <td>
+                    <td className="col-biz">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                         {businessCount > 0 && (
                           <><Building2 size={14} /> {businessCount}</>
                         )}
                         {isEmployee && (
-                          <><Briefcase size={14} style={{ marginLeft: 8 }} /> Empleado</>
+                          <><Briefcase size={14} style={{ marginLeft: 8 }} /> Profesional</>
                         )}
                         {!businessCount && !isEmployee && (
                           <span style={{ color: 'var(--text-muted)' }}>-</span>
                         )}
                       </div>
                     </td>
-                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td className="col-reg" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {new Date(user.createdAt).toLocaleDateString('es-CO')}
                     </td>
-                    <td>
+                    <td className="mobile-actions">
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button 
                           className="btn-outline btn-sm" 
@@ -405,23 +447,67 @@ export default function UsersPage() {
           </table>
         </div>
         
-        {/* Paginación */}
+        {/* Paginación Mejorada */}
         {pagination.pages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: 16, borderTop: '1px solid var(--border)' }}>
-            {Array.from({ length: pagination.pages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPagination(p => ({ ...p, page: i + 1 }))}
-                style={{
-                  width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)',
-                  background: pagination.page === i + 1 ? 'var(--primary)' : '#fff',
-                  color: pagination.page === i + 1 ? '#fff' : 'var(--text)',
-                  cursor: 'pointer', fontWeight: 600
-                }}
-              >
-                {i + 1}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '16px 12px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <button 
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: 1 }))}
+              disabled={pagination.page === 1}
+              title="Primera página"
+            >
+              «
+            </button>
+            <button 
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+              disabled={pagination.page === 1}
+            >
+              ‹
+            </button>
+
+            {/* Ventana de páginas (máximo 5) */}
+            {(() => {
+              const current = pagination.page;
+              const total = pagination.pages;
+              let start = Math.max(1, current - 2);
+              let end = Math.min(total, start + 4);
+              if (end - start < 4) start = Math.max(1, end - 4);
+              
+              const pages = [];
+              for (let i = start; i <= end; i++) {
+                pages.push(
+                  <button
+                    key={i}
+                    onClick={() => setPagination(p => ({ ...p, page: i }))}
+                    className={`pagination-btn ${current === i ? 'active' : ''}`}
+                  >
+                    {i}
+                  </button>
+                );
+              }
+              return pages;
+            })()}
+
+            <button 
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: Math.min(pagination.pages, p.page + 1) }))}
+              disabled={pagination.page === pagination.pages}
+            >
+              ›
+            </button>
+            <button 
+              className="pagination-btn" 
+              onClick={() => setPagination(p => ({ ...p, page: pagination.pages }))}
+              disabled={pagination.page === pagination.pages}
+              title="Última página"
+            >
+              »
+            </button>
+            
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8, width: '100%', textAlign: 'center', marginTop: 8 }}>
+              Página {pagination.page} de {pagination.pages} ({pagination.total} registros)
+            </div>
           </div>
         )}
       </div>
@@ -480,7 +566,7 @@ export default function UsersPage() {
                       disabled={editingUser?.role === 'superadmin'}
                     >
                       <option value="client">Cliente</option>
-                      <option value="employee">Empleado</option>
+                      <option value="employee">Profesional</option>
                       <option value="admin_suc">Admin Sucursal</option>
                       <option value="admin">Admin</option>
                       <option value="superadmin">SuperAdmin</option>
@@ -579,7 +665,7 @@ export default function UsersPage() {
                       }}>
                         <div style={{ fontWeight: 600 }}>{emp.Business?.name || 'Negocio'}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                          {emp.isManager ? 'Manager' : 'Empleado'}
+                          {emp.isManager ? 'Manager' : 'Profesional'}
                         </div>
                       </div>
                     ))}

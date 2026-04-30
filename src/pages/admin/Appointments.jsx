@@ -199,13 +199,20 @@ export default function Appointments() {
     showStatus('❌ Cita cancelada', 'warning');
   }, [setAppointments, showStatus]);
 
+  // Refrescar citas al reconectar socket (evita perder actualizaciones mientras estaba desconectado)
+  const handleSocketConnect = useCallback(() => {
+    console.log('[Admin Socket] 🔄 Socket reconectado, refrescando citas...');
+    refresh(true); // Forzar recarga sin caché
+  }, [refresh]);
+
   useSocket({
     businessId: business?.id,
     userId: user?.id,
     role: 'admin',
     onAppointmentCreated: handleAppointmentCreated,
     onAppointmentUpdated: handleAppointmentUpdated,
-    onAppointmentCancelled: handleAppointmentCancelled
+    onAppointmentCancelled: handleAppointmentCancelled,
+    onConnect: handleSocketConnect
   });
 
   // HANDLERS DE MODALES
@@ -385,13 +392,13 @@ export default function Appointments() {
                 Citas del {selectedDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
                 {selectedEmployeeId && (
                   <span style={{ fontSize: 16, color: colors.primary, fontWeight: 600 }}>
-                    {' '}→ {employees.find(e => e.id === selectedEmployeeId)?.User?.name || 'Empleado'}
+                    {' '}→ {employees.find(e => e.id === selectedEmployeeId)?.User?.name || 'Profesional'}
                   </span>
                 )}
               </h2>
               <div style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
                 {filteredAppointments.length} cita{filteredAppointments.length !== 1 ? 's' : ''} programada{filteredAppointments.length !== 1 ? 's' : ''}
-                {selectedEmployeeId && ' para este empleado'}
+                {selectedEmployeeId && ' para este profesional'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>

@@ -291,7 +291,7 @@ export default function Login() {
           onClick={() => setIsClientMode(!isClientMode)}
           style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          {isClientMode ? <><LogIn size={16} /> Soy Negocio / Empleado</> : <><User size={16} /> Soy Cliente (Ver mis citas)</>}
+          {isClientMode ? <><LogIn size={16} /> Soy Negocio / Profesional</> : <><User size={16} /> Soy Cliente (Ver mis citas)</>}
         </button>
 
         {!isClientMode && (

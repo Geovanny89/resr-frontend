@@ -113,7 +113,7 @@ export default function BusinessCard({
           {biz.subscriptionPlan === 'pro' && 'Pro'}
           {biz.subscriptionPlan === 'premium' && 'Premium'}
           {!biz.subscriptionPlan && 'Básico'}
-          ({(biz.includedUsers || 3) + (biz.additionalUsers || 0)} empleados)
+          ({(biz.includedUsers || 3) + (biz.additionalUsers || 0)} profesionales)
         </span>
         
         {/* Badge de Precio Personalizado */}

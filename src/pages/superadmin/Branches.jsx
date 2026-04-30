@@ -575,106 +575,188 @@ export default function Branches() {
         </div>
       )}
 
-      {/* Modal de Comprobante */}
+      {/* Modal de Comprobante - REDISEÑADO PREMIUM */}
       {screenshot && (
-        <div className="modal-overlay" onClick={() => setScreenshot(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <div className="modal-header">
-              <h3>Comprobante de Pago - {screenshot.business.name}</h3>
-              <button onClick={() => setScreenshot(null)}><X size={20} /></button>
+        <div className="modal-overlay" onClick={() => setScreenshot(null)} style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 9999 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ 
+            maxWidth: 550, 
+            width: '95%', 
+            maxHeight: '95vh', 
+            overflow: 'hidden',
+            borderRadius: 20,
+            background: 'white',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+          }}>
+            {/* Header con estilo */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              color: 'white',
+              position: 'relative'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white' }}>Revisión de Comprobante</h3>
+                <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.8, color: 'white' }}>{screenshot.business.name}</p>
+              </div>
+              <button 
+                onClick={() => setScreenshot(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: 'white',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div style={{ textAlign: 'center', padding: 20 }}>
+
+            <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
               {screenshot.url ? (
                 <>
                   <div style={{
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 12,
-                    padding: 20,
-                    marginBottom: 20,
-                    border: '3px solid var(--primary-color)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    background: '#f8fafc',
+                    borderRadius: 16,
+                    padding: 12,
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    marginBottom: 20
                   }}>
                     <div style={{
-                      fontSize: 11,
-                      fontWeight: 600,
+                      fontSize: 10,
+                      fontWeight: 800,
                       textTransform: 'uppercase',
-                      color: 'var(--primary-color)',
-                      marginBottom: 12,
-                      letterSpacing: 0.5
+                      color: '#64748b',
+                      marginBottom: 10,
+                      letterSpacing: 1
                     }}>
-                      📄 Comprobante de Pago
+                      Imagen del Pago
                     </div>
-                    <img
-                      src={getImgUrl(screenshot.url)}
-                      alt="Comprobante de pago"
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: 400,
-                        borderRadius: 8,
-                        objectFit: 'contain',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-                      }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
                     <div style={{
-                      display: 'none',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 40,
-                      color: 'var(--text-muted)'
+                      width: '100%',
+                      background: 'white',
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                      border: '1px solid #e2e8f0'
                     }}>
-                      <Image size={48} />
-                      <p>No se pudo cargar la imagen del comprobante</p>
+                      <img
+                        src={getImgUrl(screenshot.url)}
+                        alt="Comprobante de pago"
+                        style={{
+                          width: '100%',
+                          maxHeight: 450,
+                          display: 'block',
+                          objectFit: 'contain'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div style={{
+                        display: 'none',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 12,
+                        padding: 60,
+                        color: '#94a3b8'
+                      }}>
+                        <Image size={48} />
+                        <p style={{ fontSize: 13 }}>No se pudo cargar la imagen</p>
+                      </div>
                     </div>
                   </div>
 
+                  {/* Info del Negocio */}
                   <div style={{
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 20,
-                    fontSize: 13,
-                    color: 'var(--text-secondary)'
+                    background: '#f1f5f9',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 24,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 16
                   }}>
-                    <strong>Negocio:</strong> {screenshot.business.name}<br/>
-                    <strong>Propietario:</strong> {screenshot.business.Owner?.name || 'N/A'}<br/>
-                    <strong>Email:</strong> {screenshot.business.Owner?.email || 'N/A'}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Propietario</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{screenshot.business.Owner?.name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Email</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', wordBreak: 'break-all' }}>{screenshot.business.Owner?.email || 'N/A'}</div>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      onClick={() => { handleApproveBranch(screenshot.business.id, true); setScreenshot(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        boxShadow: '0 4px 12px rgba(16,185,129,0.3)'
+                      }}
+                    >
+                      <CheckCircle size={18} />
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={() => { handleApproveBranch(screenshot.business.id, false); setScreenshot(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        boxShadow: '0 4px 12px rgba(239,68,68,0.3)'
+                      }}
+                    >
+                      <XCircle size={18} />
+                      Rechazar
+                    </button>
                   </div>
                 </>
               ) : (
-                <div style={{
-                  padding: 40,
-                  color: 'var(--text-muted)',
-                  textAlign: 'center'
-                }}>
+                <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
                   <Image size={48} style={{ marginBottom: 12, opacity: 0.5 }} />
-                  <p>No hay comprobante de pago adjunto</p>
+                  <p>Este registro no tiene un comprobante adjunto.</p>
+                  <button onClick={() => setScreenshot(null)} className="btn-secondary" style={{ marginTop: 20 }}>Cerrar</button>
                 </div>
               )}
-
-              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-                <button
-                  className="btn-success"
-                  style={{ flex: 1, padding: '12px 20px', fontSize: 14 }}
-                  onClick={() => { handleApproveBranch(screenshot.business.id, true); setScreenshot(null); }}
-                >
-                  <CheckCircle size={16} style={{ marginRight: 8 }} />
-                  Aprobar Sucursal
-                </button>
-                <button
-                  className="btn-danger"
-                  style={{ flex: 1, padding: '12px 20px', fontSize: 14 }}
-                  onClick={() => { handleApproveBranch(screenshot.business.id, false); setScreenshot(null); }}
-                >
-                  <XCircle size={16} style={{ marginRight: 8 }} />
-                  Rechazar
-                </button>
-              </div>
             </div>
           </div>
         </div>

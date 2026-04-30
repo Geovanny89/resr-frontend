@@ -59,8 +59,16 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => {
+    const method = (res.config.method || '').toLowerCase();
+
+    // Invalidar caché en mutaciones para que la UI refleje cambios al instante
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      cache.clear();
+      return res;
+    }
+
     // Guardar en caché las respuestas GET exitosas
-    if (res.config.method === 'get' && res.status === 200) {
+    if (method === 'get' && res.status === 200) {
       const cacheKey = `${res.config.url}${JSON.stringify(res.config.params || {})}`;
       cache.set(cacheKey, {
         data: res.data,

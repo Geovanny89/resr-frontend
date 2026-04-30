@@ -582,7 +582,7 @@ export default function EmployeeProfile() {
 
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: colors.text, marginBottom: 6 }}>
-              Descripción Profesional
+              Descripción Empleado
             </label>
             <div style={{ position: 'relative' }}>
               <FileText size={18} color={colors.textSecondary} style={{ position: 'absolute', top: 12, left: 12 }} />

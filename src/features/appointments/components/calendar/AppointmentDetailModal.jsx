@@ -121,7 +121,7 @@ export default function AppointmentDetailModal({
 
           {/* Employee Info */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>EMPLEADO ASIGNADO</div>
+            <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>PROFESIONAL ASIGNADO</div>
             <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text }}>
               <User size={16} style={{ display: 'inline', marginRight: 6 }} />
               {appointment.Employee?.User?.name}

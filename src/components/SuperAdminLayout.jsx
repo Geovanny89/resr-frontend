@@ -28,6 +28,7 @@ const NAV_ITEMS = [
     items: [
       { to: '/superadmin/reports',        icon: TrendingUp,      label: 'Reportes Globales' },
       { to: '/superadmin/activity-logs',  icon: Activity,        label: 'Logs de Actividad' },
+      { to: '/superadmin/reviews',        icon: Bell,            label: 'Testimonios Landing' },
     ]
   },
 ];

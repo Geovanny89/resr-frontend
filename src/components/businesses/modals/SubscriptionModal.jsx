@@ -85,9 +85,9 @@ export default function SubscriptionModal({
                   fontSize: 14, background: 'var(--surface)', color: 'var(--text)' 
                 }}
               >
-                <option value="basic">💚 Básico - $70.000 (3 empleados)</option>
-                <option value="pro">💙 Pro - $90.000 (5 empleados)</option>
-                <option value="premium">💛 Premium - $130.000 (10 empleados)</option>
+                <option value="basic">💚 Básico - $70.000 (3 profesionales)</option>
+                <option value="pro">💙 Pro - $90.000 (5 profesionales)</option>
+                <option value="premium">💛 Premium - $130.000 (10 profesionales)</option>
               </select>
             </div>
             
@@ -96,7 +96,7 @@ export default function SubscriptionModal({
                 <label style={{ 
                   display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', 
                   marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' 
-                }}>Empleados extras</label>
+                }}>Profesionales extras</label>
                 <input 
                   type="number" 
                   min="0"
@@ -174,28 +174,67 @@ export default function SubscriptionModal({
               </div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-              {PLANS[form.subscriptionPlan]?.includedUsers} incluidos + {form.additionalUsers === '' ? 0 : (form.additionalUsers || 0)} extras = {PLANS[form.subscriptionPlan]?.includedUsers + (form.additionalUsers === '' ? 0 : (parseInt(form.additionalUsers) || 0))} empleados totales (admin no cuenta)
+              {PLANS[form.subscriptionPlan]?.includedUsers} incluidos + {form.additionalUsers === '' ? 0 : (form.additionalUsers || 0)} extras = {PLANS[form.subscriptionPlan]?.includedUsers + (form.additionalUsers === '' ? 0 : (parseInt(form.additionalUsers) || 0))} profesionales totales (admin no cuenta)
             </div>
           </div>
           
           {/* Sección: Estado de Suscripción */}
-          <div>
-            <label style={{ 
-              display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', 
-              marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' 
-            }}>Estado de suscripción</label>
-            <select 
-              value={form.subscriptionStatus} 
-              onChange={e => handleInputChange('subscriptionStatus', e.target.value)} 
-              style={{ 
-                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', 
-                fontSize: 14, background: 'var(--surface)', color: 'var(--text)' 
-              }}
-            >
-              <option value="pending">⏳ Pendiente</option>
-              <option value="paid">✅ Al día</option>
-              <option value="overdue">❌ Vencido</option>
-            </select>
+          <div style={{ background: 'var(--gray-50)', padding: '16px', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              📊 Estado y Registro de Pago
+            </h4>
+            
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>
+                Estado de suscripción
+              </label>
+              <select 
+                value={form.subscriptionStatus} 
+                onChange={e => handleInputChange('subscriptionStatus', e.target.value)} 
+                style={{ 
+                  width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)', 
+                  fontSize: 14, background: 'var(--surface)', color: 'var(--text)',
+                  fontWeight: 600, borderLeft: '4px solid ' + (form.subscriptionStatus === 'paid' ? '#10b981' : '#ef4444')
+                }}
+              >
+                <option value="pending">⏳ Pendiente de Pago</option>
+                <option value="paid">✅ Pago Recibido (Al día)</option>
+                <option value="overdue">❌ Suscripción Vencida</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#059669', marginBottom: 4 }}>Monto Recibido ($)</label>
+                <input 
+                  type="number" 
+                  value={form.paymentAmount || ''} 
+                  onChange={e => handleInputChange('paymentAmount', e.target.value)}
+                  placeholder={calculateTotal().toString()}
+                  style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #bcf0da', fontSize: 14 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#059669', marginBottom: 4 }}>Fecha de Pago</label>
+                <input 
+                  type="date" 
+                  value={form.lastPaymentDate || new Date().toISOString().split('T')[0]} 
+                  onChange={e => handleInputChange('lastPaymentDate', e.target.value)}
+                  style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #bcf0da', fontSize: 14 }}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#059669', marginBottom: 4 }}>Referencia / Comprobante</label>
+              <input 
+                type="text" 
+                value={form.paymentReference || ''} 
+                onChange={e => handleInputChange('paymentReference', e.target.value)}
+                placeholder="Ej: Transferencia Bancaria #123"
+                style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #bcf0da', fontSize: 14 }}
+              />
+            </div>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -5,7 +5,8 @@
 import { Calendar, Clock, CheckCircle, Car, MapPin } from 'lucide-react';
 import { useAgendaStats } from '../../hooks/useAgendaStats';
 
-export default function AgendaStats({ colors, appointments }) {
+export default function AgendaStats({ colors, appointments, hasFieldTechnicians }) {
+
   const stats = useAgendaStats(appointments);
   
   return (
@@ -13,33 +14,48 @@ export default function AgendaStats({ colors, appointments }) {
       className="agenda-stats"
       style={{
         display: 'flex',
-        gap: '16px',
-        padding: '12px 20px',
+        gap: '12px',
+        padding: '16px 20px',
+        background: `linear-gradient(to right, ${colors.bgSecondary}, ${colors.cardBg})`,
         borderBottom: `1px solid ${colors.border}`,
-        background: colors.cardBg,
         flexWrap: 'wrap',
       }}
     >
-      <div className="agenda-stat" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: colors.text }}>
-        <Calendar size={16} color={colors.primary} />
-        <span>Total: <span style={{ fontWeight: 700, color: colors.primary }}>{stats.total}</span></span>
-      </div>
-      <div className="agenda-stat" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: colors.text }}>
-        <Clock size={16} color="#f59e0b" />
-        <span>Pendientes: <span style={{ fontWeight: 700, color: colors.primary }}>{stats.pending}</span></span>
-      </div>
-      <div className="agenda-stat" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: colors.text }}>
-        <CheckCircle size={16} color="#10b981" />
-        <span>Completadas: <span style={{ fontWeight: 700, color: colors.primary }}>{stats.done}</span></span>
-      </div>
-      <div className="agenda-stat" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: colors.text }}>
-        <Car size={16} color="#8b5cf6" />
-        <span>En Camino: <span style={{ fontWeight: 700, color: colors.primary }}>{stats.onTheWay}</span></span>
-      </div>
-      <div className="agenda-stat" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: colors.text }}>
-        <MapPin size={16} color="#06b6d4" />
-        <span>Llegados: <span style={{ fontWeight: 700, color: colors.primary }}>{stats.arrived}</span></span>
-      </div>
+      <StatChip icon={<Calendar size={14} />} label="Total" value={stats.total} color={colors.primary} bg={`${colors.primary}15`} />
+      <StatChip icon={<Clock size={14} />} label="Pendientes" value={stats.pending} color="#f59e0b" bg="#f59e0b15" />
+      <StatChip icon={<CheckCircle size={14} />} label="Finalizadas" value={stats.done} color="#10b981" bg="#10b98115" />
+      
+      {hasFieldTechnicians && (
+        <>
+          <StatChip icon={<Car size={14} />} label="En Camino" value={stats.onTheWay} color="#8b5cf6" bg="#8b5cf615" />
+          <StatChip icon={<MapPin size={14} />} label="Llegados" value={stats.arrived} color="#06b6d4" bg="#06b6d415" />
+        </>
+      )}
     </div>
+
+  );
+}
+
+function StatChip({ icon, label, value, color, bg }) {
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px', 
+      padding: '6px 12px', 
+      borderRadius: '20px', 
+      background: bg,
+      border: `1px solid ${color}30`,
+      fontSize: '12px',
+      fontWeight: 600,
+      color: color,
+      transition: 'all 0.2s ease',
+      cursor: 'default'
+    }}>
+      <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
+      <span style={{ opacity: 0.8 }}>{label}:</span>
+      <span style={{ fontSize: '14px', fontWeight: 800 }}>{value}</span>
+    </div>
+
   );
 }

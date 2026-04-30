@@ -74,7 +74,7 @@ export default function EmployeeServicesModal({
                 color: colors.textSecondary
               }}
             >
-              Selecciona los servicios que este empleado puede realizar
+              Selecciona los servicios que este profesional puede realizar
             </p>
           </div>
           <button
@@ -225,7 +225,7 @@ export default function EmployeeServicesModal({
           >
             <p style={{ margin: 0, fontSize: 13, color: '#0369a1' }}>
               💡 <strong>Consejo:</strong> Si no asignas ningún servicio al
-              empleado, podrá realizar todos los servicios por defecto. Asigna
+              profesional, podrá realizar todos los servicios por defecto. Asigna
               servicios específicos para limitar qué puede hacer.
             </p>
           </div>

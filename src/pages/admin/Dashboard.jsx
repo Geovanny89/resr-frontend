@@ -4,10 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveGrid from '../../components/ResponsiveGrid';
+import { useTheme } from '../../context/ThemeContext';
 import {
   CalendarCheck, Users, DollarSign, TrendingUp, Clock,
-  CheckCircle, XCircle, ArrowRight, AlertTriangle
+  CheckCircle, XCircle, ArrowRight, AlertTriangle, Star
 } from 'lucide-react';
+import FeedbackBanner from '../../features/platform-feedback/components/FeedbackBanner';
+import FeedbackModal from '../../features/platform-feedback/components/FeedbackModal';
 
 // NUEVO: Utilidades compartidas (desde shared/utils)
 // import { fmt, fmtDate } from '../../shared/utils/formatters';
@@ -31,6 +34,7 @@ const STATUS_LABELS = {
 
 export default function Dashboard() {
   const { business } = useAuth();
+  const { colors } = useTheme();
   console.log('[Dashboard] business:', business);
   console.log('[Dashboard] isTechnicalServices:', business?.isTechnicalServices);
   console.log('[Dashboard] hasFieldTechnicians:', business?.hasFieldTechnicians);
@@ -54,6 +58,10 @@ export default function Dashboard() {
   const [employeeRatings, setEmployeeRatings] = useState([]);
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
   const [showChangeNumberConfirm, setShowChangeNumberConfirm] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showCampaignBanner, setShowCampaignBanner] = useState(false);
+  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(false);
+  const [subInfo, setSubInfo] = useState(null);
 
   // Toast notification state
   const [statusMsg, setStatusMsg] = useState(null);
@@ -67,11 +75,6 @@ export default function Dashboard() {
   const [showStopWAConfirm, setShowStopWAConfirm] = useState(false);
   const [showLogoutWAConfirm, setShowLogoutWAConfirm] = useState(false);
 
-  // Calcular días restantes de suscripción
-  const daysLeft = business?.subscriptionDaysLeft;
-  const isExpiringSoon = daysLeft !== null && daysLeft <= 5 && daysLeft > 0;
-  const isExpired = daysLeft !== null && daysLeft <= 0;
-
   const checkWAStatus = async () => {
     if (!business?.id) return;
     try {
@@ -80,6 +83,9 @@ export default function Dashboard() {
         : business.id;
       const res = await api.get(`/notifications/whatsapp/status?businessId=${bizIdToCheck}`);
       setWhatsappStatus(res.data.status);
+      if (res.data.status === 'connected' || res.data.status === 'session_saved') {
+        setShowQRModal(false);
+      }
     } catch (e) {
       console.error('Error checking WA status:', e);
     }
@@ -197,13 +203,24 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const month = new Date().toISOString().slice(0, 7);
-        const [apptRes, reportRes, systemNotifRes, employeesRes] = await Promise.all([
+        const [apptRes, reportRes, systemNotifRes, employeesRes, campaignRes, reviewStatusRes, subRes] = await Promise.all([
           api.get(`/appointments?businessId=${business.id}`),
           api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`).catch(() => ({ data: null })),
           api.get('/system-settings/global-notification').catch(() => ({ data: { message: null } })),
           api.get(`/employees?businessId=${business.id}`).catch(() => ({ data: [] })),
+          api.get('/system-settings/testimonial_campaign').catch(() => ({ data: { isActive: false } })),
+          api.get(`/platform-reviews/status/${business.id}`).catch(() => ({ data: { hasReviewed: false } })),
+          api.get('/businesses/my/subscription-info').catch(() => ({ data: null })),
         ]);
+        
+        setSubInfo(subRes?.data);
+        
+        console.log('[Dashboard] Testimonial Campaign Data:', campaignRes.data);
+        console.log('[Dashboard] Review Status Data:', reviewStatusRes.data);
+        
         setSystemNotification(systemNotifRes.data?.message);
+        setShowCampaignBanner(campaignRes.data?.isActive || false);
+        setHasAlreadyReviewed(reviewStatusRes.data?.hasReviewed || false);
         setEmployeeRatings(employeesRes.data || []);
         const all = apptRes.data;
         setStats({
@@ -281,14 +298,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* WHATSAPP STATUS BAR - Solo para empresas que NO son técnicos a domicilio NI servicios técnicos */}
-      {/* Si está conectado o tiene sesión guardada, mostrar como conectado permanentemente */}
-      {/* Para sucursales, verificar el hasFieldTechnicians e isTechnicalServices del negocio padre */}
-      {!(business?.isBranch 
-        ? (business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) ||
-          (business?.ParentBusiness?.isTechnicalServices || business?.parentIsTechnicalServices)
-        : business?.hasFieldTechnicians || business?.isTechnicalServices
-      ) && (
+      {showCampaignBanner && !hasAlreadyReviewed && (
+        <FeedbackBanner onAction={() => setShowFeedbackModal(true)} />
+      )}
+
+      {/* WHATSAPP STATUS BAR - Ocultar si es servicio técnico (principal o sucursal) */}
+      {!(business?.hasFieldTechnicians || business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) && (
         (whatsappStatus === 'connected' || whatsappStatus === 'session_saved') ? (
           // Estado conectado/guardado - siempre verde con menú de opciones
           <div className="card mb-6" style={{ 
@@ -459,33 +474,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ALERTAS DE SUSCRIPCIÓN */}
-      {isExpiringSoon && (
-        <div className="alert alert-warning" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fbd38d', borderRadius: 12, padding: '16px 20px', background: '#fffaf0' }}>
-          <div style={{ fontSize: 24 }}>⏳</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: '#9c4221', fontSize: 15 }}>Tu suscripción está por vencer</div>
-            <div style={{ fontSize: 13, color: '#c05621' }}>Faltan <strong>{daysLeft} días</strong> para que tu cuenta sea bloqueada. Por favor realiza el pago pronto.</div>
-          </div>
-          <Link to="/admin/submit-payment" className="btn-primary" style={{ padding: '8px 16px', fontSize: 12 }}>
-            Ir a pagar
-          </Link>
-        </div>
-      )}
-
-      {isExpired && (
-        <div className="alert alert-danger" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #feb2b2', borderRadius: 12, padding: '16px 20px', background: '#fff5f5' }}>
-          <div style={{ fontSize: 24 }}>🚫</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: '#9b2c2c', fontSize: 15 }}>Suscripción vencida</div>
-            <div style={{ fontSize: 13, color: '#c53030' }}>Tu suscripción venció hace <strong>{Math.abs(daysLeft)} días</strong>. Tu cuenta está en riesgo de bloqueo total.</div>
-          </div>
-          <Link to="/admin/my-business" className="btn-danger" style={{ padding: '8px 16px', fontSize: 12 }}>
-            Pagar ahora
-          </Link>
-        </div>
-      )}
-
       {/* STATS CITAS */}
       <ResponsiveGrid gap={16} minWidth={140}>
         {statCards.map(c => {
@@ -523,7 +511,7 @@ export default function Dashboard() {
             <div className="stat-icon blue"><Users size={22} /></div>
             <div className="stat-body">
               <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.employeeRevenue)}</div>
-              <div className="stat-label">Pago a empleados</div>
+              <div className="stat-label">Pago a profesionales</div>
             </div>
           </div>
         </ResponsiveGrid>
@@ -548,15 +536,16 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ACCESOS RÁPIDOS */}
+
+      {/* STATS CITAS */}
       <ResponsiveGrid gap={16} minWidth={180}>
         {[
           { to: '/admin/appointments', icon: '📋', label: 'Gestionar Citas',  sub: 'Ver y actualizar estados', color: '#4f46e5' },
           { to: '/admin/reports',      icon: '📊', label: 'Ver Informes',     sub: 'Día, semana y mes',        color: '#10b981' },
           ...(!business?.isTechnicalServices ? [
-            { to: '/admin/payments',     icon: '💰', label: 'Pagos Empleados',  sub: 'Calcular comisiones',      color: '#f59e0b' },
+            { to: '/admin/payments',     icon: '💰', label: 'Pagos Profesionales', sub: 'Calcular comisiones',      color: '#f59e0b' },
           ] : []),
-          { to: '/admin/employees',    icon: '👥', label: 'Empleados',        sub: 'Gestionar equipo',         color: '#3b82f6' },
+          { to: '/admin/employees',    icon: '👥', label: 'Profesionales',        sub: 'Gestionar equipo',         color: '#3b82f6' },
         ].map(item => (
           <Link key={item.to} to={item.to} style={{ textDecoration: 'none' }}>
             <div
@@ -770,6 +759,18 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE FEEDBACK MODULARIZADO */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        business={business}
+        onFinish={(msg, type) => {
+          showStatus(msg, type);
+          if (type !== 'error') setHasAlreadyReviewed(true);
+        }}
+        colors={colors}
+      />
     </AdminLayout>
   );
 }

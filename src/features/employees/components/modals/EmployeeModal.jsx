@@ -107,7 +107,7 @@ export default function EmployeeModal({
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">
-            {employee ? '✏️ Editar empleado' : '➕ Nuevo empleado'}
+            {employee ? '✏️ Editar profesional' : '➕ Nuevo profesional'}
           </div>
           <button
             onClick={handleClose}
@@ -180,7 +180,7 @@ export default function EmployeeModal({
               handleCommissionChange
             })}
             onSubmit={handleSubmit}
-            submitText={employee ? '💾 Actualizar' : '✅ Crear empleado'}
+            submitText={employee ? '💾 Actualizar' : '✅ Crear profesional'}
             error={error}
             success={success}
             columns={1}
@@ -208,7 +208,7 @@ function buildFormFields({
       label: 'Nombre completo',
       type: 'text',
       required: true,
-      placeholder: 'Nombre del empleado',
+      placeholder: 'Nombre del profesional',
       value: form.name,
       onChange: e => setForm({ ...form, name: e.target.value }),
       fullWidth: true
@@ -221,29 +221,30 @@ function buildFormFields({
       value: form.specialty,
       onChange: e => setForm({ ...form, specialty: e.target.value }),
       fullWidth: true,
-      hint: 'Este título aparecerá debajo del nombre del empleado en la página pública.'
+      hint: 'Este título aparecerá debajo del nombre del profesional en la página pública.'
     },
     {
       name: 'description',
       label: 'Perfil Profesional / Descripción',
       type: 'textarea',
-      placeholder: 'Ej: Profesional en uñas estéticas con 4 años de experiencia...',
+      placeholder: 'Ej: Experto en servicios estéticos con 4 años de trayectoria...',
       value: form.description,
       onChange: e => setForm({ ...form, description: e.target.value }),
       fullWidth: true,
       rows: 3,
-      hint: 'Esta descripción aparecerá en la página pública para que los clientes conozcan al profesional.'
+      hint: 'Cuéntale a tus clientes sobre tu experiencia y habilidades.'
     },
     {
       name: 'email',
-      label: 'Email',
+      label: 'Correo electrónico',
       type: 'email',
       required: true,
-      placeholder: 'empleado@email.com',
+      placeholder: 'profesional@ejemplo.com',
       value: form.email,
       onChange: e => setForm({ ...form, email: e.target.value }),
+      disabled: !!employee,
       fullWidth: true
-    }
+    },
   ];
 
   // Password field only for new employees
@@ -291,7 +292,7 @@ function buildFormFields({
     label: 'Rol del Usuario',
     type: 'select',
     options: [
-      { value: 'employee', label: '👷 Empleado' },
+      { value: 'employee', label: '👤 Profesional' },
       { value: 'admin_suc', label: '👔 Administrador de Sucursal' },
       { value: 'admin', label: '👑 Administrador Principal' }
     ],
@@ -307,7 +308,7 @@ function buildFormFields({
     label: '¿Es el Administrador de la sede?',
     type: 'select',
     options: [
-      { value: 'false', label: 'No, es solo empleado' },
+      { value: 'false', label: 'No, es solo profesional' },
       { value: 'true', label: 'Sí, es el administrador encargado' }
     ],
     value: String(form.isManager),

@@ -33,17 +33,21 @@ export default function SubmitPayment() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [monthlyPrice, setMonthlyPrice] = useState(70000);
+  const [subInfo, setSubInfo] = useState(null);
   const [loadingPrice, setLoadingPrice] = useState(true);
 
-  const currentMethod = ADMIN_PAYMENT_INFO[paymentMethod];
-  const Icon = currentMethod.icon;
+  const currentMethod = ADMIN_PAYMENT_INFO[paymentMethod] || ADMIN_PAYMENT_INFO.nequi;
+  const Icon = currentMethod?.icon;
 
   // Obtener el precio mensual del negocio (personalizado o del plan)
   useEffect(() => {
     const fetchSubscriptionInfo = async () => {
       try {
         const response = await api.get('/businesses/my/subscription-info');
-        if (response.data.monthlyTotal) {
+        setSubInfo(response.data);
+        if (response.data.finalTotal !== undefined) {
+          setMonthlyPrice(response.data.finalTotal);
+        } else if (response.data.monthlyTotal) {
           setMonthlyPrice(response.data.monthlyTotal);
         }
       } catch (err) {
@@ -144,12 +148,113 @@ export default function SubmitPayment() {
   return (
     <AdminLayout title="Pagar Suscripción" subtitle={`Paga tu suscripción mensual de $${monthlyPrice.toLocaleString('es-CO')}`}>
       <div className="card">
-        {error && (
-          <div className="alert alert-error" style={{ marginBottom: 24 }}>
-            <AlertCircle size={18} />
-            {error}
+        {/* RESUMEN DE PAGO Y REFERIDOS */}
+        <div style={{ 
+          background: colors.bgSecondary, 
+          borderRadius: 16, 
+          padding: 20, 
+          marginBottom: 32,
+          border: `1px solid ${colors.border}`
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>Resumen de Suscripción</h3>
+            <span style={{ 
+              fontSize: 12, 
+              padding: '4px 8px', 
+              borderRadius: 6, 
+              background: colors.primary + '20', 
+              color: colors.primary,
+              fontWeight: 600
+            }}>
+              Plan {subInfo?.planName || 'Básico'}
+            </span>
           </div>
-        )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: colors.textSecondary }}>Mensualidad base:</span>
+              <span style={{ fontWeight: 600 }}>${subInfo?.monthlyTotal?.toLocaleString('es-CO')}</span>
+            </div>
+
+            {subInfo?.hasReferralDiscount && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                fontSize: 14, 
+                color: colors.success,
+                background: colors.successBg,
+                padding: '8px 12px',
+                borderRadius: 8,
+                margin: '4px 0'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle size={14} />
+                  <span>
+                    {subInfo?.referralDiscountPercentage === 1 
+                      ? '¡Bono 5 Referidos (Mes Gratis!)' 
+                      : `Descuento Referido (${Math.round(subInfo?.referralDiscountPercentage * 100)}%)`}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 700 }}>-${subInfo?.referralDiscountAmount?.toLocaleString('es-CO')}</span>
+              </div>
+            )}
+
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              fontSize: 18, 
+              fontWeight: 800,
+              marginTop: 8,
+              paddingTop: 12,
+              borderTop: `1px solid ${colors.border}`,
+              color: colors.primary
+            }}>
+              <span>Total a transferir:</span>
+              <span>${(subInfo?.finalTotal || subInfo?.monthlyTotal || 0).toLocaleString('es-CO')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CÓDIGO DE REFERIDOS */}
+        <div style={{ 
+          background: colors.primary + '08', 
+          border: `1px dashed ${colors.primary}`, 
+          borderRadius: 16, 
+          padding: 16, 
+          marginBottom: 32,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16
+        }}>
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: colors.primary, marginBottom: 4 }}>Tu Código de Referido</h4>
+            <p style={{ fontSize: 12, color: colors.textSecondary }}>Comparte este código. ¡Si uno se une este mes ahorras 20%, y si traes a 5 el mes es <strong>GRATIS</strong>!</p>
+          </div>
+          <div style={{ 
+            background: colors.cardBg, 
+            padding: '8px 16px', 
+            borderRadius: 8, 
+            border: `1px solid ${colors.primary}40`,
+            fontWeight: 800,
+            fontSize: 18,
+            color: colors.primary,
+            letterSpacing: 1,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+          onClick={() => {
+            navigator.clipboard.writeText(subInfo?.referralCode);
+            alert('¡Código copiado!');
+          }}
+          title="Click para copiar"
+          >
+            {subInfo?.referralCode || '...'}
+            <Copy size={16} />
+          </div>
+        </div>
 
         {/* PASO 1: Seleccionar método y ver datos */}
         <div style={{ marginBottom: 32 }}>
@@ -186,7 +291,7 @@ export default function SubmitPayment() {
                     minWidth: 0
                   }}
                 >
-                  <MethodIcon size={24} color={method.color} />
+                  {MethodIcon && <MethodIcon size={24} color={method.color} />}
                   <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? method.color : colors.textSecondary, textAlign: 'center' }}>
                     {method.label}
                   </span>
@@ -224,7 +329,7 @@ export default function SubmitPayment() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon size={24} color={currentMethod.color} />
+                {Icon && <Icon size={24} color={currentMethod.color} />}
                 <span 
                   style={{ 
                     fontSize: 'clamp(20px, 6vw, 28px)', 
