@@ -473,6 +473,7 @@ export default function Appointments() {
         onFormChange={handleExpressFormChange}
         services={services}
         employees={employees}
+        business={business}
         isCreating={actionLoading.express}
         colors={colors}
       />

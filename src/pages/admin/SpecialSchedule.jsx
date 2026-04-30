@@ -386,7 +386,7 @@ export default function SpecialSchedule() {
 
         {/* Modal de confirmación para crear festivos */}
         {showHolidayConfirm && (
-          <div className="modal-overlay" onClick={() => setShowHolidayConfirm(false)}>
+          <div className="modal-overlay" onClick={closeHolidayConfirm}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="modal-header" style={{ textAlign: 'center' }}>
                 <div style={{ 
@@ -425,7 +425,7 @@ export default function SpecialSchedule() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setShowHolidayConfirm(false)}
+                  onClick={closeHolidayConfirm}
                 >
                   Cancelar
                 </button>

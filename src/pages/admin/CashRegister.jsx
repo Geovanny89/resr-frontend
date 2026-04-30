@@ -237,15 +237,18 @@ export default function CashRegister() {
     setEditingMovement(movement);
     setMovementForm({
       correctAmount: movement.amount.toString(),
-      reason: ''
+      reason: '',
+      type: movement.type,
+      paymentMethod: movement.paymentMethod,
+      description: movement.description
     });
     setShowCorrectModal(true);
   };
 
   const handleSubmitCorrection = async (e) => {
     e.preventDefault();
-    if (!movementForm.correctAmount || parseFloat(movementForm.correctAmount) <= 0) {
-      showStatus('Ingrese un monto válido', 'error');
+    if (!movementForm.correctAmount || parseFloat(movementForm.correctAmount) < 0) {
+      showStatus('Ingrese un monto válido (0 para anular)', 'error');
       return;
     }
     
@@ -253,7 +256,10 @@ export default function CashRegister() {
     try {
       const res = await api.post(`/cash-register/movements/${editingMovement.id}/correct`, {
         correctAmount: parseFloat(movementForm.correctAmount),
-        reason: movementForm.reason || 'Corrección de monto'
+        reason: movementForm.reason || 'Corrección de movimiento',
+        type: movementForm.type,
+        paymentMethod: movementForm.paymentMethod,
+        description: movementForm.description
       });
       // Primero recargar datos, luego cerrar modal
       await loadActiveShift();
@@ -613,7 +619,7 @@ export default function CashRegister() {
               label: 'Acciones',
               render: (_, row) => (
                 <>
-                  {!row.appointmentId && !row.expenseId && !row.isReversal && (
+                  {!row.appointmentId && !row.expenseId && !row.isReversal && !row.Reversal && (
                     <button
                       onClick={() => handleCorrectMovement(row)}
                       style={{
@@ -1121,26 +1127,54 @@ export default function CashRegister() {
             <form onSubmit={handleSubmitCorrection}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
-                  Movimiento actual
+                  Tipo de Movimiento Correcto
                 </label>
-                <div style={{
-                  padding: 12,
-                  background: colors.inputBg,
-                  borderRadius: 8,
-                  border: `1px solid ${colors.border}`,
-                  fontSize: 14
-                }}>
-                  <div style={{ fontWeight: 600 }}>{editingMovement.description}</div>
-                  <div style={{ color: colors.textSecondary, marginTop: 4 }}>
-                    Tipo: {editingMovement.type === 'income' ? 'Ingreso' : editingMovement.type === 'expense' ? 'Gasto' : 'Retiro'} | 
-                    Monto: ${parseFloat(editingMovement.amount).toLocaleString('es-CO')}
-                  </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { value: 'income', label: '💰 Ingreso', color: '#10b981' },
+                    { value: 'expense', label: '💸 Gasto', color: '#ef4444' },
+                    { value: 'withdrawal', label: '🏧 Retiro', color: '#f59e0b' }
+                  ].map(m => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setMovementForm({...movementForm, type: m.value})}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8,
+                        border: movementForm.type === m.value ? '2px solid ' + m.color : `1px solid ${colors.border}`,
+                        background: movementForm.type === m.value ? m.color + '20' : colors.inputBg,
+                        color: movementForm.type === m.value ? m.color : colors.text,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
-                  Monto correcto *
+                  Descripción Correcta *
+                </label>
+                <input
+                  type="text"
+                  value={movementForm.description}
+                  onChange={(e) => setMovementForm({...movementForm, description: e.target.value})}
+                  placeholder="Ej: Pago de luz"
+                  required
+                  style={{
+                    width: '100%', padding: 10, borderRadius: 8,
+                    border: `1px solid ${colors.border}`,
+                    background: colors.inputBg, color: colors.text
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
+                  Monto correcto * (Pon 0 para anular)
                 </label>
                 <input
                   type="number"
@@ -1153,23 +1187,52 @@ export default function CashRegister() {
                   style={{
                     width: '100%', padding: 10, borderRadius: 8,
                     border: `1px solid ${colors.border}`,
-                    background: colors.inputBg, color: colors.text
+                    background: colors.inputBg, color: colors.text,
+                    fontSize: 16, fontWeight: 700
                   }}
                 />
-                {movementForm.correctAmount && parseFloat(movementForm.correctAmount) !== parseFloat(editingMovement.amount) && (
+                {movementForm.correctAmount && (parseFloat(movementForm.correctAmount) !== parseFloat(editingMovement.amount) || movementForm.type !== editingMovement.type) && (
                   <div style={{
                     marginTop: 8,
                     padding: 8,
                     borderRadius: 6,
-                    background: parseFloat(movementForm.correctAmount) > parseFloat(editingMovement.amount) ? '#dcfce7' : '#fee2e2',
-                    color: parseFloat(movementForm.correctAmount) > parseFloat(editingMovement.amount) ? '#166534' : '#991b1b',
+                    background: '#f3f4f6',
+                    color: colors.text,
                     fontSize: 13,
                     fontWeight: 600
                   }}>
-                    Diferencia: {parseFloat(movementForm.correctAmount) > parseFloat(editingMovement.amount) ? '+' : ''}
-                    ${(parseFloat(movementForm.correctAmount) - parseFloat(editingMovement.amount)).toLocaleString('es-CO')}
+                    El saldo se ajustará automáticamente con una reversa.
                   </div>
                 )}
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
+                  Método de Pago Correcto
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { value: 'cash', label: '💵 Efectivo' },
+                    { value: 'card', label: '💳 Tarjeta' },
+                    { value: 'transfer', label: '📲 Transferencia' }
+                  ].map(m => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setMovementForm({...movementForm, paymentMethod: m.value})}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8,
+                        border: movementForm.paymentMethod === m.value ? '2px solid #3b82f6' : `1px solid ${colors.border}`,
+                        background: movementForm.paymentMethod === m.value ? '#eff6ff' : colors.inputBg,
+                        color: movementForm.paymentMethod === m.value ? '#3b82f6' : colors.text,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div style={{ marginBottom: 20 }}>

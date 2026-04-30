@@ -33,6 +33,50 @@ export function CreateAppointmentModal({
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredClients, setFilteredClients] = useState([]);
+
+  // Cargar clientes al abrir el modal
+  useEffect(() => {
+    if (isOpen) {
+      const loadClients = async () => {
+        try {
+          const res = await api.get(`/appointments/clients?businessId=${business.id}`);
+          setClients(res.data.clients || []);
+        } catch (e) {
+          console.error('Error cargando clientes:', e);
+        }
+      };
+      loadClients();
+    }
+  }, [isOpen]);
+
+  // Filtrar clientes según lo que se escribe
+  const handleClientNameChange = (val) => {
+    setForm({ ...form, clientName: val });
+    if (val.length > 1) {
+      const filtered = clients.filter(c => 
+        c.name.toLowerCase().includes(val.toLowerCase()) || 
+        (c.phone && c.phone.includes(val))
+      ).slice(0, 5); // Mostrar máximo 5
+      setFilteredClients(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectClient = (client) => {
+    setForm({
+      ...form,
+      clientName: client.name,
+      clientPhone: client.phone || '',
+      clientEmail: client.email || '',
+      address: client.address || form.address // Si existiera dirección guardada
+    });
+    setShowSuggestions(false);
+  };
 
 
   // Cargar slots disponibles
@@ -119,6 +163,47 @@ export function CreateAppointmentModal({
           <button onClick={handleClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: colors.textSecondary }}>
             <X size={24} />
           </button>
+        </div>
+
+        {/* BUSCADOR DE CLIENTE FRECUENTE (ARRIBA PARA MAYOR VISIBILIDAD) */}
+        <div style={{ marginBottom: 24, position: 'relative', padding: '12px', background: colors.bgSecondary, borderRadius: 8, border: `1px dashed ${colors.border}` }}>
+          <label style={{ display: 'block', marginBottom: 6, fontWeight: 700, fontSize: 13, color: '#10b981' }}>🔍 ¿Cliente frecuente? Busca aquí:</label>
+          <input
+            type="text"
+            value={form.clientName}
+            onChange={(e) => handleClientNameChange(e.target.value)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            onFocus={() => form.clientName.length > 1 && setShowSuggestions(filteredClients.length > 0)}
+            placeholder="Escribe nombre o teléfono..."
+            autoComplete="off"
+            style={{ width: '100%', padding: '12px', border: `2px solid #10b981`, borderRadius: 8, fontSize: 15, background: colors.inputBg, color: colors.text }}
+          />
+          
+          {showSuggestions && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 12, right: 12, 
+              background: colors.cardBg, border: `1px solid ${colors.border}`,
+              borderRadius: '0 0 8px 8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+              zIndex: 100, maxHeight: 200, overflowY: 'auto'
+            }}>
+              {filteredClients.map((c, i) => (
+                <div
+                  key={i}
+                  onClick={() => selectClient(c)}
+                  style={{
+                    padding: '12px', cursor: 'pointer', borderBottom: i < filteredClients.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    display: 'flex', flexDirection: 'column', gap: 2
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>{c.name}</span>
+                  {c.phone && <span style={{ fontSize: 12, color: colors.textSecondary }}>📱 {c.phone}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          <p style={{ margin: '8px 0 0 0', fontSize: 11, color: colors.textSecondary }}>Al seleccionar un cliente se auto-completará el formulario.</p>
         </div>
 
         {/* Servicio */}
@@ -248,14 +333,14 @@ export function CreateAppointmentModal({
           </div>
         )}
 
-        {/* Cliente */}
+        {/* Nombre del Cliente */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Cliente *</label>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Nombre del Cliente *</label>
           <input
             type="text"
             value={form.clientName}
             onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-            placeholder="Nombre del cliente"
+            placeholder="Nombre completo"
             style={{ width: '100%', padding: 10, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 14, background: colors.inputBg, color: colors.text }}
           />
         </div>
