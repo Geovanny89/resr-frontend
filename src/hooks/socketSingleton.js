@@ -5,7 +5,14 @@ const isNative = Capacitor.isNativePlatform();
 
 function getSocketUrl() {
   if (isNative) {
-    return 'https://reservas.k-dice.com';
+    // Extraer el origen (ej: https://api-reservas.k-dice.com) a partir de VITE_API_URL
+    const envApiUrl = (import.meta.env.VITE_API_URL || 'https://api-reservas.k-dice.com/api').trim().replace(/['"`]/g, '').trim();
+    try {
+      const url = new URL(envApiUrl);
+      return url.origin;
+    } catch (e) {
+      return 'https://api-reservas.k-dice.com';
+    }
   }
   // Usar URL relativa para que funcione con el proxy de Vite
   return window.location.origin;
