@@ -91,19 +91,25 @@ export function getDateRange(period, customStart, customEnd) {
 // Calculate statistics from appointments
 export function calculateStats(appointments, business) {
   const done = appointments.filter((a) => a.status === 'done');
-  const totalRev = done.reduce(
-    (s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0),
-    0
-  );
+  
+  // Usar finalPrice si existe (es el valor real en Caja), sino sumar base + adicional
+  const totalRev = done.reduce((s, a) => {
+    const price = a.finalPrice !== undefined && a.finalPrice !== null 
+      ? parseFloat(a.finalPrice) 
+      : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+    return s + price;
+  }, 0);
 
   const empRev = done.reduce((s, a) => {
-    const basePrice = parseFloat(a.Service?.price || 0);
-    const additional = parseFloat(a.additionalAmount || 0);
-    const totalPrice = basePrice + additional;
+    // Para el pago al empleado, calculamos sobre el total generado en esa cita
+    const priceForCommission = a.finalPrice !== undefined && a.finalPrice !== null 
+      ? parseFloat(a.finalPrice) 
+      : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+      
     const commPct = parseFloat(a.Employee?.commissionPct || 0);
     const earned = a.employeeEarns
       ? parseFloat(a.employeeEarns)
-      : (totalPrice * commPct) / 100;
+      : (priceForCommission * commPct) / 100;
     return s + (isNaN(earned) ? 0 : earned);
   }, 0);
 
@@ -164,8 +170,10 @@ export function groupByEmployee(appointments, isTechnical = false) {
         
         // Calcular ingresos solo de citas completadas
         if (!isTechnical) {
-          acc[name].ingresos +=
-            parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+          const price = a.finalPrice !== undefined && a.finalPrice !== null 
+            ? parseFloat(a.finalPrice) 
+            : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+          acc[name].ingresos += price;
         }
       }
       
@@ -200,8 +208,10 @@ export function groupByService(done, isTechnical = false) {
       if (!acc[name]) acc[name] = { name, count: 0, revenue: 0 };
       acc[name].count++;
       if (!isTechnical) {
-        acc[name].revenue +=
-          parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+        const price = a.finalPrice !== undefined && a.finalPrice !== null 
+          ? parseFloat(a.finalPrice) 
+          : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+        acc[name].revenue += price;
       }
       return acc;
     }, {})

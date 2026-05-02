@@ -1,8 +1,8 @@
-/**
- * Modal para completar cita con selección de método de pago
- * Extraído de Appointments.jsx
- */
-// No external imports needed - using inline SVG if needed
+import { useState, useEffect } from 'react';
+import { X, Tag, Calculator } from 'lucide-react';
+
+const fmt = (n) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
 
 /**
  * Modal de completar cita
@@ -26,10 +26,36 @@ export function CompleteAppointmentModal({
   isCompleting,
   colors
 }) {
+  const [discount, setDiscount] = useState(0);
+  const [finalPriceOverride, setFinalPriceOverride] = useState(null);
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [showPriceOverrideInput, setShowPriceOverrideInput] = useState(false);
+
+  // Calcular totales
+  const basePrice = parseFloat(appointment?.basePrice || appointment?.Service?.price || 0);
+  const extraServices = appointment?.extraServices || [];
+  const extrasTotal = extraServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+  const subtotal = basePrice + extrasTotal;
+  
+  const currentFinalPrice = finalPriceOverride !== null ? finalPriceOverride : (subtotal - discount);
+
+  useEffect(() => {
+    if (isOpen && appointment) {
+      setDiscount(parseFloat(appointment.discountApplied || 0));
+      setFinalPriceOverride(null);
+      setShowDiscountInput(false);
+      setShowPriceOverrideInput(false);
+    }
+  }, [isOpen, appointment]);
+
   if (!isOpen || !appointment) return null;
 
   const handleComplete = () => {
-    onComplete(paymentMethod);
+    onComplete({
+      paymentMethod,
+      discountApplied: discount,
+      finalPrice: currentFinalPrice
+    });
   };
 
   return (
@@ -63,12 +89,134 @@ export function CompleteAppointmentModal({
           ✅ Completar Cita
         </h2>
         <p style={{ 
-          margin: '0 0 24px 0', 
+          margin: '0 0 20px 0', 
           fontSize: '14px', 
           color: colors.textSecondary 
         }}>
-          Selecciona el método de pago utilizado por <strong>{appointment.clientName}</strong>.
+          Confirma el cobro para <strong>{appointment.clientName}</strong>.
         </p>
+
+        {/* Desglose de Servicios */}
+        <div style={{ 
+          background: colors.bgSecondary, 
+          borderRadius: 12, 
+          padding: 16, 
+          marginBottom: 20,
+          border: `1px solid ${colors.border}`
+        }}>
+          <div style={{ marginBottom: 12, borderBottom: `1px solid ${colors.border}`, paddingBottom: 8 }}>
+            <div style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 600, marginBottom: 4 }}>SERVICIOS</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: colors.text }}>{appointment.Service?.name || 'Servicio Principal'}</span>
+              <span style={{ fontWeight: 600, color: colors.text }}>{fmt(basePrice)}</span>
+            </div>
+            {extraServices.map((s, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4 }}>
+                <span style={{ color: colors.text }}>+ {s.name}</span>
+                <span style={{ fontWeight: 600, color: colors.text }}>{fmt(s.price)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Descuento Manual */}
+          <div style={{ marginBottom: 12 }}>
+            <div 
+              onClick={() => {
+                setShowDiscountInput(!showDiscountInput);
+                if (!showDiscountInput) setShowPriceOverrideInput(false);
+              }}
+              style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                cursor: 'pointer', color: '#059669', fontSize: 13, fontWeight: 600 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Tag size={14} /> {showDiscountInput ? 'Cerrar descuento' : '¿Aplicar descuento manual?'}
+              </div>
+              {discount > 0 && <span>-{fmt(discount)}</span>}
+            </div>
+            
+            {showDiscountInput && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="number"
+                  placeholder="Monto a descontar..."
+                  value={discount === 0 ? '' : discount}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setDiscount(0);
+                    } else {
+                      setDiscount(parseFloat(val));
+                    }
+                    setFinalPriceOverride(null);
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  style={{ 
+                    width: '100%', padding: '8px 10px', borderRadius: 6, 
+                    border: `1px solid ${colors.border}`, background: colors.inputBg, 
+                    color: colors.text, fontSize: 14 
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Total Final */}
+          <div style={{ 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            paddingTop: 8, borderTop: `2px dashed ${colors.border}` 
+          }}>
+            <span style={{ fontWeight: 700, fontSize: 16, color: colors.text }}>TOTAL A PAGAR</span>
+            <div style={{ textAlign: 'right', flex: 1, paddingLeft: 16 }}>
+              {showPriceOverrideInput ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <input
+                    type="number"
+                    autoFocus
+                    value={currentFinalPrice === 0 ? '' : currentFinalPrice}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setFinalPriceOverride(0);
+                      } else {
+                        setFinalPriceOverride(parseFloat(val));
+                      }
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    style={{
+                      width: '120px', padding: '6px 8px', borderRadius: 6, textAlign: 'right',
+                      border: `1.5px solid ${colors.primary}`, background: colors.inputBg,
+                      color: colors.primary, fontSize: 18, fontWeight: 800, outline: 'none'
+                    }}
+                  />
+                  <div 
+                    onClick={() => {
+                      setShowPriceOverrideInput(false);
+                      setFinalPriceOverride(null);
+                    }}
+                    style={{ fontSize: 10, color: colors.textSecondary, cursor: 'pointer' }}
+                  >
+                    Restaurar calculado
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontWeight: 800, fontSize: 22, color: colors.primary }}>{fmt(currentFinalPrice)}</div>
+                  <div 
+                    onClick={() => {
+                      setShowPriceOverrideInput(true);
+                      setShowDiscountInput(false);
+                    }}
+                    style={{ fontSize: 11, color: colors.textSecondary, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Ajustar manualmente
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Opciones de pago */}
         <div style={{ 

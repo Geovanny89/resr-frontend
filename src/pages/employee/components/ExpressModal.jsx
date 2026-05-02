@@ -5,6 +5,10 @@ export const ExpressModal = ({ show, colors, expressForm, setExpressForm, servic
   const [clients, setClients] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredClients, setFilteredClients] = useState([]);
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [extraSearch, setExtraSearch] = useState('');
+  const [showServiceList, setShowServiceList] = useState(false);
+  const [showExtraList, setShowExtraList] = useState(false);
 
   // Cargar clientes al abrir el modal
   useEffect(() => {
@@ -140,18 +144,144 @@ export const ExpressModal = ({ show, colors, expressForm, setExpressForm, servic
           </div>
         )}
 
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.text }}>Servicio</label>
-          <select 
-            value={expressForm.serviceId}
-            onChange={e => setExpressForm({ ...expressForm, serviceId: e.target.value })}
-            style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
-          >
-            <option value="">Selecciona un servicio</option>
-            {services.map(s => (
-              <option key={s.id} value={s.id}>{s.name} ({s.durationMin} min)</option>
-            ))}
-          </select>
+        {/* Servicio Principal con Buscador */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>Servicio Principal</label>
+          <div style={{ position: 'relative' }}>
+            <div 
+              onClick={() => setShowServiceList(!showServiceList)}
+              style={{ 
+                width: '100%', padding: '10px 12px', border: `1px solid ${colors.border}`, 
+                borderRadius: 8, fontSize: 14, background: colors.inputBg, color: colors.text,
+                cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}
+            >
+              <span style={{ opacity: !expressForm.serviceId && !serviceSearch ? 0.6 : 1 }}>
+                {serviceSearch || (expressForm.serviceId ? services.find(s => s.id === expressForm.serviceId)?.name : 'Selecciona un servicio...')}
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>▼</span>
+            </div>
+
+            {showServiceList && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, 
+                background: colors.cardBg, border: `1px solid ${colors.border}`,
+                borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                zIndex: 110, marginTop: 4, overflow: 'hidden'
+              }}>
+                <div style={{ padding: '8px', borderBottom: `1px solid ${colors.border}`, background: colors.bgSecondary }}>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Buscar servicio..."
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    style={{ 
+                      width: '100%', padding: '6px 10px', border: `1px solid ${colors.border}`, 
+                      borderRadius: 4, fontSize: 13, background: colors.cardBg, color: colors.text 
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                  {services
+                    .filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                    .map(s => (
+                      <div
+                        key={s.id}
+                        onClick={() => {
+                          setExpressForm({ ...expressForm, serviceId: s.id });
+                          setServiceSearch('');
+                          setShowServiceList(false);
+                        }}
+                        style={{ 
+                          padding: '10px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}`,
+                          background: expressForm.serviceId === s.id ? colors.bgSecondary : 'transparent'
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>{s.name}</div>
+                        <div style={{ fontSize: 12, color: colors.textSecondary }}>{s.durationMin} min</div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+            
+            {/* Click outside to close */}
+            {showServiceList && (
+              <div 
+                onClick={() => setShowServiceList(false)}
+                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 109 }} 
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Servicios Adicionales */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
+            ➕ ¿Agregar más servicios?
+          </label>
+          
+          {/* Lista de extras seleccionados */}
+          {expressForm.extraServices?.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {expressForm.extraServices.map(s => (
+                <div key={s.serviceId} style={{ 
+                  background: '#dbeafe', color: '#1e40af', padding: '4px 10px', 
+                  borderRadius: 16, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
+                  border: '1px solid #bfdbfe'
+                }}>
+                  <span>{s.name}</span>
+                  <span 
+                    style={{ cursor: 'pointer', fontWeight: 700 }} 
+                    onClick={() => setExpressForm({ ...expressForm, extraServices: expressForm.extraServices.filter(x => x.serviceId !== s.serviceId) })}
+                  >
+                    ✕
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Buscador de extras simple */}
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Añadir otro servicio..."
+              value={extraSearch}
+              onFocus={() => setShowExtraList(true)}
+              onChange={(e) => setExtraSearch(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', border: `1px dashed ${colors.border}`, borderRadius: 8, fontSize: 13, background: colors.inputBg, color: colors.text }}
+            />
+            {showExtraList && extraSearch && (
+              <div style={{
+                position: 'absolute', bottom: '100%', left: 0, right: 0, 
+                background: colors.cardBg, border: `1px solid ${colors.border}`,
+                borderRadius: 8, boxShadow: '0 -4px 6px -1px rgba(0,0,0,0.1)',
+                zIndex: 110, maxHeight: 150, overflowY: 'auto'
+              }}>
+                {services
+                  .filter(s => s.name.toLowerCase().includes(extraSearch.toLowerCase()))
+                  .filter(s => s.id !== expressForm.serviceId && !expressForm.extraServices?.find(x => x.serviceId === s.id))
+                  .map(s => (
+                    <div
+                      key={s.id}
+                      onClick={() => {
+                        const newExtras = [...(expressForm.extraServices || []), { serviceId: s.id, name: s.name, price: s.price, durationMin: s.durationMin }];
+                        setExpressForm({ ...expressForm, extraServices: newExtras });
+                        setExtraSearch('');
+                        setShowExtraList(false);
+                      }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}` }}
+                    >
+                      <span style={{ fontSize: 13, color: colors.text }}>{s.name}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>

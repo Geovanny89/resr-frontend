@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, createContext, useContext, Suspense } from 'react';
+import { NavLink, useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { Capacitor } from '@capacitor/core';
@@ -13,7 +13,32 @@ import {
   TrendingDown, Package, PiggyBank, CalendarDays, CalendarX, Palmtree, Wallet
 } from 'lucide-react';
 
+// Contexto para evitar doble envoltura y permitir persistencia
+const AdminLayoutContext = createContext(false);
+
 export default function AdminLayout({ children, title, subtitle }) {
+  const isAlreadyWrapped = useContext(AdminLayoutContext);
+  
+  if (isAlreadyWrapped) {
+    return <Suspense fallback={null}>{children || <Outlet />}</Suspense>;
+  }
+
+  return (
+    <AdminLayoutContext.Provider value={true}>
+      <AdminLayoutInner title={title} subtitle={subtitle}>
+        <Suspense fallback={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+            <div className="spinner" />
+          </div>
+        }>
+          {children || <Outlet />}
+        </Suspense>
+      </AdminLayoutInner>
+    </AdminLayoutContext.Provider>
+  );
+}
+
+function AdminLayoutInner({ children, title, subtitle }) {
   const { user, business, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

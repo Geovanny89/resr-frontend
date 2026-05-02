@@ -105,7 +105,8 @@ export default function Appointments() {
     clientName: '',
     clientPhone: '',
     serviceId: '',
-    employeeId: ''
+    employeeId: '',
+    extraServices: []
   });
   
   // Estado para insumos
@@ -125,7 +126,7 @@ export default function Appointments() {
       try {
         const [servicesRes, employeesRes] = await Promise.all([
           api.get(`/services?businessId=${business.id}`),
-          api.get(`/employees?businessId=${business.id}`)
+          api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`)
         ]);
         setServices(servicesRes.data || []);
         setEmployees(employeesRes.data || []);
@@ -142,7 +143,7 @@ export default function Appointments() {
     if (business?.id) {
       const loadEmployees = async () => {
         try {
-          const employeesRes = await api.get(`/employees?businessId=${business.id}`, { params: { noCache: true } });
+          const employeesRes = await api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`, { params: { noCache: true } });
           setEmployees(employeesRes.data || []);
         } catch (e) {
           console.error('Error loading employees:', e);
@@ -229,7 +230,7 @@ export default function Appointments() {
   const handleExpressSubmit = async () => {
     const result = await handleCreateExpress(expressForm);
     if (result.success) {
-      setExpressForm({ clientName: '', clientPhone: '', serviceId: '', employeeId: '' });
+      setExpressForm({ clientName: '', clientPhone: '', serviceId: '', employeeId: '', extraServices: [] });
       closeModal('express');
     }
   };
@@ -241,8 +242,8 @@ export default function Appointments() {
     }
   };
 
-  const handleConfirmComplete = async () => {
-    const result = await handleCompleteAppointment(completeData, paymentMethod);
+  const handleConfirmComplete = async (options) => {
+    const result = await handleCompleteAppointment(completeData, options);
     if (result.success) {
       closeModal('complete');
       setCompleteData(null);
@@ -335,20 +336,35 @@ export default function Appointments() {
         }
       `}</style>
 
-      {/* Toast */}
+      {/* Toast con z-index corregido y posición mejorada */}
       {statusMsg && (
         <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          position: 'fixed', 
+          top: '80px', // Bajado para que libre el header de 64px
+          right: '24px', 
+          zIndex: 100000, // Z-index extremadamente alto para estar encima de todo
+          padding: '14px 24px', 
+          borderRadius: '12px', 
+          fontWeight: 700, 
+          fontSize: '14px',
           background: statusMsg.type === 'error' ? '#fee2e2' : '#d1fae5',
           color: statusMsg.type === 'error' ? '#991b1b' : '#065f46',
-          border: `1px solid ${statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
-          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-          display: 'flex', alignItems: 'center', gap: 8,
-          animation: 'fadeInDown 0.3s ease-out'
+          border: `2px solid ${statusMsg.type === 'error' ? '#ef4444' : '#10b981'}`,
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.04)',
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 10,
+          animation: 'fadeInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          maxWidth: '400px'
         }}>
-          {statusMsg.type === 'error' ? <X size={16} /> : <Check size={16} />}
-          {statusMsg.text}
+          <div style={{
+            width: '24px', height: '24px', borderRadius: '50%', 
+            background: statusMsg.type === 'error' ? '#fecaca' : '#a7f3d0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>
+            {statusMsg.type === 'error' ? <X size={14} /> : <Check size={14} />}
+          </div>
+          <span style={{ flex: 1 }}>{statusMsg.text}</span>
         </div>
       )}
 
@@ -467,7 +483,7 @@ export default function Appointments() {
       {/* Cita Express */}
       <ExpressAppointmentModal
         isOpen={modals.express}
-        onCancel={() => { closeModal('express'); setExpressForm({ clientName: '', clientPhone: '', serviceId: '', employeeId: '' }); }}
+        onCancel={() => { closeModal('express'); setExpressForm({ clientName: '', clientPhone: '', serviceId: '', employeeId: '', extraServices: [] }); }}
         onSubmit={handleExpressSubmit}
         form={expressForm}
         onFormChange={handleExpressFormChange}

@@ -21,17 +21,14 @@ export const useAppointmentHandlers = (employee, business, loadAppointments, sho
     try {
       const now = new Date();
       await api.post('/appointments', {
+        ...expressForm,
         businessId: employee.businessId,
-        serviceId: expressForm.serviceId,
         employeeId: employee.id,
-        clientName: expressForm.clientName,
-        clientPhone: expressForm.clientPhone,
-        address: expressForm.address,
         startTime: now.toISOString(),
         status: 'attention'
       });
       loadAppointments();
-      setExpressForm({ clientName: '', clientPhone: '', address: '', serviceId: '' });
+      setExpressForm({ clientName: '', clientPhone: '', address: '', serviceId: '', extraServices: [] });
       return true;
     } catch (e) {
       showStatus(e.response?.data?.error || 'Error al crear cita express', 'error');
@@ -88,7 +85,7 @@ export const useAppointmentHandlers = (employee, business, loadAppointments, sho
     }
   };
 
-  const handleCompleteAppointment = async () => {
+  const handleCompleteAppointment = async (options = {}) => {
     if (!completeAppointmentData) return;
     setCompleting(true);
     try {
@@ -103,7 +100,8 @@ export const useAppointmentHandlers = (employee, business, loadAppointments, sho
 
       await api.patch(`/appointments/${completeAppointmentData.id}/status`, {
         status: 'done',
-        paymentMethod: paymentMethod
+        paymentMethod: paymentMethod,
+        ...options
       });
       // Remover cita de la lista local inmediatamente
       setAppointments(prev => prev.filter(a => a.id !== completeAppointmentData.id));

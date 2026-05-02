@@ -60,17 +60,12 @@ export function AuthProvider({ children }) {
         }
       }
       
-      console.log('[Auth] Business cargado:', biz.name, 'hasFieldTechnicians:', biz.hasFieldTechnicians);
       setInitialBusinessLoaded(true);
       setHasNoBusiness(false);
     } catch (err) {
       // 404 = admin sin negocio registrado (caso esperado, no es error)
       if (err.response?.status === 404) {
         setHasNoBusiness(true);
-        console.info('[Auth] No hay negocio registrado para este usuario');
-      } else {
-        setHasNoBusiness(false);
-        console.error('[Auth] Error loading business data:', err);
       }
     } finally {
       setBizLoading(false);
@@ -103,7 +98,6 @@ export function AuthProvider({ children }) {
     const initUser = user || JSON.parse(localStorage.getItem('user') || 'null');
     
     if (initToken && initUser && (initUser.role === 'admin' || initUser.role === 'admin_suc')) {
-      console.log('[Auth] Montaje: Detectado token admin, forzando carga de negocio...');
       loadBusinessData();
     } else {
       // Si no hay token o no es admin, marcar como cargado inmediatamente
@@ -118,7 +112,6 @@ export function AuthProvider({ children }) {
       const savedClientEmail = localStorage.getItem('clientEmail');
       const savedRole = localStorage.getItem('userRole');
       if (savedClientEmail && savedRole === 'client') {
-        console.log('[Auth] Restaurando sesión de cliente:', savedClientEmail);
         setUser({ role: 'client', email: savedClientEmail });
       }
     }
@@ -150,7 +143,7 @@ export function AuthProvider({ children }) {
     try {
       await fcmService.initialize();
     } catch (e) {
-      console.log('[Auth] FCM no disponible:', e.message);
+      // FCM no disponible
     }
   };
 
@@ -169,7 +162,7 @@ export function AuthProvider({ children }) {
     try {
       await fcmService.deleteToken();
     } catch (e) {
-      console.log('[Auth] Error eliminando FCM token:', e.message);
+      // Error eliminando FCM token
     }
     
     localStorage.removeItem('token');

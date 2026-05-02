@@ -176,6 +176,11 @@ function RootRoute() {
   return <Landing />;
 }
 
+import AdminLayout from './components/AdminLayout';
+
+import ScrollToTop from './components/ScrollToTop';
+import { Helmet } from 'react-helmet-async';
+
 export default function App() {
   // Inicializar servicio de notificaciones al montar la app (solo en APK)
   useEffect(() => {
@@ -187,9 +192,14 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <Helmet>
+        <title>K-Dice | Software de Reservas y Agenda Online para Negocios</title>
+        <meta name="description" content="Sistema de reservas, agenda online y gestión de citas para barberías, spas y prestadores de servicios." />
+      </Helmet>
       <BrowserRouter>
+        <ScrollToTop />
         <MobileSlugBridge />
-        <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>Cargando...</div>}>
+        <Suspense fallback={null}>
           <Routes>
           <Route path="/" element={<RootRoute />} />
           <Route path="/login"           element={<Login />} />
@@ -199,27 +209,29 @@ export default function App() {
           <Route path="/register-vendor" element={<RegisterVendor />} />
           <Route path="/download-apk" element={<DownloadAPKPublic />} />
           <Route path="/admin" element={<ProtectedRoute roles={['admin', 'admin_suc']} />}>
-            <Route index               element={<Dashboard />} />
-            <Route path="business"     element={<MyBusiness />} />
-            <Route path="services"     element={<Services />} />
-            <Route path="employees"    element={<Employees />} />
-            <Route path="schedule"     element={<Schedule />} />
-            <Route path="special-schedules" element={<SpecialSchedule />} />
-            <Route path="employee-vacations" element={<EmployeeVacations />} />
-            <Route path="appointments" element={<Appointments />} />
-            <Route path="promotions"   element={<Promotions />} />
-            <Route path="ratings"      element={<Ratings />} />
-            <Route path="reports"      element={<Reports />} />
-            <Route path="payments"     element={<Payments />} />
-            <Route path="submit-payment" element={<SubmitPayment />} />
-            <Route path="clients"      element={<Clients />} />
-            <Route path="cash-register" element={<CashRegister />} />
-            <Route path="expenses"     element={<Expenses />} />
-            <Route path="inventory"    element={<Inventory />} />
-            <Route path="deposits"     element={<Deposits />} />
-            <Route path="agenda"       element={<Agenda />} />
-            <Route path="referrals"    element={<Referrals />} />
-            <Route path="change-password" element={<ChangePassword />} />
+            <Route element={<AdminLayout />}>
+              <Route index               element={<Dashboard />} />
+              <Route path="business"     element={<MyBusiness />} />
+              <Route path="services"     element={<Services />} />
+              <Route path="employees"    element={<Employees />} />
+              <Route path="schedule"     element={<Schedule />} />
+              <Route path="special-schedules" element={<SpecialSchedule />} />
+              <Route path="employee-vacations" element={<EmployeeVacations />} />
+              <Route path="appointments" element={<Appointments />} />
+              <Route path="promotions"   element={<Promotions />} />
+              <Route path="ratings"      element={<Ratings />} />
+              <Route path="reports"      element={<Reports />} />
+              <Route path="payments"     element={<Payments />} />
+              <Route path="submit-payment" element={<SubmitPayment />} />
+              <Route path="clients"      element={<Clients />} />
+              <Route path="cash-register" element={<CashRegister />} />
+              <Route path="expenses"     element={<Expenses />} />
+              <Route path="inventory"    element={<Inventory />} />
+              <Route path="deposits"     element={<Deposits />} />
+              <Route path="agenda"       element={<Agenda />} />
+              <Route path="referrals"    element={<Referrals />} />
+              <Route path="change-password" element={<ChangePassword />} />
+            </Route>
           </Route>
           <Route path="/employee" element={<ProtectedRoute roles={['employee']} />}>
             <Route element={<EmployeeLayout />}>

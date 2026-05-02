@@ -21,10 +21,13 @@ export const STATUS_COLORS = {
 export const BEAUTY_BUSINESS_TYPES = ['barberia', 'spa', 'unas', 'salon', 'peluqueria', 'masajes', 'tatuajes', 'estetica'];
 
 export const STATUS_PRIORITY = {
-  'confirmed': 1,
-  'in_progress': 2,
-  'pending': 3,
-  'done': 4,
-  'completed': 4,
-  'cancelled': 5
+  'attention': 1,
+  'in_progress': 1,
+  'on_the_way': 2,
+  'arrived': 2,
+  'confirmed': 3,
+  'pending': 4,
+  'done': 5,
+  'completed': 5,
+  'cancelled': 6
 };

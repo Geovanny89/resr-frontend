@@ -170,13 +170,11 @@ export async function generatePDF({
   // Tabla de resumen
   yPos += 8;
   const totalRev = done.reduce(
-    (s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0),
+    (s, a) => s + parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))),
     0
   );
   const empRev = done.reduce((s, a) => {
-    const basePrice = parseFloat(a.Service?.price || 0);
-    const additional = parseFloat(a.additionalAmount || 0);
-    const totalPrice = basePrice + additional;
+    const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
     const commPct = parseFloat(a.Employee?.commissionPct || 0);
     const earned = a.employeeEarns
       ? parseFloat(a.employeeEarns)
@@ -249,9 +247,7 @@ export async function generatePDF({
   // Resumen de pagos a empleados
   const employeePayments = done.reduce((acc, a) => {
     const name = a.Employee?.User?.name || 'Sin asignar';
-    const basePrice = parseFloat(a.Service?.price || 0);
-    const additional = parseFloat(a.additionalAmount || 0);
-    const totalPrice = basePrice + additional;
+    const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
     const commPct = parseFloat(a.Employee?.commissionPct || 0);
     const earned = a.employeeEarns
       ? parseFloat(a.employeeEarns)
@@ -345,7 +341,7 @@ export async function generatePDF({
   const appointmentsHead =
     business?.isTechnicalServices || business?.hasFieldTechnicians
       ? [['Fecha', 'Cliente', 'Servicio', 'Profesional', 'Estado']]
-      : [['Fecha', 'Cliente', 'Servicio', 'Profesional', 'Precio', 'Adicional', 'Pago', 'Estado']];
+      : [['Fecha', 'Cliente', 'Servicio', 'Profesional', 'Base', 'Adic.', 'Desc.', 'Total', 'Estado']];
 
   const appointmentsBody = appointments.map((a) => {
     const row = [
@@ -359,13 +355,15 @@ export async function generatePDF({
       a.Employee?.User?.name || '',
     ];
     if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
-      const base = parseFloat(a.Service?.price || 0);
+      const base = parseFloat(a.basePrice || a.Service?.price || 0);
       const add = parseFloat(a.additionalAmount || 0);
+      const disc = parseFloat(a.discountApplied || 0);
+      const total = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (base + add - disc));
+      
       row.push(fmt(base));
       row.push(fmt(add));
-      const pm =
-        a.paymentMethod === 'cash' ? 'Efectivo' : a.paymentMethod === 'transfer' ? 'Transf.' : '-';
-      row.push(pm);
+      row.push(fmt(disc));
+      row.push(fmt(total));
     }
     row.push(STATUS_LABELS[a.status] || a.status);
     return row;
@@ -380,10 +378,10 @@ export async function generatePDF({
       fillColor: colors.light,
       textColor: colors.black,
       fontStyle: 'bold',
-      fontSize: 8,
+      fontSize: 7.5,
     },
     bodyStyles: {
-      fontSize: 7,
+      fontSize: 6.5,
       textColor: colors.black,
     },
     columnStyles: business?.isTechnicalServices
@@ -395,17 +393,18 @@ export async function generatePDF({
           4: { cellWidth: 25, halign: 'center' },
         }
       : {
-          0: { cellWidth: 24 },
-          1: { cellWidth: 26 },
-          2: { cellWidth: 28 },
-          3: { cellWidth: 26 },
-          4: { cellWidth: 22, halign: 'right' },
-          5: { cellWidth: 22, halign: 'right' },
-          6: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
-          7: { cellWidth: 20, halign: 'center' },
+          0: { cellWidth: 22 }, // Fecha
+          1: { cellWidth: 24 }, // Cliente
+          2: { cellWidth: 25 }, // Servicio
+          3: { cellWidth: 24 }, // Profesional
+          4: { cellWidth: 16, halign: 'right' }, // Base
+          5: { cellWidth: 15, halign: 'right' }, // Adic.
+          6: { cellWidth: 15, halign: 'right' }, // Desc.
+          7: { cellWidth: 19, halign: 'right', fontStyle: 'bold' }, // Total
+          8: { cellWidth: 22, halign: 'center' }, // Estado
         },
     styles: {
-      cellPadding: 4,
+      cellPadding: 2.5,
       lineColor: [220, 220, 220],
       lineWidth: 0.1,
       overflow: 'linebreak',

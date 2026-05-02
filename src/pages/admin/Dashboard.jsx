@@ -35,9 +35,6 @@ const STATUS_LABELS = {
 export default function Dashboard() {
   const { business } = useAuth();
   const { colors } = useTheme();
-  console.log('[Dashboard] business:', business);
-  console.log('[Dashboard] isTechnicalServices:', business?.isTechnicalServices);
-  console.log('[Dashboard] hasFieldTechnicians:', business?.hasFieldTechnicians);
 
   const [upcoming, setUpcoming] = useState([]);
   const [stats, setStats]       = useState({ total: 0, pending: 0, confirmed: 0, done: 0, cancelled: 0 });
@@ -207,7 +204,7 @@ export default function Dashboard() {
           api.get(`/appointments?businessId=${business.id}`),
           api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`).catch(() => ({ data: null })),
           api.get('/system-settings/global-notification').catch(() => ({ data: { message: null } })),
-          api.get(`/employees?businessId=${business.id}`).catch(() => ({ data: [] })),
+          api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`).catch(() => ({ data: [] })),
           api.get('/system-settings/testimonial_campaign').catch(() => ({ data: { isActive: false } })),
           api.get(`/platform-reviews/status/${business.id}`).catch(() => ({ data: { hasReviewed: false } })),
           api.get('/businesses/my/subscription-info').catch(() => ({ data: null })),
@@ -215,8 +212,6 @@ export default function Dashboard() {
         
         setSubInfo(subRes?.data);
         
-        console.log('[Dashboard] Testimonial Campaign Data:', campaignRes.data);
-        console.log('[Dashboard] Review Status Data:', reviewStatusRes.data);
         
         setSystemNotification(systemNotifRes.data?.message);
         setShowCampaignBanner(campaignRes.data?.isActive || false);

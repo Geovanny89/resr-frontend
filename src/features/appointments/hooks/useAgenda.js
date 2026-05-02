@@ -38,7 +38,7 @@ export function useAgenda({ businessId, userId, hasFieldTechnicians }) {
 
   const loadEmployees = async () => {
     try {
-      const res = await api.get(`/employees?businessId=${businessId}`);
+      const res = await api.get(`/employees?businessId=${businessId}&onlyProfessionals=true`);
       const employeesData = Array.isArray(res.data) ? res.data : [];
       setEmployees(employeesData.filter(e => e.active));
     } catch (e) {

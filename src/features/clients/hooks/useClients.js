@@ -32,7 +32,8 @@ export function useClients(businessId) {
         originalEmail,
         newName: newData.name,
         newPhone: newData.phone,
-        newEmail: newData.email
+        newEmail: newData.email,
+        birthday: newData.birthday
       });
       await loadClients(true);
       return { success: true };

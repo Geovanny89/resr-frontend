@@ -87,11 +87,17 @@ export default function EmployeeModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('EmployeeModal - handleSubmit llamado', { form, selectedBusinessId, employeeId: employee?.id });
-    onSave({
-      ...form,
-      businessId: selectedBusinessId
-    }, employee?.id);
+    
+    // Capturamos el estado actual de forma segura
+    setForm(currentForm => {
+      const dataToSave = {
+        ...currentForm,
+        businessId: selectedBusinessId
+      };
+      
+      onSave(dataToSave, employee?.id);
+      return currentForm;
+    });
   };
 
   const handleClose = () => {
@@ -210,7 +216,7 @@ function buildFormFields({
       required: true,
       placeholder: 'Nombre del profesional',
       value: form.name,
-      onChange: e => setForm({ ...form, name: e.target.value }),
+      onChange: e => setForm(f => ({ ...f, name: e.target.value })),
       fullWidth: true
     },
     {
@@ -219,7 +225,7 @@ function buildFormFields({
       type: 'text',
       placeholder: 'Ej: Manicurista, Barbero, Estilista...',
       value: form.specialty,
-      onChange: e => setForm({ ...form, specialty: e.target.value }),
+      onChange: e => setForm(f => ({ ...f, specialty: e.target.value })),
       fullWidth: true,
       hint: 'Este título aparecerá debajo del nombre del profesional en la página pública.'
     },
@@ -229,7 +235,7 @@ function buildFormFields({
       type: 'textarea',
       placeholder: 'Ej: Experto en servicios estéticos con 4 años de trayectoria...',
       value: form.description,
-      onChange: e => setForm({ ...form, description: e.target.value }),
+      onChange: e => setForm(f => ({ ...f, description: e.target.value })),
       fullWidth: true,
       rows: 3,
       hint: 'Cuéntale a tus clientes sobre tu experiencia y habilidades.'
@@ -241,7 +247,7 @@ function buildFormFields({
       required: true,
       placeholder: 'profesional@ejemplo.com',
       value: form.email,
-      onChange: e => setForm({ ...form, email: e.target.value }),
+      onChange: e => setForm(f => ({ ...f, email: e.target.value })),
       disabled: !!employee,
       fullWidth: true
     },
@@ -297,7 +303,7 @@ function buildFormFields({
       { value: 'admin', label: '👑 Administrador Principal' }
     ],
     value: form.role,
-    onChange: e => setForm({ ...form, role: e.target.value }),
+    onChange: e => setForm(f => ({ ...f, role: e.target.value })),
     fullWidth: true,
     hint: 'El rol determina los permisos del usuario en el sistema.'
   });
@@ -314,12 +320,14 @@ function buildFormFields({
     value: String(form.isManager),
     onChange: e => {
       const isMgr = e.target.value === 'true';
-      setForm({ 
-        ...form, 
+      setForm(f => ({ 
+        ...f, 
         isManager: isMgr,
-        commissionPct: isMgr ? 0 : form.commissionPct,
-        ownerPct: isMgr ? 100 : form.ownerPct
-      });
+        // Si se marca como manager, asegurar que el rol sea al menos admin_suc
+        role: isMgr && f.role === 'employee' ? 'admin_suc' : f.role,
+        commissionPct: isMgr ? 0 : f.commissionPct,
+        ownerPct: isMgr ? 100 : f.ownerPct
+      }));
     },
     fullWidth: true,
     hint: 'Si activas esto, este usuario podrá administrar toda la sede y entrará directamente al Dashboard administrativo.'

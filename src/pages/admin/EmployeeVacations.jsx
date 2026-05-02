@@ -36,7 +36,7 @@ export default function EmployeeVacations() {
     setLoading(true);
     try {
       const [empRes, vacRes] = await Promise.all([
-        api.get(`/employees?businessId=${business.id}`, skipCache ? { params: { noCache: true } } : {}),
+        api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`, skipCache ? { params: { noCache: true } } : {}),
         api.get(`/employee-vacations/business/${business.id}`, skipCache ? { params: { noCache: true } } : {})
       ]);
       setEmployees(empRes.data || []);

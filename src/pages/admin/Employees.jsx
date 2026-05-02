@@ -12,6 +12,7 @@ import { useEmployeeServices } from '../../features/employees/hooks/useEmployeeS
 import EmployeeModal from '../../features/employees/components/modals/EmployeeModal';
 import DeleteEmployeeModal from '../../features/employees/components/modals/DeleteEmployeeModal';
 import EmployeeServicesModal from '../../features/employees/components/modals/EmployeeServicesModal';
+import ResetPasswordModal from '../../features/employees/components/modals/ResetPasswordModal';
 
 export default function Employees() {
   const { business } = useAuth();
@@ -33,6 +34,7 @@ export default function Employees() {
     createEmployee,
     updateEmployee,
     deleteEmployee,
+    resetEmployeePassword,
     uploadPhoto,
     clearMessages: clearEmployeeMessages
   } = useEmployees(business);
@@ -54,9 +56,10 @@ export default function Employees() {
     clearMessages: clearServicesMessages
   } = useEmployeeServices();
 
-  // Estados locales para modales
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [successPassword, setSuccessPassword] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -100,10 +103,8 @@ export default function Employees() {
     console.log('Employees.jsx - resultado de create/update', result);
     
     if (result.success) {
-      setTimeout(() => {
-        closeEmployeeModal();
-        clearEmployeeMessages();
-      }, 1500);
+      closeEmployeeModal();
+      clearEmployeeMessages();
     }
   };
 
@@ -151,6 +152,27 @@ export default function Employees() {
         closeServicesModal();
         clearServicesMessages();
       }, 2000);
+    }
+  };
+
+  // Reset Password Handlers
+  const openResetPasswordModal = (emp) => {
+    setSelectedEmployee(emp);
+    setSuccessPassword(null);
+    setShowResetPasswordModal(true);
+  };
+
+  const closeResetPasswordModal = () => {
+    setShowResetPasswordModal(false);
+    setSelectedEmployee(null);
+    setSuccessPassword(null);
+  };
+
+  const handleConfirmResetPassword = async (id, newPassword) => {
+    const result = await resetEmployeePassword(id, newPassword);
+    if (result.success) {
+      setSuccessPassword(result.tempPassword);
+      clearEmployeeMessages();
     }
   };
 
@@ -220,6 +242,21 @@ export default function Employees() {
               render: (v, row) => row.User?.email || '—'
             },
             {
+              key: 'role',
+              label: 'Rol',
+              render: (v, row) => {
+                const isBranch = business?.isBranch;
+                const roleMap = {
+                  'admin': 'Administrador Principal',
+                  'admin_suc': isBranch ? 'Admin. Sucursal' : 'Administrador',
+                  'employee': 'Profesional',
+                  'technical': 'Técnico',
+                  'client': 'Cliente'
+                };
+                return roleMap[row.User?.role] || row.User?.role || '—';
+              }
+            },
+            {
               key: 'commissionPct',
               label: 'Comisión',
               render: v => `${v}%`
@@ -229,6 +266,7 @@ export default function Employees() {
           actions={[
             { label: '💼 Servicios', onClick: handleOpenServices, color: 'var(--info)' },
             { label: '✏️ Editar', onClick: openEditModal, color: 'var(--primary)' },
+            { label: '🔑 Clave', onClick: openResetPasswordModal, color: '#f59e0b' },
             { label: '🗑️ Eliminar', onClick: openDeleteConfirmation, color: 'var(--danger)' }
           ]}
           fullWidthActions={false}
@@ -284,6 +322,16 @@ export default function Employees() {
         onClose={closeServicesModal}
         onToggleService={toggleService}
         onSave={handleSaveServices}
+      />
+
+      {/* Modal de Reset Password */}
+      <ResetPasswordModal
+        isOpen={showResetPasswordModal}
+        employee={selectedEmployee}
+        onClose={closeResetPasswordModal}
+        onConfirm={handleConfirmResetPassword}
+        saving={saving}
+        successPassword={successPassword}
       />
     </AdminLayout>
   );

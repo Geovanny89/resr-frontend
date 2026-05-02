@@ -82,7 +82,7 @@ export function AppointmentsTable({
                 {!isTechnical && (
                   <>
                     <td>
-                      <span className="money">{fmt(a.Service?.price)}</span>
+                      <span className="money">{fmt(a.basePrice || a.Service?.price)}</span>
                     </td>
                     <td>
                       <span className="money" style={{ color: '#d97706' }}>
@@ -91,7 +91,7 @@ export function AppointmentsTable({
                     </td>
                     <td>
                       <span className="money positive" style={{ fontWeight: 700 }}>
-                        {fmt(parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))}
+                        {fmt(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)))}
                       </span>
                     </td>
                     <td>
@@ -310,7 +310,7 @@ function AppointmentCard({ appointment: a, isTechnical, onDownloadServiceOrder }
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Precio Base</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{fmt(a.Service?.price)}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{fmt(a.basePrice || a.Service?.price)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Adicional</span>
@@ -328,7 +328,7 @@ function AppointmentCard({ appointment: a, isTechnical, onDownloadServiceOrder }
             >
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>TOTAL</span>
               <span className="money positive" style={{ fontSize: 13, fontWeight: 800 }}>
-                {fmt(parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))}
+                {fmt(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)))}
               </span>
             </div>
           </div>

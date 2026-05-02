@@ -81,7 +81,14 @@ export function AppointmentsGrid({
 }) {
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 40 }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '400px',
+        padding: 40 
+      }}>
         <div className="spinner" />
         <p style={{ marginTop: 12, color: colors.textSecondary }}>Cargando citas...</p>
       </div>

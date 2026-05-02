@@ -194,7 +194,8 @@ export default function EmployeeDashboard() {
     clientName: '',
     clientPhone: '',
     address: '',
-    serviceId: ''
+    serviceId: '',
+    extraServices: []
   });
   const [showChangePwModal, setShowChangePwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -549,6 +550,8 @@ export default function EmployeeDashboard() {
         show={showCompleteModal}
         colors={colors}
         completeAppointmentData={completeAppointmentData}
+        setCompleteAppointmentData={setCompleteAppointmentData}
+        services={services}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
         completing={completing}

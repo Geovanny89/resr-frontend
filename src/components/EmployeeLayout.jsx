@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
@@ -193,7 +193,13 @@ export default function EmployeeLayout() {
         </header>
 
         <div className="page-content fade-in">
-          <Outlet />
+          <Suspense fallback={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+              <div className="spinner" />
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
     </div>

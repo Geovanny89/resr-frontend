@@ -12,7 +12,6 @@ function getSocketUrl() {
 }
 
 const SOCKET_URL = getSocketUrl();
-console.log('[SocketSingleton] SOCKET_URL:', SOCKET_URL, 'isNative:', isNative);
 
 // Singleton instance
 let socket = null;
@@ -43,7 +42,6 @@ export function getSocket(businessId, role, userId, employeeId) {
   currentConfig = newConfig;
   const token = getToken();
 
-  console.log('[SocketSingleton] Conectando:', { businessId, role, userId, employeeId });
 
   socket = io(SOCKET_URL, {
     path: '/socket.io/',
@@ -61,19 +59,15 @@ export function getSocket(businessId, role, userId, employeeId) {
   });
 
   socket.on('connect', () => {
-    console.log('[SocketSingleton] ✅ Conectado! Socket ID:', socket.id);
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('[SocketSingleton] Desconectado:', reason);
   });
 
   socket.on('connect_error', (error) => {
-    console.error('[SocketSingleton] Error de conexión:', error.message, error);
   });
 
   // Log inicial del estado
-  console.log('[SocketSingleton] Estado inicial - connecting:', socket.connecting, 'connected:', socket.connected);
 
   return socket;
 }

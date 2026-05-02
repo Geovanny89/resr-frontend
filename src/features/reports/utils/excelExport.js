@@ -385,11 +385,11 @@ export async function generateExcelWithCharts({
   // Agregar KPIs financieros si aplica
   if (hasFinancialData) {
     const totalRev = filteredDone.reduce(
-      (s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0),
+      (s, a) => s + parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))),
       0
     );
     const empRev = filteredDone.reduce((s, a) => {
-      const totalPrice = parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+      const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
       const commPct = parseFloat(a.Employee?.commissionPct || 0);
       const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (totalPrice * commPct) / 100;
       return s + (isNaN(earned) ? 0 : earned);
@@ -486,7 +486,7 @@ export async function generateExcelWithCharts({
       serviceData[serviceName].done++;
       if (hasFinancialData) {
         serviceData[serviceName].revenue +=
-          parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+          parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
       }
     }
   });
@@ -563,7 +563,7 @@ export async function generateExcelWithCharts({
     if (a.status === 'done') {
       employeeData[empName].serviceDates.push(new Date(a.startTime));
       if (hasFinancialData) {
-        const totalPrice = parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0);
+        const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
         employeeData[empName].revenue += totalPrice;
         const commPct = parseFloat(a.Employee?.commissionPct || 0);
         const earned = a.employeeEarns ? parseFloat(a.employeeEarns) : (totalPrice * commPct) / 100;
@@ -1605,9 +1605,8 @@ export async function generateExcel({
     }
     
     clientAnalysis[clientKey].totalServices++;
-    const basePrice = parseFloat(a.Service?.price || 0);
-    const additional = parseFloat(a.additionalAmount || 0);
-    clientAnalysis[clientKey].totalSpent += basePrice + additional;
+    const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
+    clientAnalysis[clientKey].totalSpent += totalPrice;
     clientAnalysis[clientKey].services.push(a);
     
     const serviceDate = new Date(a.startTime);
@@ -1922,7 +1921,7 @@ export async function generateExcel({
 
   const detailHeaders = ['Fecha', 'Hora', 'Cliente', 'Telefono', 'Servicio', 'Empleado', 'Estado'];
   if (hasFinancialData) {
-    detailHeaders.push('Precio Base', 'Adicional', 'Total', 'Metodo de Pago', 'Comision Empleado');
+    detailHeaders.push('Base', 'Adic.', 'Desc.', 'Total', 'Metodo de Pago', 'Comision Empleado');
   }
 
   detailHeaders.forEach((h, i) => {
@@ -1962,17 +1961,20 @@ export async function generateExcel({
     };
 
     if (hasFinancialData) {
-      const basePrice = parseFloat(a.Service?.price || 0);
-      const additional = parseFloat(a.additionalAmount || 0);
-      const total = basePrice + additional;
+      const base = parseFloat(a.basePrice || a.Service?.price || 0);
+      const add = parseFloat(a.additionalAmount || 0);
+      const disc = parseFloat(a.discountApplied || 0);
+      const total = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (base + add - disc));
 
-      wsDetail.getCell(detailRow, 8).value = basePrice;
+      wsDetail.getCell(detailRow, 8).value = base;
       wsDetail.getCell(detailRow, 8).numFmt = '"$"#,##0';
-      wsDetail.getCell(detailRow, 9).value = additional;
+      wsDetail.getCell(detailRow, 9).value = add;
       wsDetail.getCell(detailRow, 9).numFmt = '"$"#,##0';
-      wsDetail.getCell(detailRow, 10).value = total;
+      wsDetail.getCell(detailRow, 10).value = disc;
       wsDetail.getCell(detailRow, 10).numFmt = '"$"#,##0';
-      wsDetail.getCell(detailRow, 10).font = { bold: true };
+      wsDetail.getCell(detailRow, 11).value = total;
+      wsDetail.getCell(detailRow, 11).numFmt = '"$"#,##0';
+      wsDetail.getCell(detailRow, 11).font = { bold: true };
 
       const paymentMethod =
         a.status === 'done'
@@ -1982,17 +1984,17 @@ export async function generateExcel({
               ? 'Transferencia'
               : '-'
           : '-';
-      wsDetail.getCell(detailRow, 11).value = paymentMethod;
+      wsDetail.getCell(detailRow, 12).value = paymentMethod;
 
       if (a.status === 'done') {
         const commPct = parseFloat(a.Employee?.commissionPct || 0);
         const earned = a.employeeEarns
           ? parseFloat(a.employeeEarns)
           : (total * commPct) / 100;
-        wsDetail.getCell(detailRow, 12).value = isNaN(earned) ? 0 : earned;
-        wsDetail.getCell(detailRow, 12).numFmt = '"$"#,##0';
+        wsDetail.getCell(detailRow, 13).value = isNaN(earned) ? 0 : earned;
+        wsDetail.getCell(detailRow, 13).numFmt = '"$"#,##0';
       } else {
-        wsDetail.getCell(detailRow, 12).value = '-';
+        wsDetail.getCell(detailRow, 13).value = '-';
       }
     }
 
@@ -2018,8 +2020,9 @@ export async function generateExcel({
     wsDetail.getColumn('H').width = 12;
     wsDetail.getColumn('I').width = 12;
     wsDetail.getColumn('J').width = 12;
-    wsDetail.getColumn('K').width = 15;
-    wsDetail.getColumn('L').width = 15;
+    wsDetail.getColumn('K').width = 12;
+    wsDetail.getColumn('L').width = 16;
+    wsDetail.getColumn('M').width = 16;
   }
 
   // Congelar paneles en detalle
@@ -2048,13 +2051,11 @@ export async function generateExcel({
 
   if (hasFinancialData) {
     const totalRev = done.reduce(
-      (s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0),
+      (s, a) => s + parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))),
       0
     );
     const empRev = done.reduce((s, a) => {
-      const basePrice = parseFloat(a.Service?.price || 0);
-      const additional = parseFloat(a.additionalAmount || 0);
-      const totalPrice = basePrice + additional;
+      const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
       const commPct = parseFloat(a.Employee?.commissionPct || 0);
       const earned = a.employeeEarns
         ? parseFloat(a.employeeEarns)

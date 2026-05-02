@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Edit2, X } from 'lucide-react';
 
 export function EditClientModal({ client, colors, onClose, onSave }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', birthday: '' });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -10,7 +10,8 @@ export function EditClientModal({ client, colors, onClose, onSave }) {
       setForm({
         name: client.name || '',
         phone: client.phone || '',
-        email: client.email || ''
+        email: client.email || '',
+        birthday: client.birthday || ''
       });
     }
   }, [client]);
@@ -30,7 +31,6 @@ export function EditClientModal({ client, colors, onClose, onSave }) {
   return (
     <div
       className="modal-overlay"
-      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -127,7 +127,7 @@ export function EditClientModal({ client, colors, onClose, onSave }) {
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>
               Email
             </label>
@@ -136,6 +136,26 @@ export function EditClientModal({ client, colors, onClose, onSave }) {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="Email del cliente"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 10,
+                border: '2px solid var(--border)',
+                fontSize: 15,
+                background: 'var(--bg)',
+                color: 'var(--text)'
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>
+              Fecha de Cumpleaños
+            </label>
+            <input
+              type="date"
+              value={form.birthday}
+              onChange={(e) => setForm({ ...form, birthday: e.target.value })}
               style={{
                 width: '100%',
                 padding: '12px 16px',

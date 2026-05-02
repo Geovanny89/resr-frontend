@@ -64,7 +64,7 @@ class FCMService {
       // Solicitar permisos del navegador
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        console.warn('[FCM-Web] Permiso de notificaciones denegado por el usuario');
+        // console.warn('[FCM-Web] Permiso de notificaciones denegado por el usuario');
         return false;
       }
 

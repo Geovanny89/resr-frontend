@@ -62,14 +62,14 @@ export function useAppointmentActions({ business, showStatus, refresh, setAppoin
   }, [business, showStatus, refresh]);
 
   // Completar cita
-  const handleCompleteAppointment = useCallback(async (appointment, paymentMethod) => {
+  const handleCompleteAppointment = useCallback(async (appointment, options) => {
     if (!appointment) return { success: false };
     
     setLoadingState('complete', true);
     try {
       await api.patch(`/appointments/${appointment.id}/status`, { 
         status: 'done',
-        paymentMethod 
+        ...options
       });
       refresh(true);
       showStatus('Cita completada exitosamente');

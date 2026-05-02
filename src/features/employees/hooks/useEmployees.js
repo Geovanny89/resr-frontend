@@ -125,6 +125,22 @@ export function useEmployees(business) {
     }
   }, [loadEmployees]);
 
+  // Resetear contraseña
+  const resetEmployeePassword = useCallback(async (id, newPassword) => {
+    setSaving(true);
+    try {
+      const res = await api.post(`/employees/${id}/reset-password`, { newPassword });
+      setSuccess('Contraseña actualizada correctamente');
+      return { success: true, tempPassword: res.data.tempPassword };
+    } catch (e) {
+      const errorMsg = e.response?.data?.error || 'Error al resetear la contraseña';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
   // Subir foto
   const uploadPhoto = useCallback(async (file) => {
     if (!file.type.startsWith('image/')) {
@@ -178,6 +194,7 @@ export function useEmployees(business) {
     createEmployee,
     updateEmployee,
     deleteEmployee,
+    resetEmployeePassword,
     uploadPhoto,
     clearMessages,
     getImgUrl

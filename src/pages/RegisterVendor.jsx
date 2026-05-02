@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterVendor() {
   const navigate = useNavigate();
@@ -13,6 +13,8 @@ export default function RegisterVendor() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [businessTypes, setBusinessTypes] = useState([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [form, setForm] = useState({
@@ -359,27 +361,36 @@ export default function RegisterVendor() {
                 }}>
                   Contraseña
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={form.password}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
-                    background: isDark ? colors.bgSecondary : 'white',
-                    color: colors.text,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={e => e.target.style.borderColor = colors.primary}
-                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={form.password}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px 40px 10px 12px',
+                      border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                      background: isDark ? colors.bgSecondary : 'white',
+                      color: colors.text,
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={e => e.target.style.borderColor = colors.primary}
+                    onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex' }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -392,27 +403,36 @@ export default function RegisterVendor() {
                 }}>
                   Confirmar contraseña
                 </label>
-                <input
-                  type="password"
-                  name="confirm"
-                  placeholder="Repite tu contraseña"
-                  value={form.confirm}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
-                    background: isDark ? colors.bgSecondary : 'white',
-                    color: colors.text,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={e => e.target.style.borderColor = colors.primary}
-                  onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirm"
+                    placeholder="Repite tu contraseña"
+                    value={form.confirm}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px 40px 10px 12px',
+                      border: `1px solid ${isDark ? colors.border : '#e2e8f0'}`,
+                      background: isDark ? colors.bgSecondary : 'white',
+                      color: colors.text,
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={e => e.target.style.borderColor = colors.primary}
+                    onBlur={e => e.target.style.borderColor = isDark ? colors.border : '#e2e8f0'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex' }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <button

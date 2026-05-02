@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import ResponsiveTable from '../../components/ResponsiveTable';
-import { Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, Gift } from 'lucide-react';
 
 // Hooks
 import { useClients, useClientTags, useClientStats } from '../../features/clients/hooks';
@@ -18,7 +18,8 @@ import {
   EditClientModal,
   DeleteConfirmModal,
   Toast,
-  SearchFilter
+  SearchFilter,
+  BirthdayTemplateModal
 } from '../../features/clients/components';
 
 // Constants
@@ -46,6 +47,7 @@ export default function Clients() {
   const [clientForEdit, setClientForEdit] = useState(null);
   const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState(false);
   const [tagToDelete, setTagToDelete] = useState(null);
+  const [showBirthdayTemplates, setShowBirthdayTemplates] = useState(false);
 
   // Toast
   const [statusMsg, setStatusMsg] = useState(null);
@@ -169,6 +171,17 @@ export default function Clients() {
         loading={loading}
       />
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20, gap: 10 }}>
+        <button
+          className="btn-secondary btn-sm"
+          onClick={() => setShowBirthdayTemplates(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px' }}
+        >
+          <Gift size={18} />
+          Plantillas de Cumpleaños
+        </button>
+      </div>
+
       {/* Clients Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
@@ -279,6 +292,12 @@ export default function Clients() {
           colors={colors}
         />
       )}
+
+      <BirthdayTemplateModal
+        isOpen={showBirthdayTemplates}
+        onClose={() => setShowBirthdayTemplates(false)}
+        colors={colors}
+      />
 
       <Toast message={statusMsg?.text} type={statusMsg?.type} />
     </AdminLayout>

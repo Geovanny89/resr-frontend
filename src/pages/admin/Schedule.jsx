@@ -21,9 +21,13 @@ export default function Schedule() {
   const [expandedEmp, setExpandedEmp]   = useState(null);
   const [expandedDay, setExpandedDay]   = useState(null);
   const [form, setForm] = useState({
-    employeeId: '', dayOfWeek: '1',
-    startTime: '08:00', endTime: '17:00',
+    employeeId: '', 
+    dayOfWeek: '1',
+    selectedDays: ['1', '2', '3', '4', '5'], // Lunes a Viernes por defecto
+    startTime: '08:00', endTime: '19:00',
     type: 'work', description: '',
+    includeLunch: false,
+    lunchStart: '12:00', lunchEnd: '13:00',
   });
   const [saving, setSaving]             = useState(false);
   const [showModal, setShowModal]       = useState(false);
@@ -46,7 +50,7 @@ export default function Schedule() {
     setLoading(true);
     try {
       const [empRes, schedRes] = await Promise.all([
-        api.get(`/employees?businessId=${business.id}`, skipCache ? { params: { noCache: true } } : {}),
+        api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`, skipCache ? { params: { noCache: true } } : {}),
         api.get(`/schedules/business/${business.id}`, skipCache ? { params: { noCache: true } } : {}),
       ]);
       setEmployees(empRes.data);
@@ -73,8 +77,12 @@ export default function Schedule() {
   const resetForm = () => {
     setForm({
       employeeId: employees.length > 0 ? employees[0].id : '',
-      dayOfWeek: '1', startTime: '08:00', endTime: '17:00',
+      dayOfWeek: '1',
+      selectedDays: ['1', '2', '3', '4', '5'],
+      startTime: '08:00', endTime: '19:00',
       type: 'work', description: '',
+      includeLunch: false,
+      lunchStart: '12:00', lunchEnd: '13:00',
     });
     setEditingSchedule(null);
   };
@@ -83,35 +91,44 @@ export default function Schedule() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        businessId: business.id,
-        dayOfWeek: parseInt(form.dayOfWeek, 10)
-      };
-      let createdSchedule;
       if (editingSchedule) {
+        const payload = {
+          ...form,
+          businessId: business.id,
+          dayOfWeek: parseInt(form.dayOfWeek, 10)
+        };
         const res = await api.put(`/schedules/${editingSchedule.id}`, payload);
-        // Actualizar inmediatamente en el estado para reflejar cambios sin recargar
         setSchedules(prev => prev.map(s => s.id === editingSchedule.id ? res.data : s));
       } else {
-        const res = await api.post('/schedules', payload);
-        createdSchedule = res.data;
-        // Agregar inmediatamente al estado para que aparezca sin recargar
-        setSchedules(prev => [...prev, createdSchedule]);
+        const payload = {
+          employeeId: form.employeeId,
+          businessId: business.id,
+          days: form.selectedDays.map(d => parseInt(d, 10)),
+          startTime: form.startTime,
+          endTime: form.endTime,
+          type: form.type,
+          description: form.description,
+          includeLunch: form.includeLunch,
+          lunchStart: form.lunchStart,
+          lunchEnd: form.lunchEnd
+        };
+        await api.post('/schedules/bulk', payload);
       }
-      // Recargar del backend para sincronizar (sin usar cache)
+      
       await load(true);
-      // Navegar a la página donde está el empleado y expandir su sección
+      
       const empIndex = employees.findIndex(e => e.id === form.employeeId);
       if (empIndex !== -1) {
         const targetPage = Math.floor(empIndex / itemsPerPage) + 1;
         setCurrentPage(targetPage);
         setExpandedEmp(form.employeeId);
-        setExpandedDay(`${form.employeeId}-${parseInt(form.dayOfWeek, 10)}`);
+        // Expandir el primer día seleccionado si es bulk, o el día específico si es edit
+        const dayToExpand = editingSchedule ? parseInt(form.dayOfWeek, 10) : parseInt(form.selectedDays[0], 10);
+        setExpandedDay(`${form.employeeId}-${dayToExpand}`);
       }
       resetForm();
       setShowModal(false);
-      showToast(editingSchedule ? 'Horario actualizado' : 'Horario creado');
+      showToast(editingSchedule ? 'Horario actualizado' : 'Horarios creados correctamente');
     } catch (e) {
       showToast(e.response?.data?.error || 'Error al guardar horario', 'error');
     } finally {
@@ -143,10 +160,14 @@ export default function Schedule() {
     setForm({
       employeeId:  schedule.employeeId,
       dayOfWeek:   schedule.dayOfWeek.toString(),
+      selectedDays: [schedule.dayOfWeek.toString()],
       startTime:   schedule.startTime,
       endTime:     schedule.endTime,
       type:        schedule.type || 'work',
       description: schedule.description || '',
+      includeLunch: false,
+      lunchStart: '12:00',
+      lunchEnd: '13:00',
     });
     setShowModal(true);
   };
@@ -480,15 +501,65 @@ export default function Schedule() {
                 </div>
 
                 <div className="form-group">
-                  <label>Día de la semana *</label>
+                  <label>Tipo de horario *</label>
                   <select
-                    value={form.dayOfWeek}
-                    onChange={e => setForm({ ...form, dayOfWeek: e.target.value })}
+                    value={form.type}
+                    onChange={e => setForm({ ...form, type: e.target.value })}
                     required
                   >
-                    {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    {SCHEDULE_TYPES.map(t => (
+                      <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                    ))}
                   </select>
                 </div>
+
+                {!editingSchedule ? (
+                  <div className="form-group">
+                    <label>Días de la semana *</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {DAYS.map((d, i) => {
+                        const isSelected = form.selectedDays.includes(i.toString());
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              const newDays = isSelected
+                                ? form.selectedDays.filter(day => day !== i.toString())
+                                : [...form.selectedDays, i.toString()];
+                              setForm({ ...form, selectedDays: newDays });
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 20,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: '1px solid',
+                              transition: 'all 0.2s',
+                              backgroundColor: isSelected ? 'var(--primary)' : 'transparent',
+                              borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                              color: isSelected ? 'white' : 'var(--text)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {d.substring(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Día de la semana *</label>
+                    <select
+                      value={form.dayOfWeek}
+                      onChange={e => setForm({ ...form, dayOfWeek: e.target.value })}
+                      required
+                    >
+                      {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    </select>
+                  </div>
+                )}
 
                 <div className="schedule-time-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div className="form-group">
@@ -501,7 +572,6 @@ export default function Schedule() {
                       value={form.startTime}
                       onChange={e => {
                         let val = e.target.value.replace(/[^0-9:]/g, '');
-                        // Auto-formatear: si escribe 4 numeros, agregar :
                         if (val.length === 4 && !val.includes(':')) {
                           val = val.slice(0, 2) + ':' + val.slice(2);
                         }
@@ -509,16 +579,8 @@ export default function Schedule() {
                           setForm({ ...form, startTime: val });
                         }
                       }}
-                      onBlur={e => {
-                        // Validar y formatear al perder foco
-                        const val = e.target.value;
-                        if (val && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
-                          showToast('Formato de hora inválido. Use HH:MM (ej: 08:30)', 'error');
-                        }
-                      }}
                       required
                     />
-                    <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>Formato: HH:MM (ej: 08:30)</small>
                   </div>
                   <div className="form-group">
                     <label>Hora fin *</label>
@@ -537,40 +599,84 @@ export default function Schedule() {
                           setForm({ ...form, endTime: val });
                         }
                       }}
-                      onBlur={e => {
-                        const val = e.target.value;
-                        if (val && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
-                          showToast('Formato de hora inválido. Use HH:MM (ej: 17:30)', 'error');
-                        }
-                      }}
                       required
                     />
-                    <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>Formato: HH:MM (ej: 17:30)</small>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Tipo de horario *</label>
-                  <select
-                    value={form.type}
-                    onChange={e => setForm({ ...form, type: e.target.value })}
-                    required
-                  >
-                    {SCHEDULE_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-                    ))}
-                  </select>
-                  {form.type !== 'work' && (
-                    <div className="alert alert-warning" style={{ marginTop: 8, padding: '8px 12px', fontSize: 12 }}>
-                      ⚠️ Este bloque <strong>NO estará disponible</strong> para reservar citas.
+                {form.type === 'work' && !editingSchedule && (
+                  <div style={{ marginBottom: 20, padding: 12, borderRadius: 8, background: colors.bgSecondary, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.includeLunch ? 12 : 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>🍽️</span>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>Incluir Almuerzo</span>
+                      </div>
+                      <label className="switch" style={{ position: 'relative', display: 'inline-block', width: 40, height: 20 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={form.includeLunch}
+                          onChange={e => setForm({ ...form, includeLunch: e.target.checked })}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span style={{
+                          position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                          backgroundColor: form.includeLunch ? 'var(--primary)' : '#ccc',
+                          transition: '.4s', borderRadius: 20
+                        }}>
+                          <span style={{
+                            position: 'absolute', content: '""', height: 16, width: 16, left: form.includeLunch ? 22 : 2, bottom: 2,
+                            backgroundColor: 'white', transition: '.4s', borderRadius: '50%'
+                          }}></span>
+                        </span>
+                      </label>
                     </div>
-                  )}
-                  {form.type === 'work' && (
-                    <div className="alert alert-success" style={{ marginTop: 8, padding: '8px 12px', fontSize: 12 }}>
-                      ✅ Este bloque <strong>SÍ estará disponible</strong> para reservar citas.
-                    </div>
-                  )}
-                </div>
+
+                    {form.includeLunch && (
+                      <div className="schedule-time-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 11 }}>Inicio almuerzo</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="([0-1]?[0-9]|2[0-3]):[0-5][0-9]"
+                            placeholder="12:00"
+                            value={form.lunchStart}
+                            onChange={e => {
+                              let val = e.target.value.replace(/[^0-9:]/g, '');
+                              if (val.length === 4 && !val.includes(':')) {
+                                val = val.slice(0, 2) + ':' + val.slice(2);
+                              }
+                              if (val.length <= 5) {
+                                setForm({ ...form, lunchStart: val });
+                              }
+                            }}
+                            style={{ padding: '6px 10px', fontSize: 13 }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 11 }}>Fin almuerzo</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="([0-1]?[0-9]|2[0-3]):[0-5][0-9]"
+                            placeholder="13:00"
+                            value={form.lunchEnd}
+                            onChange={e => {
+                              let val = e.target.value.replace(/[^0-9:]/g, '');
+                              if (val.length === 4 && !val.includes(':')) {
+                                val = val.slice(0, 2) + ':' + val.slice(2);
+                              }
+                              if (val.length <= 5) {
+                                setForm({ ...form, lunchEnd: val });
+                              }
+                            }}
+                            style={{ padding: '6px 10px', fontSize: 13 }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label>Descripción (opcional)</label>

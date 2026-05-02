@@ -47,16 +47,11 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', form);
-      console.log('[Login] Respuesta:', res.data);
-      console.log('[Login] User role:', res.data.user?.role);
-      console.log('[Login] Business:', res.data.business);
       login(res.data.token, res.data.user, res.data.business);
       const role = res.data.user.role;
-      console.log('[Login] Redirigiendo según rol:', role);
       if (role === 'superadmin') {
         navigate('/superadmin');
       } else if (role === 'admin' || role === 'admin_suc') {
-        console.log('[Login] Redirigiendo a /admin');
         navigate('/admin');
       } else if (role === 'employee') navigate('/employee');
       else if (role === 'client') navigate('/my-appointments');

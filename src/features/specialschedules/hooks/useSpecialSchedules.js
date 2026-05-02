@@ -20,7 +20,7 @@ export function useSpecialSchedules(businessId) {
     setLoading(true);
     try {
       const [empRes, schedRes] = await Promise.all([
-        api.get(`/employees?businessId=${businessId}`, skipCache ? { params: { noCache: true } } : {}),
+        api.get(`/employees?businessId=${businessId}&onlyProfessionals=true`, skipCache ? { params: { noCache: true } } : {}),
         api.get(`/special-schedules/business/${businessId}`, skipCache ? { params: { noCache: true } } : {}),
       ]);
       setEmployees(empRes.data || []);
