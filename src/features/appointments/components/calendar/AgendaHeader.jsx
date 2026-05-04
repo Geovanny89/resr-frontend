@@ -1,102 +1,128 @@
-/**
- * Header de navegación para la agenda
- * Extraído de Agenda.jsx
- */
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { getWeekLabel } from '../../utils/calendar';
-import { formatDayHeader } from '../../utils/calendar';
 
 export default function AgendaHeader({
   colors,
-  weekDates,
   viewMode,
-  selectedDate,
-  employees,
   selectedEmployeeId,
   onEmployeeChange,
   onPrevWeek,
   onNextWeek,
   onSwitchToWeekView,
   onGoToToday,
+  employees,
+  weekDates
 }) {
-  const weekLabel = getWeekLabel(weekDates);
-  
+  const monthLabel = weekDates ? getWeekLabel(weekDates) : 'Cargando...';
   return (
-    <div className="agenda-header">
-      <div className="agenda-nav">
-        <button className="agenda-nav-btn" onClick={onPrevWeek}>
-          <ChevronLeft size={20} />
-        </button>
-        <span className="agenda-week-label">
-          {viewMode === 'week' ? weekLabel : formatDayHeader(selectedDate)}
-        </span>
-        <button className="agenda-nav-btn" onClick={onNextWeek}>
-          <ChevronRight size={20} />
-        </button>
+    <div className="agenda-header-v5">
+      {/* 1. Navegación de Mes y Botones de Vista */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '16px 20px',
+          borderBottom: `1px solid ${colors.border}`
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button 
+            className="agenda-nav-btn" 
+            onClick={onPrevWeek}
+            style={{ color: colors.primary, background: `${colors.primary}10` }}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Calendar size={18} color={colors.primary} />
+            <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: colors.text, textTransform: 'capitalize' }}>
+              {monthLabel}
+            </h2>
+          </div>
+          <button 
+            className="agenda-nav-btn" 
+            onClick={onNextWeek}
+            style={{ color: colors.primary, background: `${colors.primary}10` }}
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button 
+            className={`view-toggle-btn ${viewMode === 'week' ? 'active' : ''}`}
+            onClick={onSwitchToWeekView}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: '1px solid',
+              borderColor: viewMode === 'week' ? colors.primary : colors.border,
+              background: viewMode === 'week' ? colors.primary : 'transparent',
+              color: viewMode === 'week' ? 'white' : colors.textSecondary,
+              transition: 'all 0.2s'
+            }}
+          >
+            Semana
+          </button>
+          <button 
+            onClick={onGoToToday}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: `1px solid ${colors.border}`,
+              background: 'transparent',
+              color: colors.textSecondary,
+            }}
+          >
+            Hoy
+          </button>
+        </div>
       </div>
-      <div className="agenda-controls">
-        {/* Selector de Empleado */}
-        <select
-          value={selectedEmployeeId}
-          onChange={(e) => onEmployeeChange(e.target.value)}
-          className="agenda-employee-select"
-          style={{
-            padding: '8px 12px',
-            border: `1px solid ${colors.border}`,
-            borderRadius: '8px',
-            background: colors.cardBg,
-            color: colors.text,
-            fontSize: '13px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            minWidth: '150px',
-            maxWidth: '200px',
-          }}
+
+      {/* 2. Selector de Profesionales (Avatares) */}
+      <div className="professionals-scroll">
+        <div 
+          className={`professional-item ${!selectedEmployeeId ? 'active' : ''}`}
+          onClick={() => onEmployeeChange('')}
         >
-          <option value="">Todos los empleados</option>
-          {employees.map(emp => (
-            <option key={emp.id} value={emp.id}>
-              {emp.User?.name || 'Empleado'}
-            </option>
-          ))}
-        </select>
-        {/* Botones de vista */}
-        <button 
-          className="agenda-today-btn" 
-          onClick={onSwitchToWeekView}
-          style={{ 
-            padding: '8px 16px',
-            border: `1px solid ${colors.border}`,
-            borderRadius: '8px',
-            background: viewMode === 'week' ? colors.primary : colors.cardBg,
-            color: viewMode === 'week' ? 'white' : colors.text,
-            borderColor: viewMode === 'week' ? colors.primary : colors.border,
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Semana
-        </button>
-        <button 
-          className="agenda-today-btn" 
-          onClick={onGoToToday}
-          style={{ 
-            padding: '8px 16px',
-            border: `1px solid ${colors.border}`,
-            borderRadius: '8px',
-            background: viewMode === 'day' ? colors.primary : colors.cardBg,
-            color: viewMode === 'day' ? 'white' : colors.text,
-            borderColor: viewMode === 'day' ? colors.primary : colors.border,
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Hoy
-        </button>
+          <div className="pro-avatar-wrapper">
+            <div className="pro-initials" style={{ background: !selectedEmployeeId ? colors.primary : `${colors.primary}20`, color: !selectedEmployeeId ? 'white' : colors.primary }}>
+              ★
+            </div>
+          </div>
+          <span className="pro-name">Todos</span>
+        </div>
+
+        {employees.map(emp => {
+          const active = String(emp.id) === selectedEmployeeId;
+          const initials = (emp.User?.name || 'E').charAt(0).toUpperCase();
+          
+          return (
+            <div 
+              key={emp.id} 
+              className={`professional-item ${active ? 'active' : ''}`}
+              onClick={() => onEmployeeChange(String(emp.id))}
+            >
+              <div className="pro-avatar-wrapper">
+                {emp.photoUrl ? (
+                  <img src={emp.photoUrl} alt={emp.User?.name} className="pro-avatar" />
+                ) : (
+                  <div className="pro-initials">
+                    {initials}
+                  </div>
+                )}
+              </div>
+              <span className="pro-name">{emp.User?.name?.split(' ')[0]}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

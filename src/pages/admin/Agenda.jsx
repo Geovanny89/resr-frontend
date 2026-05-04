@@ -47,96 +47,206 @@ export default function Agenda() {
       <style>{`
         .agenda-container { 
           background: ${colors.cardBg}; 
-          border-radius: 16px; 
+          border-radius: 24px; 
           border: 1px solid ${colors.border};
           overflow: hidden;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+          box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+          margin-top: 20px;
         }
-        .agenda-header {
+        
+        /* Estilos para el selector de días tipo burbuja */
+        .day-bubble-container {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          overflow-x: auto;
+          gap: 12px;
           padding: 16px 20px;
           background: ${colors.cardBg};
-          border-bottom: 1px solid ${colors.border};
-          flex-wrap: wrap;
-          gap: 16px;
+          scrollbar-width: none; /* Firefox */
         }
-        .agenda-nav {
+        .day-bubble-container::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
+        }
+        
+        .day-bubble {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 12px;
+          justify-content: center;
+          min-width: 70px;
+          height: 80px;
+          border-radius: 35px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           background: ${colors.bgSecondary};
-          padding: 4px;
-          border-radius: 10px;
           border: 1px solid ${colors.border};
         }
-        .agenda-nav-btn {
-          width: 32px;
-          height: 32px;
+        
+        .day-bubble.active {
+          background: ${colors.primary};
+          color: white;
+          border-color: ${colors.primary};
+          transform: translateY(-4px);
+          box-shadow: 0 8px 15px ${colors.primary}40;
+        }
+        
+        .day-bubble.today {
+          border-color: ${colors.primary};
+          border-width: 2px;
+        }
+
+        .day-name {
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+          opacity: 0.8;
+        }
+        
+        .day-number {
+          font-size: 20px;
+          font-weight: 800;
+        }
+
+        /* Selector de Profesionales (Avatares) */
+        .professionals-scroll {
+          display: flex;
+          overflow-x: auto;
+          gap: 20px;
+          padding: 15px 20px;
+          border-bottom: 1px solid ${colors.border};
+          background: ${colors.cardBg};
+          scrollbar-width: none;
+        }
+        
+        .professional-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          min-width: 65px;
+          transition: all 0.3s;
+        }
+        
+        .pro-avatar-wrapper {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          padding: 3px;
+          border: 2px solid transparent;
+          transition: all 0.3s;
+        }
+        
+        .professional-item.active .pro-avatar-wrapper {
+          border-color: ${colors.primary};
+          transform: scale(1.1);
+        }
+        
+        .pro-avatar {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          object-fit: cover;
+          background: ${colors.bgSecondary};
+        }
+        
+        .pro-initials {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 8px;
-          border: none;
-          background: transparent;
-          color: ${colors.text};
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .agenda-nav-btn:hover {
-          background: ${colors.cardBg};
-          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .agenda-week-label {
+          background: ${colors.primary}20;
+          color: ${colors.primary};
           font-weight: 700;
-          font-size: 15px;
-          min-width: 140px;
-          text-align: center;
+          font-size: 20px;
+        }
+        
+        .pro-name {
+          font-size: 11px;
+          font-weight: 600;
           color: ${colors.text};
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 70px;
         }
-        .agenda-controls {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
+
         .agenda-grid {
           display: grid;
-          grid-template-columns: 65px repeat(7, 1fr);
-          overflow-x: auto;
           background: ${colors.cardBg};
+          overflow: auto;
+          max-height: 800px;
         }
+        
+        .agenda-grid.day-view {
+          grid-template-columns: 75px 1fr;
+        }
+        
+        .agenda-grid.week-view {
+          grid-template-columns: 75px repeat(7, minmax(150px, 1fr));
+        }
+        
+        .time-label-group {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          padding-right: 12px;
+          height: 100px;
+          justify-content: flex-start;
+          padding-top: 0;
+        }
+        
+        .time-main {
+          font-size: 13px;
+          font-weight: 700;
+          color: ${colors.text};
+        }
+        
+        .time-ampm {
+          font-size: 10px;
+          color: ${colors.textSecondary};
+          text-transform: lowercase;
+        }
+        
+        .time-sub {
+          font-size: 10px;
+          color: ${colors.textSecondary}80;
+          margin-top: 8px;
+        }
+
         .agenda-slot {
-          height: 120px;
-          border-bottom: 1px dashed ${colors.border};
+          height: 100px;
+          border-bottom: 1px solid ${colors.border}40;
           position: relative;
-          transition: background 0.2s;
         }
-        .agenda-slot::after {
-          content: "";
+
+        .appointment-card-v5 {
           position: absolute;
-          top: 50%;
-          left: 0;
-          right: 0;
-          height: 1px;
-          border-top: 1px dotted ${colors.border}60;
-          pointer-events: none;
+          left: 4px;
+          right: 8px;
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          overflow: hidden;
+          transition: all 0.2s;
+          cursor: pointer;
+          border-left: 4px solid transparent;
+        }
+        
+        .appointment-card-v5:hover {
+          transform: scale(1.02);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+          z-index: 10;
         }
 
-        .agenda-slot:hover {
-          background: ${colors.primary}05;
-        }
-        .agenda-day-column {
-          border-right: 1px dashed ${colors.border};
-          min-width: 150px;
-        }
-
-        .agenda-day-column:last-child {
-          border-right: none;
-        }
         @media (max-width: 1024px) {
           .agenda-header { flex-direction: column; align-items: stretch; }
-          .agenda-nav { justify-content: space-between; }
         }
       `}</style>
 
@@ -163,6 +273,7 @@ export default function Agenda() {
           onNextWeek={nextWeek}
           onSwitchToWeekView={switchToWeekView}
           onGoToToday={goToToday}
+          onDayClick={switchToDayView}
         />
 
         {/* Calendar Grid */}

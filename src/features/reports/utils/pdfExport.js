@@ -210,6 +210,10 @@ export async function generatePDF({
       summaryBody.push(['Gastos Operativos', fmt(financialReport.summary.totalExpenses || 0)]);
     }
 
+    if (financialReport.summary.totalCommissions > 0) {
+      summaryBody.push(['Comisiones de Empleados', fmt(financialReport.summary.totalCommissions)]);
+    }
+
     summaryBody.push(['Utilidad Neta', fmt(financialReport.summary.netProfit || 0)]);
 
     if (enabledModules.deposits && financialReport?.details?.deposits?.totalHeld > 0) {

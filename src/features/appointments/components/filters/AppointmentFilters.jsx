@@ -35,22 +35,22 @@ export function AppointmentFilters({
   };
 
   return (
-    <div className="card" style={{ 
-      width: '100%', 
+    <div className="card" style={{
+      width: '100%',
       position: isMobile ? 'relative' : 'sticky',
       top: isMobile ? 0 : '20px',
       padding: '20px',
       ...style
     }}>
       {/* Sección de Calendario */}
-      <h3 style={{ 
-        fontSize: 15, 
-        fontWeight: 800, 
-        marginBottom: 16, 
-        color: colors.text, 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 8 
+      <h3 style={{
+        fontSize: 15,
+        fontWeight: 800,
+        marginBottom: 16,
+        color: colors.text,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
       }}>
         <CalendarIcon size={18} color={colors.primary} />
         Selecciona fecha
@@ -60,23 +60,23 @@ export function AppointmentFilters({
         selectedDate={selectedDate}
         disabledDates={getDisabledDates ? getDisabledDates() : []}
       />
-      
+
       {/* Selector de Empleado */}
-      <div style={{ 
-        marginTop: 20, 
-        paddingTop: 16, 
-        borderTop: `1px solid ${colors.border}` 
+      <div style={{
+        marginTop: 20,
+        paddingTop: 16,
+        borderTop: `1px solid ${colors.border}`
       }}>
-        <h3 style={{ 
-          fontSize: 14, 
-          fontWeight: 700, 
-          marginBottom: 10, 
-          color: colors.text, 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 6 
+        <h3 style={{
+          fontSize: 14,
+          fontWeight: 700,
+          marginBottom: 10,
+          color: colors.text,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
         }}>
-          👤 Filtrar por Empleado
+          👤 Filtrar por Profesional
         </h3>
         <select
           value={selectedEmployeeId}
@@ -92,7 +92,7 @@ export function AppointmentFilters({
             cursor: 'pointer'
           }}
         >
-          <option value="">📋 Todos los empleados</option>
+          <option value="">📋 Todos los Profesionales</option>
           {employees.map(emp => (
             <option key={emp.id} value={emp.id}>
               {emp.User?.name || 'Sin nombre'}

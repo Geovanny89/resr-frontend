@@ -3,7 +3,7 @@ import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ResponsiveForm from '../../components/ResponsiveForm';
-import { Camera, X, FolderOpen, Plus } from 'lucide-react';
+import { Camera, X, FolderOpen, Plus, Search } from 'lucide-react';
 import {
   useServices,
   useServiceGroups,
@@ -44,8 +44,11 @@ export default function Services() {
     uploading,
     currentPage,
     setCurrentPage,
+    search,
+    setSearch,
     paginatedServices,
     totalPages,
+    totalServices,
     loadServices,
     resetForm,
     setEditService,
@@ -313,9 +316,36 @@ export default function Services() {
         {/* Tabla/Cards */}
         <div className="card" style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
           <div className="card-header" style={{ marginBottom: 16 }}>
-            <div>
-              <div className="card-title">📋 Servicios registrados</div>
-              <div className="card-subtitle">{services.length} servicio{services.length !== 1 ? 's' : ''}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, width: '100%' }}>
+              <div>
+                <div className="card-title">📋 Servicios registrados</div>
+                <div className="card-subtitle">{totalServices} servicio{totalServices !== 1 ? 's' : ''}</div>
+              </div>
+              
+              {/* Buscador de servicios */}
+              <div style={{ position: 'relative', width: isMobile ? '100%' : '240px' }}>
+                <Search 
+                  size={16} 
+                  color="var(--text-muted)" 
+                  style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} 
+                />
+                <input
+                  type="text"
+                  placeholder="Buscar servicio..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 13,
+                    background: 'var(--bg)',
+                    color: 'var(--text)',
+                    outline: 'none'
+                  }}
+                />
+              </div>
             </div>
           </div>
           <ResponsiveTable

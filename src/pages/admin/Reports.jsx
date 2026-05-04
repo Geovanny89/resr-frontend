@@ -69,6 +69,7 @@ export default function Reports() {
     customEnd,
     selectedBranchId: 'active',
     showFullFinancial,
+    employeeFilter: employeeFilter,
   });
 
   const {
@@ -79,11 +80,13 @@ export default function Reports() {
     displayInventory,
     displayNetProfit,
     displayMargin,
+    displayCommissions,
   } = useFinancialReport({
     business,
     range,
     showFullFinancial,
     period,
+    employeeId: employeeFilter,
   });
 
   useEffect(() => {
@@ -298,6 +301,7 @@ export default function Reports() {
                 displayInventory={displayInventory}
                 displayNetProfit={displayNetProfit}
                 displayMargin={displayMargin}
+                displayCommissions={displayCommissions}
                 financialReport={financialReport}
                 enabledModules={enabledModules}
               />

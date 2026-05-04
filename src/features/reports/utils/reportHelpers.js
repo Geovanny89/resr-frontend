@@ -96,7 +96,7 @@ export function calculateStats(appointments, business) {
   const totalRev = done.reduce((s, a) => {
     const price = a.finalPrice !== undefined && a.finalPrice !== null 
       ? parseFloat(a.finalPrice) 
-      : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+      : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
     return s + price;
   }, 0);
 
@@ -104,7 +104,7 @@ export function calculateStats(appointments, business) {
     // Para el pago al empleado, calculamos sobre el total generado en esa cita
     const priceForCommission = a.finalPrice !== undefined && a.finalPrice !== null 
       ? parseFloat(a.finalPrice) 
-      : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+      : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
       
     const commPct = parseFloat(a.Employee?.commissionPct || 0);
     const earned = a.employeeEarns
@@ -172,7 +172,7 @@ export function groupByEmployee(appointments, isTechnical = false) {
         if (!isTechnical) {
           const price = a.finalPrice !== undefined && a.finalPrice !== null 
             ? parseFloat(a.finalPrice) 
-            : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+            : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
           acc[name].ingresos += price;
         }
       }
@@ -210,7 +210,7 @@ export function groupByService(done, isTechnical = false) {
       if (!isTechnical) {
         const price = a.finalPrice !== undefined && a.finalPrice !== null 
           ? parseFloat(a.finalPrice) 
-          : (parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0));
+          : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
         acc[name].revenue += price;
       }
       return acc;

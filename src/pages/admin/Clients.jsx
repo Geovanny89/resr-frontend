@@ -58,8 +58,12 @@ export default function Clients() {
 
   // Filter clients by tag
   const filteredClients = useMemo(() => {
-    if (!selectedTagFilter) return clients;
-    return clients.filter(c => c.tags?.some(t => t.id === selectedTagFilter));
+    let result = [...clients];
+    if (selectedTagFilter) {
+      result = result.filter(c => c.tags?.some(t => t.id === selectedTagFilter));
+    }
+    // Sort A-Z by name
+    return result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [clients, selectedTagFilter]);
 
   // Pagination

@@ -16,7 +16,7 @@ export default function WeekView({
   onAppointmentClick,
 }) {
   return (
-    <div className="agenda-grid">
+    <div className="agenda-grid week-view">
 
       <TimeColumn colors={colors} />
 
@@ -30,6 +30,7 @@ export default function WeekView({
             key={index} 
             className="agenda-day-column" 
             onClick={() => onDayClick(date)}
+            style={{ borderRight: `1px dashed ${colors.border}80` }}
           >
             <div 
               className={`agenda-day-header ${isTodayDate ? 'today' : ''}`}
@@ -37,59 +38,40 @@ export default function WeekView({
                 height: '100px',
                 padding: '12px 8px',
                 textAlign: 'center',
-                borderBottom: `1px solid ${colors.border}`,
-                background: isTodayDate ? `linear-gradient(to bottom, ${colors.primary}10, ${colors.primary}05)` : colors.bgSecondary,
-                boxSizing: 'border-box',
+                borderBottom: `1px solid ${colors.border}40`,
+                background: isTodayDate ? colors.cardBg : colors.cardBg, // Fondo sólido para que no sea transparente al scroll
+                borderTop: isTodayDate ? `3px solid ${colors.primary}` : 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.3s ease',
-                position: 'relative'
+                boxSizing: 'border-box',
+                position: 'sticky',
+                top: 0,
+                zIndex: 5
               }}
             >
-              {isTodayDate && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: colors.primary,
-                  boxShadow: `0 2px 4px ${colors.primary}40`
-                }} />
+              {isTodayDate && isTodayDate && (
+                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: colors.primary }} />
               )}
               <div style={{ 
                 fontSize: '11px', 
                 fontWeight: 700, 
-                color: isTodayDate ? colors.primary : colors.textSecondary, 
+                color: isTodayDate ? colors.primary : '#6b7280', 
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
                 {SHORT_DAYS[date.getDay()]}
               </div>
               <div style={{ 
-                fontSize: '24px', 
+                fontSize: '28px', 
                 fontWeight: 800, 
-                color: isTodayDate ? colors.primary : colors.text, 
-                marginTop: '2px',
+                color: isTodayDate ? colors.primary : '#1f2937', 
+                marginTop: '4px',
                 lineHeight: 1
               }}>
                 {date.getDate()}
               </div>
-              {dayAppointments.length > 0 && (
-                <div style={{ 
-                  fontSize: '9px', 
-                  color: isTodayDate ? colors.primary : colors.textSecondary, 
-                  marginTop: '6px',
-                  fontWeight: 600,
-                  background: isTodayDate ? `${colors.primary}20` : `${colors.border}`,
-                  padding: '2px 8px',
-                  borderRadius: '12px'
-                }}>
-                  {dayAppointments.length} cita{dayAppointments.length !== 1 ? 's' : ''}
-                </div>
-              )}
             </div>
 
             <div className="agenda-slots">

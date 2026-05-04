@@ -2,7 +2,7 @@
  * Barra de estadísticas para la agenda
  * Extraído de Agenda.jsx
  */
-import { Calendar, Clock, CheckCircle, Car, MapPin } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, Car, MapPin, Zap } from 'lucide-react';
 import { useAgendaStats } from '../../hooks/useAgendaStats';
 
 export default function AgendaStats({ colors, appointments, hasFieldTechnicians }) {
@@ -23,6 +23,7 @@ export default function AgendaStats({ colors, appointments, hasFieldTechnicians 
     >
       <StatChip icon={<Calendar size={14} />} label="Total" value={stats.total} color={colors.primary} bg={`${colors.primary}15`} />
       <StatChip icon={<Clock size={14} />} label="Pendientes" value={stats.pending} color="#f59e0b" bg="#f59e0b15" />
+      <StatChip icon={<Zap size={14} />} label="En Atención" value={stats.attention} color="#ec4899" bg="#fce7f3" />
       <StatChip icon={<CheckCircle size={14} />} label="Finalizadas" value={stats.done} color="#10b981" bg="#10b98115" />
       
       {hasFieldTechnicians && (

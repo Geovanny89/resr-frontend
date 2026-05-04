@@ -2,13 +2,24 @@ import { useEffect, useState, useMemo } from 'react';
 import api from '../../../api/client';
 import { getDateRange, calculateStats, groupByStatus, groupByEmployee, groupByService } from '../utils/reportHelpers';
 
-export function useReportsData({ business, mainBusiness, period, customStart, customEnd, selectedBranchId, showFullFinancial }) {
+export function useReportsData({ business, mainBusiness, period, customStart, customEnd, selectedBranchId, showFullFinancial, employeeFilter }) {
   const [appointments, setAppointments] = useState([]);
   const [previousPeriodAppointments, setPreviousPeriodAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [detailPage, setDetailPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
+
+  // Filtrar citas según el empleado seleccionado
+  const filteredAppointments = useMemo(() => {
+    if (!employeeFilter || employeeFilter === 'all') return appointments;
+    return appointments.filter(a => a.employeeId === employeeFilter);
+  }, [appointments, employeeFilter]);
+
+  const filteredPreviousAppointments = useMemo(() => {
+    if (!employeeFilter || employeeFilter === 'all') return previousPeriodAppointments;
+    return previousPeriodAppointments.filter(a => a.employeeId === employeeFilter);
+  }, [previousPeriodAppointments, employeeFilter]);
 
   const range = useMemo(() => getDateRange(period, customStart, customEnd), [period, customStart, customEnd]);
   
@@ -34,17 +45,40 @@ export function useReportsData({ business, mainBusiness, period, customStart, cu
     setLoading(true);
     setError('');
     try {
-      let url = `/appointments?businessId=${business.id}`;
+      const params = {
+        businessId: business.id,
+      };
 
+      const formatDate = (date) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      if (range?.start && range?.end) {
+        params.startDate = formatDate(range.start);
+        params.endDate = formatDate(range.end);
+      }
+
+      if (employeeFilter && employeeFilter !== 'all') {
+        params.employeeId = employeeFilter;
+      }
+
+      let url = `/appointments`;
+      
       if (selectedBranchId === 'all') {
         url = `/appointments/consolidated`;
       } else if (selectedBranchId === 'main') {
-        url = `/appointments?businessId=${mainBusiness.id}`;
+        params.businessId = mainBusiness.id;
       } else if (selectedBranchId !== 'active') {
-        url = `/appointments?businessId=${selectedBranchId}`;
+        params.businessId = selectedBranchId;
       }
 
-      const res = await api.get(url, skipCache ? { params: { noCache: true } } : {});
+      const res = await api.get(url, { 
+        params: skipCache ? { ...params, noCache: true } : params 
+      });
       const all = res.data;
 
       // Filtrar período actual
@@ -82,14 +116,14 @@ export function useReportsData({ business, mainBusiness, period, customStart, cu
   }, [appointments.length]);
 
   // Statistics
-  const stats = useMemo(() => calculateStats(appointments, business), [appointments, business]);
+  const stats = useMemo(() => calculateStats(filteredAppointments, business), [filteredAppointments, business]);
   
   // Statistics del período anterior
-  const previousStats = useMemo(() => calculateStats(previousPeriodAppointments, business), [previousPeriodAppointments, business]);
+  const previousStats = useMemo(() => calculateStats(filteredPreviousAppointments, business), [filteredPreviousAppointments, business]);
   
   // Calcular variación vs período anterior
   const comparison = useMemo(() => {
-    if (!previousStats || previousPeriodAppointments.length === 0) {
+    if (!previousStats || filteredPreviousAppointments.length === 0) {
       return null;
     }
     
@@ -100,9 +134,9 @@ export function useReportsData({ business, mainBusiness, period, customStart, cu
     
     return {
       total: {
-        current: appointments.length,
-        previous: previousPeriodAppointments.length,
-        variation: calculateVariation(appointments.length, previousPeriodAppointments.length)
+        current: filteredAppointments.length,
+        previous: filteredPreviousAppointments.length,
+        variation: calculateVariation(filteredAppointments.length, filteredPreviousAppointments.length)
       },
       completed: {
         current: stats.done.length,
@@ -110,29 +144,28 @@ export function useReportsData({ business, mainBusiness, period, customStart, cu
         variation: calculateVariation(stats.done.length, previousStats.done.length)
       },
       revenue: {
-        current: stats.totalRevenue || 0,
-        previous: previousStats.totalRevenue || 0,
-        variation: calculateVariation(stats.totalRevenue || 0, previousStats.totalRevenue || 0)
+        current: stats.totalRev || 0,
+        previous: previousStats.totalRev || 0,
+        variation: calculateVariation(stats.totalRev || 0, previousStats.totalRev || 0)
       },
       completionRate: {
-        current: appointments.length > 0 ? (stats.done.length / appointments.length) * 100 : 0,
-        previous: previousPeriodAppointments.length > 0 ? (previousStats.done.length / previousPeriodAppointments.length) * 100 : 0,
+        current: filteredAppointments.length > 0 ? (stats.done.length / filteredAppointments.length) * 100 : 0,
+        previous: filteredPreviousAppointments.length > 0 ? (previousStats.done.length / filteredPreviousAppointments.length) * 100 : 0,
         variation: calculateVariation(
-          appointments.length > 0 ? (stats.done.length / appointments.length) * 100 : 0,
-          previousPeriodAppointments.length > 0 ? (previousStats.done.length / previousPeriodAppointments.length) * 100 : 0
+          filteredAppointments.length > 0 ? (stats.done.length / filteredAppointments.length) * 100 : 0,
+          filteredPreviousAppointments.length > 0 ? (previousStats.done.length / filteredPreviousAppointments.length) * 100 : 0
         )
       }
     };
-  }, [appointments, previousPeriodAppointments, stats, previousStats]);
+  }, [filteredAppointments, filteredPreviousAppointments, stats, previousStats]);
 
   // Chart data
-  const byStatus = useMemo(() => groupByStatus(appointments), [appointments]);
+  const byStatus = useMemo(() => groupByStatus(filteredAppointments), [filteredAppointments]);
   
-  // MODIFICADO: Pasar todas las citas (appointments) en lugar de solo las completadas (stats.done)
-  // para poder calcular correctamente las métricas de totales vs completadas
+  // MODIFICADO: Pasar todas las citas filtradas (filteredAppointments)
   const byEmployee = useMemo(
-    () => groupByEmployee(appointments, business?.isTechnicalServices || business?.hasFieldTechnicians),
-    [appointments, business]
+    () => groupByEmployee(filteredAppointments, business?.isTechnicalServices || business?.hasFieldTechnicians),
+    [filteredAppointments, business]
   );
   
   const byService = useMemo(

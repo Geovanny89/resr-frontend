@@ -7,8 +7,8 @@ export const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'V
 export const SHORT_DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-// Generar horas del día (6am a 10pm)
-export const HOURS = Array.from({ length: 17 }, (_, i) => i + 6);
+// Generar horas del día (5am a 10pm)
+export const HOURS = Array.from({ length: 18 }, (_, i) => i + 5);
 
 /**
  * Obtiene la fecha actual en zona horaria Colombia
@@ -39,7 +39,7 @@ export function getWeekDates(baseDate) {
  * Formatea fecha a formato ISO (YYYY-MM-DD)
  */
 export function formatDateISO(date) {
-  return date.toISOString().split('T')[0];
+  return date.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 }
 
 /**

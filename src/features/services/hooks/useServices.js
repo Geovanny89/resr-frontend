@@ -14,6 +14,7 @@ export function useServices(businessId, isTechnicalBusiness) {
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(PAGINATION.initialPage);
+  const [search, setSearch] = useState('');
 
   const loadServices = useCallback(async (skipCache = false) => {
     if (!businessId) return;
@@ -37,12 +38,30 @@ export function useServices(businessId, isTechnicalBusiness) {
     }
   }, [businessId, loadServices]);
 
+  const filteredServices = useMemo(() => {
+    let result = [...services];
+    
+    // Filter by search term
+    if (search.trim()) {
+      const lowSearch = search.toLowerCase().trim();
+      result = result.filter(s => 
+        (s.name && s.name.toLowerCase().includes(lowSearch)) ||
+        (s.description && s.description.toLowerCase().includes(lowSearch))
+      );
+    }
+
+    // Sort alphabetically (redundant if backend does it, but safe)
+    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    return result;
+  }, [services, search]);
+
   const paginatedServices = useMemo(() => {
     const startIndex = (currentPage - 1) * PAGINATION.itemsPerPage;
-    return services.slice(startIndex, startIndex + PAGINATION.itemsPerPage);
-  }, [services, currentPage]);
+    return filteredServices.slice(startIndex, startIndex + PAGINATION.itemsPerPage);
+  }, [filteredServices, currentPage]);
 
-  const totalPages = Math.ceil(services.length / PAGINATION.itemsPerPage);
+  const totalPages = Math.ceil(filteredServices.length / PAGINATION.itemsPerPage);
 
   const resetForm = useCallback(() => {
     setForm(DEFAULT_SERVICE_FORM);
@@ -155,8 +174,11 @@ export function useServices(businessId, isTechnicalBusiness) {
     uploading,
     currentPage,
     setCurrentPage,
+    search,
+    setSearch,
     paginatedServices,
     totalPages,
+    totalServices: filteredServices.length,
     loadServices,
     resetForm,
     setEditService,

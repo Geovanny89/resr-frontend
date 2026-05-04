@@ -33,6 +33,28 @@ export function FinancialDetail({ financialReport, enabledModules, financialData
               </td>
             </tr>
 
+            {financialData.cashIncome > 0 && (
+              <tr style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85em', color: '#6b7280' }}>
+                <td style={{ padding: '4px 10px', paddingLeft: 20 }}>
+                  • Pago en Efectivo
+                </td>
+                <td style={{ padding: '4px 10px', textAlign: 'right' }}>
+                  {fmt(financialData.cashIncome)}
+                </td>
+              </tr>
+            )}
+            
+            {financialData.transferIncome > 0 && (
+              <tr style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85em', color: '#6b7280' }}>
+                <td style={{ padding: '4px 10px', paddingLeft: 20 }}>
+                  • Pago por Transferencia
+                </td>
+                <td style={{ padding: '4px 10px', textAlign: 'right' }}>
+                  {fmt(financialData.transferIncome)}
+                </td>
+              </tr>
+            )}
+
             {enabledModules.inventory && financialData.inventoryCost > 0 && (
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '8px 10px', paddingLeft: 20 }}>
@@ -40,6 +62,17 @@ export function FinancialDetail({ financialReport, enabledModules, financialData
                 </td>
                 <td style={{ padding: '8px 10px', textAlign: 'right', color: '#8b5cf6' }}>
                   -{fmt(financialData.inventoryCost)}
+                </td>
+              </tr>
+            )}
+            
+            {financialData.totalCommissions > 0 && (
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '8px 10px', paddingLeft: 20 }}>
+                  <span style={{ color: '#f59e0b' }}>-</span> Comisiones Empleados
+                </td>
+                <td style={{ padding: '8px 10px', textAlign: 'right', color: '#f59e0b' }}>
+                  -{fmt(financialData.totalCommissions)}
                 </td>
               </tr>
             )}
@@ -143,9 +176,45 @@ export function FinancialDetail({ financialReport, enabledModules, financialData
         </div>
       )}
 
+      {/* Sección Alertas de Descuadre (Citas sin Caja) */}
+      {financialReport?.details?.unrecordedAppointments?.length > 0 && (
+        <div style={{ marginTop: 16, padding: 12, background: '#fff1f2', borderRadius: 8, border: '1px solid #fecdd3' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: 13, fontWeight: 700, color: '#9f1239', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⚠️ Alerta de Descuadre - {financialReport.details.unrecordedAppointments.length} cita(s) sin caja
+          </h4>
+          <p style={{ fontSize: 11, color: '#be123c', marginBottom: 10 }}>
+            Las siguientes citas se marcaron como "Finalizadas" pero no generaron movimiento en caja (posiblemente la caja estaba cerrada).
+          </p>
+          <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #fda4af', color: '#9f1239' }}>
+                  <th style={{ textAlign: 'left', padding: '4px' }}>Cliente</th>
+                  <th style={{ textAlign: 'left', padding: '4px' }}>Fecha/Hora</th>
+                  <th style={{ textAlign: 'right', padding: '4px' }}>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {financialReport.details.unrecordedAppointments.map(apt => (
+                  <tr key={apt.id} style={{ borderBottom: '1px solid #fecdd3' }}>
+                    <td style={{ padding: '6px 4px', color: '#be123c', fontWeight: 500 }}>{apt.clientName}</td>
+                    <td style={{ padding: '6px 4px', color: '#e11d48' }}>
+                      {new Date(apt.startTime).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ padding: '6px 4px', textAlign: 'right', color: '#be123c', fontWeight: 600 }}>
+                      {fmt(apt.finalPrice)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Nota al pie */}
       <div style={{ marginTop: 12, padding: 8, background: '#f0f9ff', borderRadius: 6, fontSize: 11, color: '#0369a1' }}>
-        💡 Utilidad neta = Ingresos - Gastos - Insumos. Depósitos retenidos = anticipos sin aplicar.
+        💡 Utilidad neta = Ingresos - Gastos - Insumos - Comisiones. Los ingresos se basan únicamente en dinero real registrado en caja.
       </div>
     </div>
   );

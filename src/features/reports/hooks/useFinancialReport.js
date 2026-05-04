@@ -5,10 +5,13 @@ import api from '../../../api/client';
 const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-export function useFinancialReport({ business, range, showFullFinancial, period }) {
+export function useFinancialReport({ business, range, showFullFinancial, period, employeeId }) {
   const [financialReport, setFinancialReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [enabledModules, setEnabledModules] = useState({
@@ -25,6 +28,7 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
     try {
       const params = {
         businessId: business.id,
+        employeeId: employeeId !== 'all' ? employeeId : undefined
       };
 
       // Para períodos day y week, usar startDate/endDate
@@ -54,13 +58,16 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
     if (showFullFinancial && (period === 'month' || period === 'day' || period === 'week')) {
       loadFinancialReport();
     }
-  }, [showFullFinancial, period, business?.id, range?.start?.getTime(), range?.end?.getTime()]);
+  }, [showFullFinancial, period, business?.id, range?.start?.getTime(), range?.end?.getTime(), employeeId]);
 
   // Computed values for display
   const financialData = financialReport?.summary || {};
   const displayIncome = showFullFinancial ? financialData.totalIncome || 0 : 0;
+  const cashIncome = showFullFinancial ? financialData.cashIncome || 0 : 0;
+  const transferIncome = showFullFinancial ? financialData.transferIncome || 0 : 0;
   const displayExpenses = showFullFinancial ? financialData.totalExpenses || 0 : 0;
   const displayInventory = showFullFinancial ? financialData.inventoryCost || 0 : 0;
+  const displayCommissions = showFullFinancial ? financialData.totalCommissions || 0 : 0;
   const displayNetProfit = showFullFinancial ? financialData.netProfit || 0 : 0;
   const displayMargin = showFullFinancial
     ? financialData.margin || 0
@@ -72,8 +79,11 @@ export function useFinancialReport({ business, range, showFullFinancial, period 
     enabledModules,
     financialData,
     displayIncome,
+    cashIncome,
+    transferIncome,
     displayExpenses,
     displayInventory,
+    displayCommissions,
     displayNetProfit,
     displayMargin,
     refresh: loadFinancialReport,

@@ -8,6 +8,7 @@ export function useAgendaStats(appointments) {
   return useMemo(() => ({
     total: appointments.length,
     pending: appointments.filter(a => a.status === 'pending').length,
+    attention: appointments.filter(a => a.status === 'attention').length,
     done: appointments.filter(a => a.status === 'done').length,
     onTheWay: appointments.filter(a => a.technicianStatus === 'on_the_way').length,
     arrived: appointments.filter(a => a.technicianStatus === 'arrived').length,
