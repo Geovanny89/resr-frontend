@@ -18,7 +18,7 @@ const AdminLayoutContext = createContext(false);
 
 export default function AdminLayout({ children, title, subtitle }) {
   const isAlreadyWrapped = useContext(AdminLayoutContext);
-  
+
   if (isAlreadyWrapped) {
     return <Suspense fallback={null}>{children || <Outlet />}</Suspense>;
   }
@@ -56,23 +56,23 @@ function AdminLayoutInner({ children, title, subtitle }) {
       {
         section: 'Principal',
         items: [
-          { to: '/admin',              icon: LayoutDashboard, label: 'Dashboard',  exact: true },
+          { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
           { to: '/admin/agenda', icon: CalendarDays, label: 'Agenda' },
-          { to: '/admin/appointments', icon: ClipboardList,   label: 'Citas' },
-          { to: '/admin/clients',      icon: UserCircle,       label: 'Mis Clientes' },
-          { to: '/admin/ratings',      icon: Star,            label: 'Calificaciones' },
-          { to: '/admin/promotions',   icon: Tag,             label: 'Promociones' },
+          { to: '/admin/appointments', icon: ClipboardList, label: 'Citas' },
+          { to: '/admin/clients', icon: UserCircle, label: 'Mis Clientes' },
+          { to: '/admin/ratings', icon: Star, label: 'Calificaciones' },
+          { to: '/admin/promotions', icon: Tag, label: 'Promociones' },
         ]
       },
       {
         section: 'Gestión',
         items: [
-          { to: '/admin/services',  icon: Scissors, label: 'Servicios' },
-          { to: '/admin/employees', icon: Users,    label: 'Profesionales' },
-          { to: '/admin/schedule',  icon: Calendar, label: 'Horarios' },
+          { to: '/admin/services', icon: Scissors, label: 'Servicios' },
+          { to: '/admin/employees', icon: Users, label: 'Profesionales' },
+          { to: '/admin/schedule', icon: Calendar, label: 'Horarios' },
           { to: '/admin/special-schedules', icon: CalendarX, label: 'Festivos y Especiales' },
           { to: '/admin/employee-vacations', icon: Palmtree, label: 'Vacaciones' },
-          { to: '/admin/business',  icon: Store,    label: 'Mi Negocio' },
+          { to: '/admin/business', icon: Store, label: 'Mi Negocio' },
         ]
       },
       {
@@ -95,7 +95,7 @@ function AdminLayoutInner({ children, title, subtitle }) {
       {
         section: 'Configuración',
         items: [
-          { to: '/admin/referrals',       icon: Gift, label: 'Programa de Referidos' },
+          { to: '/admin/referrals', icon: Gift, label: 'Programa de Referidos' },
           { to: '/admin/change-password', icon: Lock, label: 'Cambiar contraseña' },
         ]
       }
@@ -171,7 +171,7 @@ function AdminLayoutInner({ children, title, subtitle }) {
             <div className="sidebar-logo-sub">{business?.name || 'Sistema de Citas'}</div>
             {/* Badge del Plan de Suscripción */}
             {business?.subscriptionPlan && (
-              <div style={{ 
+              <div style={{
                 marginTop: '6px',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -260,70 +260,81 @@ function AdminLayoutInner({ children, title, subtitle }) {
             {/* Indicador de WhatsApp Global - Solo para empresas que NO son técnicos a domicilio NI servicios técnicos */}
             {/* Si hay sesión guardada o conectada, mostrar como 'Conectado' permanentemente */}
             {/* Para sucursales, verificar el hasFieldTechnicians e isTechnicalServices del negocio padre */}
-            {['admin', 'admin_suc'].includes(user?.role) && 
+            {['admin', 'admin_suc'].includes(user?.role) &&
               !(business?.hasFieldTechnicians || business?.ParentBusiness?.hasFieldTechnicians || business?.parentHasFieldTechnicians) && (
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 8, 
-                  padding: '6px 12px', 
-                  borderRadius: 20, 
-                  // Si está conectado O tiene sesión guardada, mostrar verde
-                  background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                    ? 'rgba(16, 185, 129, 0.1)' 
-                    : 'rgba(245, 158, 11, 0.1)',
-                  border: `1px solid ${(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                    ? 'rgba(16, 185, 129, 0.2)' 
-                    : 'rgba(245, 158, 11, 0.2)'}`,
-                  marginRight: 8,
-                  cursor: 'pointer'
-                }}
-                onClick={() => navigate('/admin')} // Ir al dashboard para gestionar
-                title={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                  ? 'WhatsApp configurado correctamente' 
-                  : 'WhatsApp Desconectado - Clic para vincular'}
-              >
-                <div style={{ 
-                  width: 8, 
-                  height: 8, 
-                  borderRadius: '50%', 
-                  background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                    ? '#10b981' 
-                    : '#f59e0b',
-                  boxShadow: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved') 
-                    ? '0 0 8px #10b981' 
-                    : 'none'
-                }} />
-                <MessageCircle size={16} color={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                  ? '#10b981' 
-                  : '#f59e0b'} />
-                {!isMobile && (
-                  <span style={{ 
-                    fontSize: 12, 
-                    fontWeight: 700, 
-                    color: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                      ? '#065f46' 
-                      : '#92400e'
-                  }}>
-                    {(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
-                      ? 'WhatsApp Activo' 
-                      : 'WhatsApp Offline'}
-                  </span>
-                )}
-              </div>
-            )}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    // Si está conectado O tiene sesión guardada, mostrar verde
+                    background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? 'rgba(16, 185, 129, 0.1)'
+                      : 'rgba(245, 158, 11, 0.1)',
+                    border: `1px solid ${(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? 'rgba(16, 185, 129, 0.2)'
+                      : 'rgba(245, 158, 11, 0.2)'}`,
+                    marginRight: 8,
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => navigate('/admin')} // Ir al dashboard para gestionar
+                  title={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                    ? 'WhatsApp configurado correctamente'
+                    : 'WhatsApp Desconectado - Clic para vincular'}
+                >
+                  <div style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? '#10b981'
+                      : '#f59e0b',
+                    boxShadow: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                      ? '0 0 8px #10b981'
+                      : 'none'
+                  }} />
+                  <MessageCircle size={16} color={(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                    ? '#10b981'
+                    : '#f59e0b'} />
+                  {!isMobile && (
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: (whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                        ? '#065f46'
+                        : '#92400e'
+                    }}>
+                      {(whatsappStatus === 'connected' || whatsappStatus === 'session_saved')
+                        ? 'WhatsApp Activo'
+                        : 'WhatsApp Offline'}
+                    </span>
+                  )}
+                </div>
+              )}
 
             {!Capacitor.isNativePlatform() && business?.slug && (
-              <a
-                href={`/${business.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline btn-sm topbar-public-link"
-                style={{ textDecoration: 'none' }}
-              >
-                🔗 Página pública
-              </a>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a
+                  href={`/kady/${business.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-outline btn-sm topbar-public-link"
+                  style={{ textDecoration: 'none', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                >
+                  🤖 Asistente Virtual
+                </a>
+                <a
+                  href={`/${business.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-outline btn-sm topbar-public-link"
+                  style={{ textDecoration: 'none' }}
+                >
+                  🔗 Página pública
+                </a>
+              </div>
             )}
             <ThemeToggle />
             <button className="btn-ghost btn-icon" title="Notificaciones">
@@ -335,14 +346,14 @@ function AdminLayoutInner({ children, title, subtitle }) {
         <div className="page-content fade-in">
           {/* Alerta de Periodo de Gracia (24h) para nuevos negocios */}
           {business?.subscriptionStatus === 'pending' && (
-            <div style={{ 
-              marginBottom: 20, 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 12, 
-              border: '1px solid #bae6fd', 
-              borderRadius: 12, 
-              padding: '16px 20px', 
+            <div style={{
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              border: '1px solid #bae6fd',
+              borderRadius: 12,
+              padding: '16px 20px',
               background: '#f0f9ff',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
             }}>
@@ -353,16 +364,16 @@ function AdminLayoutInner({ children, title, subtitle }) {
                   Aprovecha este tiempo para configurar tu negocio. Recuerda <strong>subir tu comprobante de pago</strong> en la sección de suscripción para activar tu cuenta permanentemente.
                 </div>
               </div>
-              <Link 
-                to="/admin/submit-payment" 
-                style={{ 
-                  padding: '10px 18px', 
-                  fontSize: 13, 
-                  background: '#0ea5e9', 
-                  color: '#fff', 
-                  borderRadius: 10, 
-                  textDecoration: 'none', 
-                  fontWeight: 700, 
+              <Link
+                to="/admin/submit-payment"
+                style={{
+                  padding: '10px 18px',
+                  fontSize: 13,
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  borderRadius: 10,
+                  textDecoration: 'none',
+                  fontWeight: 700,
                   whiteSpace: 'nowrap',
                   boxShadow: '0 2px 4px rgba(14, 165, 233, 0.3)'
                 }}

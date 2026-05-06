@@ -93,14 +93,12 @@ export default function Employees() {
 
   // Guardar empleado (crear o actualizar)
   const handleSaveEmployee = async (formData, employeeId) => {
-    console.log('Employees.jsx - handleSaveEmployee llamado', { formData, employeeId });
     let result;
     if (employeeId) {
       result = await updateEmployee(employeeId, formData);
     } else {
       result = await createEmployee(formData);
     }
-    console.log('Employees.jsx - resultado de create/update', result);
     
     if (result.success) {
       closeEmployeeModal();

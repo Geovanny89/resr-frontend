@@ -14,6 +14,7 @@ const RegisterVendor   = lazy(() => import('./pages/RegisterVendor'));
 const BusinessLanding  = lazy(() => import('./pages/public/BusinessLanding'));
 const BookAppointment  = lazy(() => import('./pages/public/BookAppointment'));
 const RateEmployee     = lazy(() => import('./pages/public/RateEmployee'));
+const KadyStandalone   = lazy(() => import('./pages/public/KadyStandalone'));
 const MyAppointments   = lazy(() => import('./pages/client/MyAppointments'));
 
 // Admin Pages
@@ -262,6 +263,7 @@ export default function App() {
           <Route path="/rate-employee" element={<RateEmployee />} />
           
           {/* ===== RUTAS PÚBLICAS DE NEGOCIOS (SLUG) ===== */}
+          <Route path="/kady/:slug" element={<KadyStandalone />} />
           <Route path="/:slug" element={<BusinessLanding />} />
           <Route path="/:slug/book" element={<BookAppointment />} />
         </Routes>

@@ -31,11 +31,11 @@ export default function Sidebar({
                 {publicUrl}
               </div>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn-primary" style={{flex:1,fontSize:12}} onClick={onCopyUrl}>
+                <button className="btn-primary" type="button" style={{flex:1,fontSize:12}} onClick={onCopyUrl}>
                   📋 Copiar
                 </button>
                 <a href={`/${business?.slug}`} target="_blank" rel="noreferrer" style={{flex:1,textDecoration:'none'}}>
-                  <button className="btn-secondary" style={{width:'100%',fontSize:12}}>
+                  <button className="btn-secondary" type="button" style={{width:'100%',fontSize:12}}>
                     <Eye size={12}/> Ver
                   </button>
                 </a>
@@ -44,6 +44,34 @@ export default function Sidebar({
           ) : (
             <p style={{color:'var(--text-muted)',fontSize:13}}>Guarda el negocio para generar el enlace.</p>
           )}
+        </div>
+      )}
+
+      {/* Enlace Chatbot Kady */}
+      {!Capacitor.isNativePlatform() && publicUrl && (
+        <div className="card" style={{borderTop: '3px solid #667eea'}}>
+          <h3 style={{fontSize:15,fontWeight:700,marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:18}}>🤖</span> Enlace Chatbot Kady
+          </h3>
+          <p style={{fontSize:12, color:'var(--text-muted)', marginBottom:10}}>
+            Comparte este link para que tus clientes hablen directamente con tu asistente Kady.
+          </p>
+          <div style={{background:'var(--bg-secondary)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',marginBottom:12,wordBreak:'break-all',fontSize:12,color:'var(--text-muted)',fontFamily:'monospace'}}>
+            {window.location.origin}/kady/{business?.slug}
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button 
+              className="btn-primary" 
+              type="button"
+              style={{flex:1,fontSize:12, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none'}} 
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/kady/${business?.slug}`);
+                alert('Enlace del Chatbot copiado');
+              }}
+            >
+              📋 Copiar Link Kady
+            </button>
+          </div>
         </div>
       )}
 

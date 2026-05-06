@@ -1127,10 +1127,10 @@
   position: fixed;
   bottom: 40px;
   right: 40px;
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   background: #25d366;
-  border-radius: 24px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1292,8 +1292,8 @@
   .carousel-nav-btn svg { width: 20px; height: 20px; }
   .carousel-counter { top: 8px; right: 12px; font-size: 12px; padding: 5px 12px; }
   
-  .whatsapp-float { width: 60px; height: 60px; right: 20px; bottom: 20px; border-radius: 18px; }
-  .whatsapp-float svg { width: 28px; height: 28px; }
+  .whatsapp-float { width: 50px; height: 50px; right: 20px; bottom: 20px; border-radius: 15px; }
+  .whatsapp-float svg { width: 24px; height: 24px; }
   
   .employee-modal-content { max-width: 100%; border-radius: 32px 32px 0 0; position: fixed; bottom: 0; left: 0; right: 0; margin: 0; }
   .employee-modal-header { height: 260px; }

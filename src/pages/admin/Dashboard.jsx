@@ -200,14 +200,15 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const month = new Date().toISOString().slice(0, 7);
-        const [apptRes, reportRes, systemNotifRes, employeesRes, campaignRes, reviewStatusRes, subRes] = await Promise.all([
-          api.get(`/appointments?businessId=${business.id}`),
+        const [statsRes, reportRes, systemNotifRes, employeesRes, campaignRes, reviewStatusRes, subRes, upcomingRes] = await Promise.all([
+          api.get(`/appointments/stats?businessId=${business.id}`),
           api.get(`/employees/commission-report?businessId=${business.id}&month=${month}`).catch(() => ({ data: null })),
           api.get('/system-settings/global-notification').catch(() => ({ data: { message: null } })),
           api.get(`/employees?businessId=${business.id}&onlyProfessionals=true`).catch(() => ({ data: [] })),
           api.get('/system-settings/testimonial_campaign').catch(() => ({ data: { isActive: false } })),
           api.get(`/platform-reviews/status/${business.id}`).catch(() => ({ data: { hasReviewed: false } })),
           api.get('/businesses/my/subscription-info').catch(() => ({ data: null })),
+          api.get(`/appointments?businessId=${business.id}&limit=10`),
         ]);
         
         setSubInfo(subRes?.data);
@@ -217,40 +218,25 @@ export default function Dashboard() {
         setShowCampaignBanner(campaignRes.data?.isActive || false);
         setHasAlreadyReviewed(reviewStatusRes.data?.hasReviewed || false);
         setEmployeeRatings(employeesRes.data || []);
-        const all = apptRes.data;
-        setStats({
-          total:     all.length,
-          pending:   all.filter(a => a.status === 'pending').length,
-          confirmed: all.filter(a => a.status === 'confirmed').length,
-          done:      all.filter(a => a.status === 'done').length,
-          cancelled: all.filter(a => a.status === 'cancelled').length,
-        });
+        
+        // Usar las estadísticas del servidor directamente
+        setStats(statsRes.data);
+        
         const now = new Date();
         setUpcoming(
-          all
+          upcomingRes.data
             .filter(a => new Date(a.startTime) >= now && ['pending', 'confirmed'].includes(a.status))
             .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
             .slice(0, 6)
         );
-        if (reportRes.data?.totals) {
-          const allAppts = apptRes.data;
-          const currentMonth = new Date().toISOString().slice(0, 7);
-          const doneThisMonth = allAppts.filter(a => a.status === 'done' && a.startTime.startsWith(currentMonth));
-          
-          const cash = doneThisMonth
-            .filter(a => a.paymentMethod === 'cash')
-            .reduce((s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0), 0);
-            
-          const transfer = doneThisMonth
-            .filter(a => a.paymentMethod === 'transfer')
-            .reduce((s, a) => s + parseFloat(a.Service?.price || 0) + parseFloat(a.additionalAmount || 0), 0);
 
+        if (reportRes.data?.totals) {
           setFinance({
             totalRevenue:    reportRes.data.totals.total,
             ownerRevenue:    reportRes.data.totals.ownerTotal,
             employeeRevenue: reportRes.data.totals.employeeTotal,
-            cashRevenue: cash,
-            transferRevenue: transfer
+            cashRevenue: statsRes.data.finance.cash,
+            transferRevenue: statsRes.data.finance.transfer
           });
         }
       } catch (e) {

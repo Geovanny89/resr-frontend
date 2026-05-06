@@ -57,7 +57,9 @@ export function isSameDay(date1, date2) {
  * Obtiene la hora (0-23) de una fecha en zona horaria Colombia
  */
 export function getHourFromDate(dateStr) {
-  return new Date(dateStr).toLocaleTimeString('en-CA', { timeZone: 'America/Bogota', hour12: false }).split(':')[0];
+  const d = new Date(dateStr);
+  const colTime = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+  return colTime.getUTCHours();
 }
 
 /**
@@ -83,8 +85,9 @@ export function isToday(date) {
  * Obtiene minutos de inicio de una cita (0-59) en zona horaria Colombia
  */
 export function getStartMinutes(startTime) {
-  const startTimeStr = new Date(startTime).toLocaleTimeString('en-CA', { timeZone: 'America/Bogota', hour12: false });
-  return parseInt(startTimeStr.split(':')[1], 10);
+  const d = new Date(startTime);
+  const colTime = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+  return colTime.getUTCMinutes();
 }
 
 /**

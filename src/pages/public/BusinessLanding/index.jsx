@@ -26,6 +26,7 @@ import FooterSection from './components/FooterSection';
 // Modal Components
 import GalleryModal from './components/GalleryModal';
 import EmployeeModal from './components/EmployeeModal';
+import KadyWidget from '../../../components/KadyChat/KadyWidget';
 
 // Export utils for external use
 export { getImgUrl, getGoogleMapsEmbedUrl, isShortGoogleMapsUrl, getPaymentMethodImage };
@@ -339,6 +340,9 @@ export default function BusinessLanding() {
           slug={slug}
         />
       )}
+      
+      {/* Chatbot Kady */}
+      <KadyWidget slug={slug} />
     </div>
   );
 }

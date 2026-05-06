@@ -88,16 +88,13 @@ export default function EmployeeModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Capturamos el estado actual de forma segura
-    setForm(currentForm => {
-      const dataToSave = {
-        ...currentForm,
-        businessId: selectedBusinessId
-      };
-      
-      onSave(dataToSave, employee?.id);
-      return currentForm;
-    });
+    // Capturamos el estado actual y llamamos a onSave fuera de setForm
+    const dataToSave = {
+      ...form,
+      businessId: selectedBusinessId
+    };
+    
+    onSave(dataToSave, employee?.id);
   };
 
   const handleClose = () => {

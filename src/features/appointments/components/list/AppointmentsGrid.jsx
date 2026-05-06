@@ -53,12 +53,14 @@ function getRowActions(appointment, business, handlers) {
     { label: 'Editar', onClick: () => handlers.onEdit(appointment), color: '#6366f1', show: ['pending', 'confirmed'].includes(appointment.status) },
     { label: 'Confirmar', onClick: () => handlers.onStatusChange(appointment, 'confirmed'), color: '#10b981', show: appointment.status === 'pending' },
     { label: 'Atender', onClick: () => handlers.onStatusChange(appointment, 'attention'), color: '#3b82f6', show: appointment.status === 'confirmed' },
+    { label: 'Insumos', onClick: () => handlers.onOpenInsumos(appointment), color: '#f59e0b', show: appointment.status === 'attention' && hasInventory },
     { label: 'Extender', onClick: () => handlers.onExtend(appointment), color: '#f97316', show: appointment.status === 'attention' },
     { label: 'Completar', onClick: () => handlers.onComplete(appointment), color: '#8b5cf6', show: ['confirmed', 'attention'].includes(appointment.status) },
     { label: 'Reasignar', onClick: () => handlers.onTransfer(appointment), color: '#6366f1', show: ['pending', 'confirmed'].includes(appointment.status) },
     { label: 'Notas', onClick: () => handlers.onNotes(appointment), color: '#14b8a6', show: true },
     { label: 'Adicional', onClick: () => handlers.onAdditionalCharge(appointment), color: '#f59e0b', show: ['pending', 'confirmed', 'attention'].includes(appointment.status) },
     { label: 'Recibo', onClick: () => handlers.onSendReceipt(appointment.id), color: '#0ea5e9', show: appointment.status === 'done' },
+    { label: 'Reagendar', onClick: () => handlers.onReschedule(appointment), color: '#10b981', show: appointment.status === 'done' },
     { label: 'Cancelar', onClick: () => handlers.onCancel(appointment), color: '#ef4444', show: ['pending', 'confirmed', 'attention'].includes(appointment.status) }
   ].filter(a => a.show);
 }

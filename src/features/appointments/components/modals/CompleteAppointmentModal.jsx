@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Tag, Calculator } from 'lucide-react';
+import { X, Tag, Calculator, Check } from 'lucide-react';
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -28,6 +28,7 @@ export function CompleteAppointmentModal({
 }) {
   const [discount, setDiscount] = useState(0);
   const [finalPriceOverride, setFinalPriceOverride] = useState(null);
+  const [reschedule, setReschedule] = useState(false);
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [showPriceOverrideInput, setShowPriceOverrideInput] = useState(false);
 
@@ -54,7 +55,8 @@ export function CompleteAppointmentModal({
     onComplete({
       paymentMethod,
       discountApplied: discount,
-      finalPrice: currentFinalPrice
+      finalPrice: currentFinalPrice,
+      reschedule // Pasar la intención de reagendar
     });
   };
 
@@ -324,6 +326,40 @@ export function CompleteAppointmentModal({
               </div>
             </div>
           </label>
+        </div>
+
+        {/* Opción de Reagendar */}
+        <div 
+          onClick={() => setReschedule(!reschedule)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '12px 16px',
+            background: reschedule ? '#ecfdf5' : colors.bgSecondary,
+            borderRadius: '10px',
+            border: `1px solid ${reschedule ? '#10b981' : colors.border}`,
+            marginBottom: 24,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          <div style={{
+            width: 20, height: 20, borderRadius: 4,
+            border: `2px solid ${reschedule ? '#10b981' : colors.textTertiary}`,
+            background: reschedule ? '#10b981' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
+          }}>
+            {reschedule && <Check size={14} strokeWidth={4} />}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: reschedule ? '#065f46' : colors.text }}>
+              📅 Agendar próxima cita
+            </div>
+            <div style={{ fontSize: 11, color: colors.textSecondary }}>
+              Abrir formulario con datos precargados (+15 días)
+            </div>
+          </div>
         </div>
 
         {/* Botones */}

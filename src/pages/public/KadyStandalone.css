@@ -1,0 +1,35 @@
+.kady-standalone-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 20px;
+}
+
+.kady-standalone-wrapper {
+  width: 100%;
+  max-width: 500px;
+  height: 90vh;
+  max-height: 800px;
+}
+
+.kady-footer-brand {
+  margin-top: 20px;
+  font-size: 0.8rem;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 600px) {
+  .kady-standalone-page {
+    padding: 0;
+  }
+  .kady-standalone-wrapper {
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+  }
+}

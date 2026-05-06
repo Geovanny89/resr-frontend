@@ -17,18 +17,18 @@ export default function AgendaHeader({
   return (
     <div className="agenda-header-v5">
       {/* 1. Navegación de Mes y Botones de Vista */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           padding: '16px 20px',
           borderBottom: `1px solid ${colors.border}`
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button 
-            className="agenda-nav-btn" 
+          <button
+            className="agenda-nav-btn"
             onClick={onPrevWeek}
             style={{ color: colors.primary, background: `${colors.primary}10` }}
           >
@@ -40,8 +40,8 @@ export default function AgendaHeader({
               {monthLabel}
             </h2>
           </div>
-          <button 
-            className="agenda-nav-btn" 
+          <button
+            className="agenda-nav-btn"
             onClick={onNextWeek}
             style={{ color: colors.primary, background: `${colors.primary}10` }}
           >
@@ -50,7 +50,7 @@ export default function AgendaHeader({
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button 
+          <button
             className={`view-toggle-btn ${viewMode === 'week' ? 'active' : ''}`}
             onClick={onSwitchToWeekView}
             style={{
@@ -68,7 +68,7 @@ export default function AgendaHeader({
           >
             Semana
           </button>
-          <button 
+          <button
             onClick={onGoToToday}
             style={{
               padding: '6px 16px',
@@ -88,7 +88,7 @@ export default function AgendaHeader({
 
       {/* 2. Selector de Profesionales (Avatares) */}
       <div className="professionals-scroll">
-        <div 
+        <div
           className={`professional-item ${!selectedEmployeeId ? 'active' : ''}`}
           onClick={() => onEmployeeChange('')}
         >
@@ -103,10 +103,10 @@ export default function AgendaHeader({
         {employees.map(emp => {
           const active = String(emp.id) === selectedEmployeeId;
           const initials = (emp.User?.name || 'E').charAt(0).toUpperCase();
-          
+
           return (
-            <div 
-              key={emp.id} 
+            <div
+              key={emp.id}
               className={`professional-item ${active ? 'active' : ''}`}
               onClick={() => onEmployeeChange(String(emp.id))}
             >

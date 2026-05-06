@@ -252,9 +252,9 @@ export default function Agenda() {
 
 
       {/* Stats */}
-      <AgendaStats 
-        colors={colors} 
-        appointments={filteredAppointments} 
+      <AgendaStats
+        colors={colors}
+        appointments={filteredAppointments}
         hasFieldTechnicians={business?.hasFieldTechnicians}
       />
 

@@ -1,0 +1,123 @@
+.kady-widget-root {
+  position: fixed;
+  bottom: 125px;
+  right: 30px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 15px;
+}
+
+.kady-widget-trigger {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 4px solid white;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 0;
+  outline: none;
+}
+
+.kady-avatar-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kady-avatar-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kady-widget-trigger:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+}
+
+.kady-badge {
+  position: absolute;
+  top: -18px;
+  right: -5px;
+  background: #ff4757;
+  color: white;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  z-index: 30;
+  box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4);
+  border: 2px solid white;
+}
+
+.kady-widget-window {
+  width: 380px;
+  height: 450px;
+  max-height: calc(100vh - 120px);
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 10000;
+}
+
+.kady-widget-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+@media (max-width: 450px) {
+  .kady-widget-window {
+    width: calc(100vw - 40px);
+    right: -10px;
+    bottom: -10px;
+  }
+
+  .kady-widget-root {
+    bottom: 100px;
+    right: 20px;
+  }
+}
+
+/* Animación de Saludo (Waving) Mejorada */
+.kady-avatar-waving {
+  animation: kadyHello 2.5s ease-in-out infinite;
+  transform-origin: 50% 90%;
+  display: block;
+}
+
+@keyframes kadyHello {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  20% { transform: rotate(-8deg) scale(1.05); }
+  40% { transform: rotate(8deg) scale(1.05); }
+  60% { transform: rotate(-8deg) scale(1.05); }
+  80% { transform: rotate(0deg) scale(1.05); }
+}

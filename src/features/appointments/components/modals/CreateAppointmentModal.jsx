@@ -18,7 +18,8 @@ export function CreateAppointmentModal({
   employees,
   business,
   isCreating,
-  colors
+  colors,
+  initialData = null
 }) {
   const [form, setForm] = useState({
     clientName: '',
@@ -32,6 +33,26 @@ export function CreateAppointmentModal({
     notes: '',
     extraServices: []
   });
+
+  // Cargar datos iniciales si existen (para reagendar)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setForm(prev => ({
+        ...prev,
+        clientName: initialData.clientName || '',
+        clientPhone: initialData.clientPhone || '',
+        clientEmail: initialData.clientEmail || '',
+        address: initialData.address || '',
+        serviceId: initialData.serviceId || '',
+        employeeId: initialData.employeeId || '',
+        extraServices: initialData.extraServices || []
+      }));
+      
+      if (initialData.suggestedDate) {
+        setSelectedDate(initialData.suggestedDate);
+      }
+    }
+  }, [isOpen, initialData]);
   const [serviceSearch, setServiceSearch] = useState('');
   const [showServiceList, setShowServiceList] = useState(false);
   const [extraServiceSearch, setExtraServiceSearch] = useState('');

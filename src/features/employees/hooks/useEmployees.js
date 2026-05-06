@@ -76,11 +76,9 @@ export function useEmployees(business) {
 
   // Crear empleado
   const createEmployee = useCallback(async (data) => {
-    console.log('useEmployees - createEmployee llamado', data);
     setSaving(true);
     try {
       const res = await api.post('/employees', data);
-      console.log('useEmployees - respuesta del servidor', res.data);
       setSuccess(`✅ Usuario creado exitosamente`);
       await loadEmployees(true);
       return { success: true, data: res.data };

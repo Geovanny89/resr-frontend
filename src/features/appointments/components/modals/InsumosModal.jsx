@@ -50,9 +50,12 @@ export function InsumosModal({
   onRecommendationsChange,
   onWorkEvidencesChange,
   isSaving,
-  colors
+  colors,
+  business = null
 }) {
   if (!isOpen || !appointment) return null;
+
+  const isTechnical = business?.hasFieldTechnicians || business?.isTechnicalServices;
 
   return (
     <div style={{
@@ -122,9 +125,16 @@ export function InsumosModal({
                   {selectedInsumos.some(i => i.itemId === item.id) && (
                     <input
                       type="number"
-                      min="0.1" step="0.1"
+                      min={['unidad', 'porcion'].includes(item.unit) ? "1" : "0.1"}
+                      step={['unidad', 'porcion'].includes(item.unit) ? "1" : "0.1"}
                       value={selectedInsumos.find(i => i.itemId === item.id)?.quantity || 1}
-                      onChange={(e) => onAddInsumo(item.id, e.target.value)}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (['unidad', 'porcion'].includes(item.unit)) {
+                          val = Math.round(parseFloat(val) || 1);
+                        }
+                        onAddInsumo(item.id, val);
+                      }}
                       style={{
                         width: 70, padding: '6px 8px', borderRadius: 6,
                         border: `1px solid ${colors.border}`, fontSize: 14, textAlign: 'center'
@@ -152,66 +162,71 @@ export function InsumosModal({
           </div>
         )}
 
-        {/* Diagnóstico */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-            🔍 Diagnóstico:
-          </label>
-          <textarea
-            value={diagnosis}
-            onChange={(e) => onDiagnosisChange(e.target.value)}
-            placeholder="Describe el problema o diagnóstico técnico"
-            rows={3}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
-            }}
-          />
-        </div>
+        {/* Campos técnicos solo si es empresa de campo */}
+        {isTechnical && (
+          <>
+            {/* Diagnóstico */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                🔍 Diagnóstico:
+              </label>
+              <textarea
+                value={diagnosis}
+                onChange={(e) => onDiagnosisChange(e.target.value)}
+                placeholder="Describe el problema o diagnóstico técnico"
+                rows={3}
+                style={{
+                  width: '100%', padding: 12, borderRadius: 8,
+                  border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
+                }}
+              />
+            </div>
 
-        {/* Solución */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-            🔧 Solución Aplicada:
-          </label>
-          <textarea
-            value={solution}
-            onChange={(e) => onSolutionChange(e.target.value)}
-            placeholder="Describe la solución o reparación realizada"
-            rows={3}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
-            }}
-          />
-        </div>
+            {/* Solución */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                🔧 Solución Aplicada:
+              </label>
+              <textarea
+                value={solution}
+                onChange={(e) => onSolutionChange(e.target.value)}
+                placeholder="Describe la solución o reparación realizada"
+                rows={3}
+                style={{
+                  width: '100%', padding: 12, borderRadius: 8,
+                  border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
+                }}
+              />
+            </div>
 
-        {/* Recomendaciones */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
-            💡 Recomendaciones:
-          </label>
-          <textarea
-            value={recommendations}
-            onChange={(e) => onRecommendationsChange(e.target.value)}
-            placeholder="Recomendaciones para el cliente"
-            rows={2}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
-            }}
-          />
-        </div>
+            {/* Recomendaciones */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                💡 Recomendaciones:
+              </label>
+              <textarea
+                value={recommendations}
+                onChange={(e) => onRecommendationsChange(e.target.value)}
+                placeholder="Recomendaciones para el cliente"
+                rows={2}
+                style={{
+                  width: '100%', padding: 12, borderRadius: 8,
+                  border: `1px solid ${colors.border}`, fontSize: 14, resize: 'vertical'
+                }}
+              />
+            </div>
 
-        {/* Evidencias */}
-        <WorkEvidenceUploader
-          appointmentId={appointment?.id}
-          photos={workEvidences}
-          onPhotosChange={onWorkEvidencesChange}
-          apiUrl={import.meta.env.VITE_API_URL || ''}
-          token={localStorage.getItem('token') || ''}
-          colors={colors}
-        />
+            {/* Evidencias */}
+            <WorkEvidenceUploader
+              appointmentId={appointment?.id}
+              photos={workEvidences}
+              onPhotosChange={onWorkEvidencesChange}
+              apiUrl={import.meta.env.VITE_API_URL || ''}
+              token={localStorage.getItem('token') || ''}
+              colors={colors}
+            />
+          </>
+        )}
 
         {/* Botones */}
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>

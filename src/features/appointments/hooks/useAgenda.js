@@ -230,26 +230,44 @@ export function useAgenda({ businessId, userId, hasFieldTechnicians }) {
     setSelectedDate(date);
   }, []);
 
+  // Agrupar citas por fecha y hora para acceso rápido O(1)
+  const groupedAppointments = useMemo(() => {
+    const map = {};
+    appointments.forEach(apt => {
+      const d = new Date(apt.startTime);
+      // Extraer fecha y hora de forma eficiente
+      const dateKey = formatDateISO(d);
+      
+      // Colombia es UTC-5. Obtenemos la hora ajustando el offset.
+      const colTime = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+      const hourKey = colTime.getUTCHours();
+      
+      if (!map[dateKey]) map[dateKey] = {};
+      if (!map[dateKey][hourKey]) map[dateKey][hourKey] = [];
+      map[dateKey][hourKey].push(apt);
+    });
+    return map;
+  }, [appointments]);
+
   // Filtrar citas
   const getAppointmentsForDay = useCallback((date) => {
-    return appointments.filter(apt => {
-      const aptDate = new Date(apt.startTime);
-      const matchesDate = isSameDay(aptDate, date);
-      const matchesEmployee = selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
-      return matchesDate && matchesEmployee;
+    const dateKey = formatDateISO(date);
+    const dayData = groupedAppointments[dateKey] || {};
+    
+    // Unir todas las horas del día y filtrar por empleado
+    const allDay = Object.values(dayData).flat();
+    return allDay.filter(apt => {
+      return selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
     }).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  }, [appointments, selectedEmployeeId]);
+  }, [groupedAppointments, selectedEmployeeId]);
 
   const getAppointmentsForHour = useCallback((date, hour) => {
-    return appointments.filter(apt => {
-      const aptDate = new Date(apt.startTime);
-      const aptHourStr = aptDate.toLocaleTimeString('en-CA', { timeZone: 'America/Bogota', hour12: false });
-      const aptHour = parseInt(aptHourStr.split(':')[0], 10);
-      const matchesDate = isSameDay(aptDate, date) && aptHour === hour;
-      const matchesEmployee = selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
-      return matchesDate && matchesEmployee;
-    }).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  }, [appointments, selectedEmployeeId]);
+    const dateKey = formatDateISO(date);
+    const hourAppointments = groupedAppointments[dateKey]?.[hour] || [];
+    
+    if (!selectedEmployeeId) return hourAppointments;
+    return hourAppointments.filter(apt => String(apt.employeeId) === selectedEmployeeId);
+  }, [groupedAppointments, selectedEmployeeId]);
 
   // Filtradas para estadísticas
   const filteredAppointments = useMemo(() => {

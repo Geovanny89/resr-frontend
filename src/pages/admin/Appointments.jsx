@@ -99,6 +99,7 @@ export default function Appointments() {
   // Estado para modales con datos específicos
   const [completeData, setCompleteData] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [rescheduleData, setRescheduleData] = useState(null);
   
   // Estado para formulario express
   const [expressForm, setExpressForm] = useState({
@@ -246,6 +247,28 @@ export default function Appointments() {
     const result = await handleCompleteAppointment(completeData, options);
     if (result.success) {
       closeModal('complete');
+      
+      // Si el usuario marcó "Agendar próxima cita"
+      if (options.reschedule) {
+        const suggestedDate = new Date();
+        suggestedDate.setDate(suggestedDate.getDate() + 15);
+        
+        setRescheduleData({
+          clientName: completeData.clientName,
+          clientPhone: completeData.clientPhone,
+          clientEmail: completeData.clientEmail,
+          serviceId: completeData.serviceId,
+          employeeId: completeData.employeeId,
+          extraServices: completeData.extraServices,
+          suggestedDate: suggestedDate.toISOString().split('T')[0]
+        });
+        
+        // Abrir el modal de creación inmediatamente
+        openModal('create');
+      } else {
+        setRescheduleData(null);
+      }
+      
       setCompleteData(null);
     }
   };
@@ -321,7 +344,21 @@ export default function Appointments() {
     onNotes: (apt) => { setSelectedAppointment(apt); openModal('notes', apt); },
     onAdditionalCharge: (apt) => { setSelectedAppointment(apt); openModal('additionalCharge', apt); },
     onSendReceipt: (id) => { setSelectedAppointment({ id }); openModal('sendReceipt'); },
-    onOpenInsumos: handleOpenInsumos
+    onOpenInsumos: handleOpenInsumos,
+    onReschedule: (apt) => {
+      const suggestedDate = new Date();
+      suggestedDate.setDate(suggestedDate.getDate() + 15);
+      setRescheduleData({
+        clientName: apt.clientName,
+        clientPhone: apt.clientPhone,
+        clientEmail: apt.clientEmail,
+        serviceId: apt.serviceId,
+        employeeId: apt.employeeId,
+        extraServices: apt.extraServices || [],
+        suggestedDate: suggestedDate.toISOString().split('T')[0]
+      });
+      openModal('create');
+    }
   };
 
   return (
@@ -471,13 +508,14 @@ export default function Appointments() {
       {/* Crear Cita */}
       <CreateAppointmentModal
         isOpen={modals.create}
-        onClose={() => closeModal('create')}
+        onClose={() => { closeModal('create'); setRescheduleData(null); }}
         onSubmit={handleCreateSubmit}
         services={services}
         employees={employees}
         business={business}
         isCreating={actionLoading.create}
         colors={colors}
+        initialData={rescheduleData}
       />
 
       {/* Cita Express */}
@@ -617,6 +655,7 @@ export default function Appointments() {
         onWorkEvidencesChange={setWorkEvidences}
         isSaving={actionLoading.insumos}
         colors={colors}
+        business={business}
       />
     </AdminLayout>
   );
