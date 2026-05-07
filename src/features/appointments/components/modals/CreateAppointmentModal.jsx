@@ -116,7 +116,7 @@ export function CreateAppointmentModal({
 
       setLoadingSlots(true);
       try {
-        const allowPast = !business?.hasFieldTechnicians;
+        const allowPast = true; // El administrador siempre puede crear citas en el pasado
         const res = await api.get(`/appointments/availability?date=${selectedDate}&employeeId=${form.employeeId}&serviceId=${form.serviceId}&businessId=${business.id}&allowPast=${allowPast}`, { params: { noCache: true } });
         
         let slots = res.data.availableSlots || [];

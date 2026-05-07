@@ -22,6 +22,7 @@ export function todayColombia() {
  */
 export function getWeekDates(baseDate) {
   const date = new Date(baseDate);
+  date.setHours(0, 0, 0, 0); // Normalizar a medianoche
   const day = date.getDay();
   const diff = date.getDate() - day;
   const sunday = new Date(date.setDate(diff));
@@ -30,6 +31,7 @@ export function getWeekDates(baseDate) {
   for (let i = 0; i < 7; i++) {
     const d = new Date(sunday);
     d.setDate(sunday.getDate() + i);
+    d.setHours(0, 0, 0, 0); // Asegurar medianoche en cada día
     weekDates.push(d);
   }
   return weekDates;

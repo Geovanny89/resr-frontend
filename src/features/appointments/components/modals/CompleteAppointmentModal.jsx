@@ -36,7 +36,8 @@ export function CompleteAppointmentModal({
   const basePrice = parseFloat(appointment?.basePrice || appointment?.Service?.price || 0);
   const extraServices = appointment?.extraServices || [];
   const extrasTotal = extraServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
-  const subtotal = basePrice + extrasTotal;
+  const additionalAmount = parseFloat(appointment?.additionalAmount || 0);
+  const subtotal = basePrice + extrasTotal + additionalAmount;
   
   const currentFinalPrice = finalPriceOverride !== null ? finalPriceOverride : (subtotal - discount);
 
@@ -118,6 +119,12 @@ export function CompleteAppointmentModal({
                 <span style={{ fontWeight: 600, color: colors.text }}>{fmt(s.price)}</span>
               </div>
             ))}
+            {additionalAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4 }}>
+                <span style={{ color: colors.text }}>+ Cargo Adicional</span>
+                <span style={{ fontWeight: 600, color: colors.text }}>{fmt(additionalAmount)}</span>
+              </div>
+            )}
           </div>
 
           {/* Descuento Manual */}

@@ -8,7 +8,7 @@ import { getTodayISO } from '../../../shared/utils/formatters';
 
 export function useAppointments(businessId, options = {}) {
   const { pageSize = 6 } = options;
-  
+
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,11 +47,15 @@ export function useAppointments(businessId, options = {}) {
   const filteredAppointments = useMemo(() => {
     const filtered = appointments.filter(apt => {
       const aptDate = new Date(apt.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-      const selectedDateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-      
+      // Usar formateo manual para evitar saltos de zona horaria en la fecha seleccionada
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const selectedDateStr = `${year}-${month}-${day}`;
+
       const matchesDate = aptDate === selectedDateStr;
       const matchesEmployee = !selectedEmployeeId || String(apt.employeeId) === String(selectedEmployeeId);
-      
+
       return matchesDate && matchesEmployee;
     });
 
@@ -116,11 +120,11 @@ export function useAppointments(businessId, options = {}) {
 
   const changeStatus = useCallback(async (id, newStatus, additionalData = {}) => {
     try {
-      const res = await api.patch(`/appointments/${id}/status`, { 
+      const res = await api.patch(`/appointments/${id}/status`, {
         status: newStatus,
-        ...additionalData 
+        ...additionalData
       });
-      setAppointments(prev => prev.map(a => 
+      setAppointments(prev => prev.map(a =>
         a.id === id ? { ...a, ...res.data, Service: a.Service } : a
       ));
       return { success: true, data: res.data };
@@ -136,7 +140,7 @@ export function useAppointments(businessId, options = {}) {
     loading,
     stats,
     appointmentsRef,
-    
+
     // Pagination
     currentPage,
     setCurrentPage,
@@ -149,7 +153,7 @@ export function useAppointments(businessId, options = {}) {
     selectedEmployeeId,
     setSelectedEmployeeId,
     filteredAppointments,
-    
+
     // Actions
     refresh: loadAppointments,
     updateAppointment,

@@ -48,7 +48,7 @@ export function EditAppointmentModal({
         clientEmail: appointment.clientEmail || '',
         serviceId: appointment.serviceId || '',
         employeeId: appointment.employeeId || '',
-        startTime: appointment.startTime ? new Date(appointment.startTime).toISOString().slice(0, 16) : '',
+        startTime: appointment.startTime ? new Date(appointment.startTime).toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).replace(' ', 'T').slice(0, 16) : '',
         selectedDate: appointmentDate,
         notes: appointment.notes || '',
         extraServices: appointment.extraServices || []
@@ -66,7 +66,7 @@ export function EditAppointmentModal({
       }
 
       try {
-        const allowPast = !business?.hasFieldTechnicians;
+        const allowPast = true; // El administrador siempre puede mover citas al pasado
         const res = await api.get(`/appointments/availability`, {
           params: {
             date: form.selectedDate,
@@ -74,6 +74,7 @@ export function EditAppointmentModal({
             serviceId: form.serviceId,
             businessId: business.id,
             allowPast: allowPast,
+            excludeId: appointment.id,
             noCache: true
           }
         });

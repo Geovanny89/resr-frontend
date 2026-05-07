@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { 
-  getSocket, 
-  subscribeToEvent, 
-  unsubscribeFromEvent, 
+import {
+  getSocket,
+  subscribeToEvent,
+  unsubscribeFromEvent,
   isSocketConnected,
   disconnectSocket,
   getCurrentSocket
@@ -78,7 +78,7 @@ export function useSocket({
   // Inicializar/Conectar socket usando el singleton
   useEffect(() => {
     console.log('[useSocket] useEffect triggered. businessId:', businessId, 'autoConnect:', autoConnect, 'role:', role);
-    
+
     if (!businessId || !autoConnect) {
       console.log('[useSocket] Skipping connection - missing businessId or autoConnect disabled');
       return;
@@ -86,7 +86,7 @@ export function useSocket({
 
     // Obtener o crear conexión singleton
     const socket = getSocket(businessId, role, userId, employeeId);
-    
+
     if (!socket) {
       console.error('[useSocket] No se pudo obtener socket');
       return;
@@ -100,6 +100,16 @@ export function useSocket({
       console.log('[useSocket] Connected! Socket ID:', socket.id);
       setIsConnected(true);
       setConnectionError(null);
+
+      // Auto-re-suscribirse si es empleado
+      if (role === 'employee' && employeeId) {
+        console.log('[useSocket] Auto-resuscrito a citas de empleado:', employeeId);
+        socket.emit('subscribe_appointments', {
+          employeeId,
+          date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+        });
+      }
+
       callbacksRef.current.onConnect?.();
     };
 
@@ -207,7 +217,7 @@ export function useSocket({
       unsubServiceUpdated();
       unsubServiceDeleted();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, autoConnect, role]); // Reconectar solo si cambia businessId o role
 
   // Función para suscribirse a citas de empleado específico

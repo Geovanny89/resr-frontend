@@ -52,7 +52,8 @@ export const useAppointments = (employee, selectedDate) => {
     
     // Excluir citas completadas y canceladas del filtro "all" - solo mostrar citas activas
     if (statusFilter === 'all') {
-      filtered = appointments.filter(a => a.status !== 'done' && a.status !== 'cancelled');
+      // Mostrar todo excepto canceladas en la pestaña "Todas"
+      filtered = appointments.filter(a => a.status !== 'cancelled');
     } else {
       filtered = appointments.filter(a => a.status === statusFilter);
     }

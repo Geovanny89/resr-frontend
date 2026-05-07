@@ -5,6 +5,18 @@
 import { useState, useCallback } from 'react';
 import api from '../../../api/client';
 
+const STATUS_LABELS = {
+  pending: 'Pendiente',
+  confirmed: 'Confirmada',
+  attention: 'En atención',
+  done: 'Completada',
+  cancelled: 'Cancelada',
+  no_show: 'No asistió',
+  on_the_way: 'En camino',
+  arrived: 'En sitio',
+  in_progress: 'En progreso'
+};
+
 export function useAppointmentActions({ business, showStatus, refresh, setAppointments }) {
   // Estados para modales
   const [modals, setModals] = useState({
@@ -54,7 +66,8 @@ export function useAppointmentActions({ business, showStatus, refresh, setAppoin
         await api.patch(`/appointments/${appointment.id}/status`, { status: newStatus });
       }
 
-      showStatus(`Cita marcada como: ${newStatus}`);
+      const statusLabel = STATUS_LABELS[newStatus] || newStatus;
+      showStatus(`Cita marcada como: ${statusLabel}`);
       refresh(true);
     } catch (e) {
       showStatus(e.response?.data?.error || 'Error al cambiar estado', 'error');
@@ -157,7 +170,7 @@ export function useAppointmentActions({ business, showStatus, refresh, setAppoin
       await refresh(true);
       
       // También agregar la cita al estado local inmediatamente para que aparezca sin esperar al socket
-      if (res.data) {
+      if (res.data && setAppointments) {
         setAppointments(prev => [...prev, res.data]);
       }
       
@@ -187,7 +200,7 @@ export function useAppointmentActions({ business, showStatus, refresh, setAppoin
       };
 
       const originalTime = editingAppointment.startTime 
-        ? new Date(editingAppointment.startTime).toISOString().slice(0, 16)
+        ? new Date(editingAppointment.startTime).toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).replace(' ', 'T').slice(0, 16)
         : '';
       
       if (editForm.startTime && editForm.startTime !== originalTime) {

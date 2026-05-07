@@ -163,7 +163,6 @@ export default function Appointments() {
 
   // SOCKET.IO
   const handleAppointmentCreated = useCallback((appointment) => {
-    console.log('[Admin Socket] appointment:created recibido:', appointment.id);
     // Agregar cita al estado local inmediatamente
     setAppointments(prev => {
       if (prev.find(a => a.id === appointment.id)) return prev;
@@ -174,38 +173,26 @@ export default function Appointments() {
   }, [refresh, showStatus, setAppointments]);
 
   const handleAppointmentUpdated = useCallback((appointment) => {
-    console.log('[Admin Socket] appointment:updated recibido:', appointment.id, 'status:', appointment.status, 'technicianStatus:', appointment.technicianStatus, 'rating:', appointment.rating);
     setAppointments(prev => {
       const exists = prev.find(a => a.id === appointment.id);
       if (exists) {
-        console.log('[Admin Socket] Actualizando cita existente en estado');
         return prev.map(a => a.id === appointment.id ? { 
           ...a, 
           ...appointment, 
-          // Preservar status si no viene en el socket
           status: appointment.status || a.status,
-          // Preservar technicianStatus si no viene o es undefined
           technicianStatus: appointment.technicianStatus !== undefined ? appointment.technicianStatus : a.technicianStatus,
           Service: appointment.Service || a.Service 
         } : a);
       }
-      console.log('[Admin Socket] Cita no encontrada en lista actual, recargando...');
-      refresh(true); // Forzar recarga sin caché
+      refresh(true);
       return prev;
     });
   }, [refresh, setAppointments]);
 
   const handleAppointmentCancelled = useCallback((appointment) => {
-    console.log('[Admin Socket] appointment:cancelled recibido:', appointment.id);
     setAppointments(prev => prev.filter(a => a.id !== appointment.id));
     showStatus('❌ Cita cancelada', 'warning');
   }, [setAppointments, showStatus]);
-
-  // Refrescar citas al reconectar socket (evita perder actualizaciones mientras estaba desconectado)
-  const handleSocketConnect = useCallback(() => {
-    console.log('[Admin Socket] 🔄 Socket reconectado, refrescando citas...');
-    refresh(true); // Forzar recarga sin caché
-  }, [refresh]);
 
   useSocket({
     businessId: business?.id,
@@ -213,8 +200,7 @@ export default function Appointments() {
     role: 'admin',
     onAppointmentCreated: handleAppointmentCreated,
     onAppointmentUpdated: handleAppointmentUpdated,
-    onAppointmentCancelled: handleAppointmentCancelled,
-    onConnect: handleSocketConnect
+    onAppointmentCancelled: handleAppointmentCancelled
   });
 
   // HANDLERS DE MODALES

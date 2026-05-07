@@ -88,7 +88,7 @@ export function subscribeToEvent(event, callback) {
   }
   listeners.get(event).add(callback);
 
-  if (socket?.connected) {
+  if (socket) {
     socket.on(event, callback);
   }
 
@@ -103,7 +103,7 @@ export function unsubscribeFromEvent(event, callback) {
   const callbacks = listeners.get(event);
   if (callbacks) {
     callbacks.delete(callback);
-    if (socket?.connected) {
+    if (socket) {
       socket.off(event, callback);
     }
   }

@@ -122,7 +122,8 @@ const KadyChat = ({ slug, standalone = false }) => {
       const serviceOptions = sortedServices.slice(0, limit).map(s => {
         const priceFormatted = s.price ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(s.price) : '';
         return {
-          label: `${s.name} ${priceFormatted ? `(${priceFormatted})` : ''}`,
+          label: s.name,
+          price: priceFormatted,
           value: `select_service_${s.id}`,
           data: s
         };
@@ -376,7 +377,8 @@ const KadyChat = ({ slug, standalone = false }) => {
                 <div className="kady-options">
                   {msg.options.map((opt, i) => (
                     <button key={i} className="kady-btn" onClick={() => handleOptionClick(opt)}>
-                      {opt.label}
+                      <span>{opt.label}</span>
+                      {opt.price && <span className="btn-price">{opt.price}</span>}
                     </button>
                   ))}
                 </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -9,7 +9,7 @@ import notificationService from '../../services/notificationService';
 // Hooks personalizados
 import { useEmployeeData } from './hooks/useEmployeeData';
 import { useAppointments } from './hooks/useAppointments';
-import { useSocketHandlers } from './hooks/useSocketHandlers';
+import { useSocket } from '../../hooks/useSocket';
 import { useAppointmentHandlers } from './hooks/useAppointmentHandlers';
 import { useModalHandlers } from './hooks/useModalHandlers';
 import { useInventoryHandlers } from './hooks/useInventoryHandlers';
@@ -174,8 +174,86 @@ export default function EmployeeDashboard() {
     handleDeleteNote
   } = useNotesHandlers(showStatus, loadAppointments);
 
-  // Usar hook de socket
-  useSocketHandlers(employee, selectedDate, selectedDateRef, appointmentsRef, setAppointments, forceRender, showStatus, loadAppointments);
+  // SOCKET.IO - Usando useSocket directamente (callbacksRef se actualiza cada render, sin stale closures)
+  useSocket({
+    businessId: employee?.businessId,
+    employeeId: employee?.id,
+    role: 'employee',
+
+    // Nueva cita asignada al empleado
+    onNewAssigned: (appointment) => {
+      console.log('🔔 [Employee] appointment:new_assigned recibido:', appointment.id);
+      const aptDate = new Date(appointment.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      if (aptDate !== selectedDateRef.current) return;
+      if (appointmentsRef.current.find(a => a.id === appointment.id)) return;
+
+      const newList = [...appointmentsRef.current, { ...appointment }];
+      appointmentsRef.current = newList;
+      setAppointments(newList);
+      forceRender({});
+      showStatus(`📅 Nueva cita: ${appointment.clientName}`, 'info');
+    },
+
+    // Respaldo: el empleado está en sala business: y recibe appointment:created
+    onAppointmentCreated: (appointment) => {
+      if (!employee?.id || String(appointment.employeeId) !== String(employee.id)) return;
+      console.log('🔔 [Employee] appointment:created (respaldo) para mi empleado');
+      const aptDate = new Date(appointment.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      if (aptDate !== selectedDateRef.current) return;
+      if (appointmentsRef.current.find(a => a.id === appointment.id)) return;
+
+      const newList = [...appointmentsRef.current, { ...appointment }];
+      appointmentsRef.current = newList;
+      setAppointments(newList);
+      forceRender({});
+      showStatus(`📅 Nueva cita: ${appointment.clientName}`, 'info');
+    },
+
+    // Cita actualizada
+    onAppointmentUpdated: (appointment) => {
+      console.log('🔔 [Employee] appointment:updated:', appointment.id, appointment.status);
+      const aptDate = new Date(appointment.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const exists = appointmentsRef.current.find(a => a.id === appointment.id);
+
+      if (aptDate !== selectedDateRef.current) {
+        if (exists) {
+          const newList = appointmentsRef.current.filter(a => a.id !== appointment.id);
+          appointmentsRef.current = newList;
+          setAppointments(newList);
+          forceRender({});
+        }
+        return;
+      }
+
+      let newList;
+      if (exists) {
+        newList = appointmentsRef.current.map(a =>
+          a.id === appointment.id ? { ...a, ...appointment, Service: appointment.Service || a.Service } : a
+        );
+      } else {
+        newList = [...appointmentsRef.current, { ...appointment }];
+      }
+      appointmentsRef.current = newList;
+      setAppointments(newList);
+      forceRender({});
+    },
+
+    // Cita cancelada
+    onAppointmentCancelled: (appointment) => {
+      console.log('🔔 [Employee] appointment:cancelled:', appointment.id);
+      const newList = appointmentsRef.current.filter(a => a.id !== appointment.id);
+      appointmentsRef.current = newList;
+      setAppointments(newList);
+      forceRender({});
+      showStatus('❌ Cita cancelada', 'warning');
+    },
+
+    // Reconexión: recargar citas
+    onConnect: () => {
+      console.log('🔔 [Employee] Socket conectado, refrescando citas...');
+      loadAppointments();
+    }
+  });
 
   // Programar notificaciones cuando se cargan las citas (solo en APK)
   useEffect(() => {
