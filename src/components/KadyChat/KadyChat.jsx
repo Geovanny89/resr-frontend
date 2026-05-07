@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, MessageCircle, Calendar, Search, X, User } from 'lucide-react';
 import './KadyChat.css';
+import { formatDate, formatTime, getTodayISO } from '../../shared/utils/formatters';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -319,7 +320,7 @@ const KadyChat = ({ slug, standalone = false }) => {
         } else {
           let responseText = `He encontrado ${res.data.length} cita(s):\n\n`;
           res.data.forEach((app, i) => {
-            responseText += `${i + 1}. **${app.Service.name}**\n📅 ${new Date(app.startTime).toLocaleDateString()} a las ${app.startTime.split('T')[1].substring(0, 5)}\n\n`;
+            responseText += `${i + 1}. **${app.Service.name}**\n📅 ${formatDate(app.startTime)} a las ${formatTime(app.startTime)}\n\n`;
           });
           kadyReply(responseText, [
             { label: 'Volver al inicio', value: 'welcome_back' }
@@ -422,7 +423,7 @@ const KadyChat = ({ slug, standalone = false }) => {
           type={step === 'booking_date_manual' ? 'date' : 'text'}
           className="kady-input"
           placeholder={step === 'booking_date_manual' ? '' : 'Escribe tu mensaje...'}
-          min={new Date().toISOString().split('T')[0]}
+          min={getTodayISO()}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSend()}

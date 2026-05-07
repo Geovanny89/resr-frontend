@@ -72,8 +72,11 @@ export const isPastDate = (dateStr) => {
  * Obtiene el mes actual en formato YYYY-MM
  * @returns {string} - Mes actual (ej: "2026-04")
  */
-export const getCurrentMonth = () =>
-  new Date().toISOString().slice(0, 7);
+export const getCurrentMonth = () => {
+  const options = { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('en-CA', options); // en-CA gives YYYY-MM
+  return formatter.format(new Date());
+};
 
 // Alias para compatibilidad con código existente
 export const fmt = formatCurrency;
