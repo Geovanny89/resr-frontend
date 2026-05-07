@@ -355,7 +355,7 @@ const KadyChat = ({ slug, standalone = false }) => {
   if (loading) return <div className="kady-loading">Cargando Kady...</div>;
 
   return (
-    <div className={`kady-container ${standalone ? 'standalone' : ''}`}
+    <div className={`kady-container ${standalone ? 'standalone' : 'widget-mode'}`}
       style={{ '--kady-primary': business?.primaryColor, '--kady-secondary': business?.secondaryColor }}>
       <div className="kady-header-fixed">
         <div className="kady-avatar-wrapper">

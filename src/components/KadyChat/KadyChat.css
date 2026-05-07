@@ -404,3 +404,33 @@
     font-size: 0.7rem !important;
   }
 }
+
+/* Forzar modo compacto en el widget flotante (incluso en escritorio) */
+.widget-mode .kady-messages {
+  padding: 1rem 0.8rem;
+  gap: 0.8rem;
+}
+
+.widget-mode .msg-bubble {
+  max-width: 95%;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+}
+
+.widget-mode .kady-btn {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+}
+
+.widget-mode .kady-btn span:first-child {
+  width: 100%;
+}
+
+.widget-mode .kady-btn .btn-price {
+  align-self: flex-end;
+  font-size: 0.7rem;
+  padding: 3px 7px;
+}
