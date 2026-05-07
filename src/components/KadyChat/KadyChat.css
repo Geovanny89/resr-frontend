@@ -349,3 +349,58 @@
     transform: rotate(0deg) scale(1.05);
   }
 }
+
+/* Responsividad para móviles */
+@media (max-width: 480px) {
+  .kady-messages {
+    padding: 1rem 0.8rem;
+    gap: 0.8rem;
+  }
+
+  .msg-bubble {
+    max-width: 95%;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .kady-btn {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  .kady-btn span:first-child {
+    width: 100%;
+  }
+
+  .kady-btn .btn-price {
+    align-self: flex-end;
+    font-size: 0.7rem;
+    padding: 3px 7px;
+  }
+
+  .kady-input-area {
+    padding: 0.8rem;
+  }
+
+  .kady-header-fixed {
+    padding: 10px 15px 0 15px !important;
+    height: 75px !important;
+    min-height: 75px !important;
+  }
+
+  .kady-avatar-wrapper {
+    width: 42px;
+    height: 42px;
+  }
+
+  .kady-name {
+    font-size: 1rem !important;
+  }
+
+  .kady-subtitle {
+    font-size: 0.7rem !important;
+  }
+}
