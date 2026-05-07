@@ -47,7 +47,7 @@ export function CreateAppointmentModal({
         employeeId: initialData.employeeId || '',
         extraServices: initialData.extraServices || []
       }));
-      
+
       if (initialData.suggestedDate) {
         setSelectedDate(initialData.suggestedDate);
       }
@@ -83,8 +83,8 @@ export function CreateAppointmentModal({
   const handleClientNameChange = (val) => {
     setForm({ ...form, clientName: val });
     if (val.length > 1) {
-      const filtered = clients.filter(c => 
-        c.name.toLowerCase().includes(val.toLowerCase()) || 
+      const filtered = clients.filter(c =>
+        c.name.toLowerCase().includes(val.toLowerCase()) ||
         (c.phone && c.phone.includes(val))
       ).slice(0, 5); // Mostrar máximo 5
       setFilteredClients(filtered);
@@ -117,8 +117,17 @@ export function CreateAppointmentModal({
       setLoadingSlots(true);
       try {
         const allowPast = true; // El administrador siempre puede crear citas en el pasado
-        const res = await api.get(`/appointments/availability?date=${selectedDate}&employeeId=${form.employeeId}&serviceId=${form.serviceId}&businessId=${business.id}&allowPast=${allowPast}`, { params: { noCache: true } });
-        
+        const res = await api.get(`/appointments/availability`, {
+          params: {
+            date: selectedDate,
+            employeeId: form.employeeId,
+            serviceId: form.serviceId,
+            businessId: business.id,
+            allowPast: allowPast,
+            noCache: true
+          }
+        });
+
         let slots = res.data.availableSlots || [];
         const seenTimes = new Set();
         slots = slots.filter(slot => {
@@ -126,7 +135,7 @@ export function CreateAppointmentModal({
           seenTimes.add(slot.time);
           return true;
         });
-        
+
         setAvailableSlots(slots);
       } catch (e) {
         setAvailableSlots([]);
@@ -201,12 +210,12 @@ export function CreateAppointmentModal({
     setForm({ ...form, extraServices: form.extraServices.filter(s => s.serviceId !== svcId) });
   };
 
-  const filteredServices = services.filter(s => 
+  const filteredServices = services.filter(s =>
     s.name.toLowerCase().includes(serviceSearch.toLowerCase())
   );
 
-  const filteredExtraServices = services.filter(s => 
-    s.id !== form.serviceId && 
+  const filteredExtraServices = services.filter(s =>
+    s.id !== form.serviceId &&
     !form.extraServices.find(es => es.serviceId === s.id) &&
     s.name.toLowerCase().includes(extraServiceSearch.toLowerCase())
   );
@@ -245,10 +254,10 @@ export function CreateAppointmentModal({
             autoComplete="off"
             style={{ width: '100%', padding: '12px', border: `2px solid #10b981`, borderRadius: 8, fontSize: 15, background: colors.inputBg, color: colors.text }}
           />
-          
+
           {showSuggestions && (
             <div style={{
-              position: 'absolute', top: '100%', left: 12, right: 12, 
+              position: 'absolute', top: '100%', left: 12, right: 12,
               background: colors.cardBg, border: `1px solid ${colors.border}`,
               borderRadius: '0 0 8px 8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
               zIndex: 100, maxHeight: 200, overflowY: 'auto'
@@ -277,10 +286,10 @@ export function CreateAppointmentModal({
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>Servicio Principal</label>
           <div style={{ position: 'relative' }}>
-            <div 
+            <div
               onClick={() => setShowServiceList(!showServiceList)}
-              style={{ 
-                width: '100%', padding: '10px 12px', border: `1px solid ${colors.border}`, 
+              style={{
+                width: '100%', padding: '10px 12px', border: `1px solid ${colors.border}`,
                 borderRadius: 8, fontSize: 14, background: colors.inputBg, color: colors.text,
                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}
@@ -293,7 +302,7 @@ export function CreateAppointmentModal({
 
             {showServiceList && (
               <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0, 
+                position: 'absolute', top: '100%', left: 0, right: 0,
                 background: colors.cardBg, border: `1px solid ${colors.border}`,
                 borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                 zIndex: 110, marginTop: 4, overflow: 'hidden'
@@ -305,9 +314,9 @@ export function CreateAppointmentModal({
                     placeholder="Buscar servicio..."
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
-                    style={{ 
-                      width: '100%', padding: '6px 10px', border: `1px solid ${colors.border}`, 
-                      borderRadius: 4, fontSize: 13, background: colors.cardBg, color: colors.text 
+                    style={{
+                      width: '100%', padding: '6px 10px', border: `1px solid ${colors.border}`,
+                      borderRadius: 4, fontSize: 13, background: colors.cardBg, color: colors.text
                     }}
                   />
                 </div>
@@ -325,7 +334,7 @@ export function CreateAppointmentModal({
                           setServiceSearch('');
                           setShowServiceList(false);
                         }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}`,
                           background: form.serviceId === s.id ? colors.bgSecondary : 'transparent'
                         }}
@@ -340,12 +349,12 @@ export function CreateAppointmentModal({
                 </div>
               </div>
             )}
-            
+
             {/* Click outside to close */}
             {showServiceList && (
-              <div 
+              <div
                 onClick={() => setShowServiceList(false)}
-                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 109 }} 
+                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 109 }}
               />
             )}
           </div>
@@ -356,13 +365,13 @@ export function CreateAppointmentModal({
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
             ➕ ¿Agregar más servicios?
           </label>
-          
+
           {/* Lista de extras seleccionados */}
           {form.extraServices.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {form.extraServices.map(s => (
-                <div key={s.serviceId} style={{ 
-                  background: '#dbeafe', color: '#1e40af', padding: '4px 10px', 
+                <div key={s.serviceId} style={{
+                  background: '#dbeafe', color: '#1e40af', padding: '4px 10px',
                   borderRadius: 16, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
                   border: '1px solid #bfdbfe'
                 }}>
@@ -385,7 +394,7 @@ export function CreateAppointmentModal({
             />
             {showExtraServiceList && extraServiceSearch && (
               <div style={{
-                position: 'absolute', bottom: '100%', left: 0, right: 0, 
+                position: 'absolute', bottom: '100%', left: 0, right: 0,
                 background: colors.cardBg, border: `1px solid ${colors.border}`,
                 borderRadius: 6, boxShadow: '0 -4px 6px -1px rgba(0,0,0,0.1)',
                 zIndex: 101, maxHeight: 150, overflowY: 'auto'
@@ -408,8 +417,8 @@ export function CreateAppointmentModal({
 
         {/* Resumen de Totales */}
         {(form.serviceId || form.extraServices.length > 0) && (
-          <div style={{ 
-            marginBottom: 20, padding: 12, background: '#f0fdf4', borderRadius: 8, 
+          <div style={{
+            marginBottom: 20, padding: 12, background: '#f0fdf4', borderRadius: 8,
             border: '1px solid #dcfce7', display: 'flex', justifyContent: 'space-between'
           }}>
             <div>
