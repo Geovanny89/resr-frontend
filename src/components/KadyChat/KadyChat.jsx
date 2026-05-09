@@ -153,7 +153,7 @@ const KadyChat = ({ slug, standalone = false }) => {
            }
         }
 
-        const priceFormatted = finalPrice ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(finalPrice) : (s.priceOptional ? 'A valoración' : '');
+        const priceFormatted = (finalPrice === 0 || s.priceOptional) ? 'Según valoración' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(finalPrice);
         return {
           label: s.name,
           price: priceFormatted,
@@ -176,7 +176,7 @@ const KadyChat = ({ slug, standalone = false }) => {
       const limit = showAll ? sortedServices.length : 6;
       
       const serviceOptions = sortedServices.slice(0, limit).map(s => {
-        const priceFormatted = s.price ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(s.price) : (s.priceOptional ? 'A valoración' : '');
+        const priceFormatted = (Number(s.price) === 0 || s.priceOptional) ? 'Según valoración' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(s.price);
         return {
           label: s.name,
           price: priceFormatted,
