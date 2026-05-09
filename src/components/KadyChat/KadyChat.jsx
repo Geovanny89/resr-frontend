@@ -67,15 +67,32 @@ const KadyChat = ({ slug, standalone = false }) => {
       setBusiness(res.data);
       setIsTyping(true);
       setTimeout(() => {
+        const activePromotions = res.data.Promotions || [];
+        
+        const specialServices = (res.data.Services || []).filter(s => {
+          if (s.active === false) return false;
+          const nameLower = s.name.toLowerCase();
+          if (nameLower.includes('combo') || nameLower.includes('promo')) return true;
+          // O si tiene una promoción activa específica
+          return activePromotions.some(p => !p.applyToAllServices && p.serviceId === s.id);
+        });
+        
+        const initialOptions = [
+          { label: '📅 Agendar una cita', value: 'start_booking' }
+        ];
+
+        if (specialServices.length > 0) {
+          initialOptions.unshift({ label: '✨ Ver Combos y Promociones', value: 'show_combos' });
+        }
+        
+        initialOptions.push({ label: '🔍 Consultar mis citas', value: 'start_search' });
+
         setMessages([
           {
             id: 1,
             type: 'kady',
             text: `¡Hola! Soy Kady. Asistente virtual para **${res.data.name}**. ¿En qué puedo ayudarte hoy?`,
-            options: [
-              { label: '📅 Agendar una cita', value: 'start_booking' },
-              { label: '🔍 Consultar mis citas', value: 'start_search' }
-            ]
+            options: initialOptions
           }
         ]);
         playNotification();
@@ -113,6 +130,44 @@ const KadyChat = ({ slug, standalone = false }) => {
       }, delay);
     };
 
+    if (value === 'show_combos') {
+      setStep('booking_service');
+      const activePromotions = business.Promotions || [];
+      
+      const specialServices = (business.Services || []).filter(s => {
+        if (s.active === false) return false;
+        const nameLower = s.name.toLowerCase();
+        if (nameLower.includes('combo') || nameLower.includes('promo')) return true;
+        return activePromotions.some(p => !p.applyToAllServices && p.serviceId === s.id);
+      });
+      
+      const serviceOptions = specialServices.map(s => {
+        let finalPrice = s.price;
+        const specificPromo = activePromotions.find(p => !p.applyToAllServices && p.serviceId === s.id);
+        
+        if (specificPromo && finalPrice) {
+           if (specificPromo.discountType === 'percentage') {
+              finalPrice = finalPrice - (finalPrice * (specificPromo.discountValue / 100));
+           } else {
+              finalPrice = Math.max(0, finalPrice - specificPromo.discountValue);
+           }
+        }
+
+        const priceFormatted = finalPrice ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(finalPrice) : (s.priceOptional ? 'A valoración' : '');
+        return {
+          label: s.name,
+          price: priceFormatted,
+          value: `select_service_${s.id}`,
+          data: { ...s, price: finalPrice }
+        };
+      });
+
+      serviceOptions.push({ label: '🔙 Volver al menú', value: 'welcome_back' });
+
+      kadyReply('¡Tengo estas excelentes ofertas para ti! Selecciona la que desees para agendarla:', serviceOptions);
+      return;
+    }
+
     if (value === 'start_booking' || value === 'show_all_services') {
       setStep('booking_service');
       const sortedServices = [...(business.Services || [])].sort((a, b) => a.name.localeCompare(b.name));
@@ -121,7 +176,7 @@ const KadyChat = ({ slug, standalone = false }) => {
       const limit = showAll ? sortedServices.length : 6;
       
       const serviceOptions = sortedServices.slice(0, limit).map(s => {
-        const priceFormatted = s.price ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(s.price) : '';
+        const priceFormatted = s.price ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(s.price) : (s.priceOptional ? 'A valoración' : '');
         return {
           label: s.name,
           price: priceFormatted,
@@ -334,10 +389,25 @@ const KadyChat = ({ slug, standalone = false }) => {
 
     else if (value === 'welcome_back') {
       setStep('welcome');
-      addMessage('¿Hay algo más en lo que pueda ayudarte?', 'kady', [
-        { label: '📅 Agendar una cita', value: 'start_booking' },
-        { label: '🔍 Consultar mis citas', value: 'start_search' }
-      ]);
+      const activePromotions = business.Promotions || [];
+      const specialServices = (business.Services || []).filter(s => {
+        if (s.active === false) return false;
+        const nameLower = s.name.toLowerCase();
+        if (nameLower.includes('combo') || nameLower.includes('promo')) return true;
+        return activePromotions.some(p => !p.applyToAllServices && p.serviceId === s.id);
+      });
+      
+      const welcomeOptions = [
+        { label: '📅 Agendar una cita', value: 'start_booking' }
+      ];
+
+      if (specialServices.length > 0) {
+        welcomeOptions.unshift({ label: '✨ Ver Combos y Promociones', value: 'show_combos' });
+      }
+      
+      welcomeOptions.push({ label: '🔍 Consultar mis citas', value: 'start_search' });
+
+      addMessage('¿Hay algo más en lo que pueda ayudarte?', 'kady', welcomeOptions);
     }
   };
 

@@ -192,6 +192,11 @@
   color: white;
 }
 
+.kady-btn:hover .btn-price {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
 .kady-btn-whatsapp {
   background: #25d366;
   border-color: #25d366;
