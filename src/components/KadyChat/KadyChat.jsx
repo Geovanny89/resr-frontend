@@ -361,7 +361,14 @@ const KadyChat = ({ slug, standalone = false }) => {
       <div className="kady-header-fixed">
         <div className="kady-avatar-wrapper">
           <div className="kady-avatar">
-            <img src="/kdice.png" alt="K-Dice" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <video 
+              src="/avatar.mp4" 
+              autoPlay 
+              muted 
+              loop 
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
           <div className="kady-status-dot"></div>
         </div>

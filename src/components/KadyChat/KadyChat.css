@@ -71,7 +71,8 @@
   flex-shrink: 0;
 }
 
-.kady-avatar img {
+.kady-avatar img,
+.kady-avatar video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -320,7 +321,8 @@
 
 /* Animación de Saludo (Waving) Mejorada */
 .kady-avatar-img,
-.kady-avatar-waving {
+.kady-avatar-waving,
+.kady-avatar video {
   animation: kadyHello 2.5s ease-in-out infinite;
   transform-origin: 50% 90%;
   display: block;
