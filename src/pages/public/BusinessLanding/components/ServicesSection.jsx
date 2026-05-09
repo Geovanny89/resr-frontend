@@ -65,7 +65,7 @@ function ServiceCard({ svc, business, primary, navigate, slug, expanded, onToggl
           <div className="service-price-row">
             <div>
               {svc.priceOptional ? (
-                <span className="service-price" style={{ fontSize: 14, color: primary }}>A cotizar</span>
+                <span className="service-price" style={{ fontSize: 11, color: primary, fontWeight: 600, lineHeight: 1.2, display: 'inline-block' }}>Valor sujeto a<br/>valoración profesional</span>
               ) : (
                 <div>
                   {promo && <span className="service-old-price" style={{ color: business.isDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>${basePrice.toLocaleString()}</span>}
@@ -109,6 +109,11 @@ export default function ServicesSection({ business, primary, secondary, slug, na
   
   if (!hasGroups && !hasServices) return null;
 
+  // Separar combos de servicios regulares
+  const activeServices = business.Services?.filter(s => s.active !== false) || [];
+  const combos = activeServices.filter(s => s.name.toLowerCase().includes('combo'));
+  const regularServices = activeServices.filter(s => !s.name.toLowerCase().includes('combo'));
+
   return (
     <section style={{ marginBottom: 100 }}>
       <div className="section-header">
@@ -143,6 +148,46 @@ export default function ServicesSection({ business, primary, secondary, slug, na
           )}
         </h2>
       </div>
+
+      {/* Combos Destacados */}
+      {!selectedServiceGroup && combos.length > 0 && (
+        <div style={{ marginBottom: 60 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            marginBottom: 30 
+          }}>
+            <span style={{ 
+              background: `linear-gradient(135deg, ${primary}, ${secondary})`, 
+              color: 'white', 
+              padding: '6px 20px', 
+              borderRadius: 30, 
+              fontSize: 14, 
+              fontWeight: 800,
+              letterSpacing: 1,
+              boxShadow: `0 4px 15px ${primary}40`,
+              textTransform: 'uppercase'
+            }}>
+              ✨ Combos Especiales ✨
+            </span>
+          </div>
+          <div className="services-grid">
+            {combos.map(svc => (
+              <ServiceCard 
+                key={`combo-${svc.id}`} 
+                svc={svc} 
+                business={business}
+                primary={primary}
+                navigate={navigate}
+                slug={slug}
+                expanded={expandedServices[svc.id]}
+                onToggle={() => toggleServiceDescription(svc.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Show Groups Grid when no group selected */}
       {!selectedServiceGroup && hasGroups && (
@@ -201,11 +246,10 @@ export default function ServicesSection({ business, primary, secondary, slug, na
       )}
 
       {/* Show all services when no group selected and no groups exist */}
-      {!selectedServiceGroup && !hasGroups && hasServices && (
+      {!selectedServiceGroup && !hasGroups && regularServices.length > 0 && (
         <>
           <div className="services-grid">
-            {business.Services
-              ?.filter(s => s.active !== false)
+            {regularServices
               .slice(0, 10)
               .map(svc => (
                 <ServiceCard 
@@ -221,7 +265,7 @@ export default function ServicesSection({ business, primary, secondary, slug, na
               ))}
           </div>
           
-          {business.Services.length > 10 && (
+          {regularServices.length > 10 && (
             <div style={{ textAlign: 'center', marginTop: 40 }}>
               <button 
                 className="main-cta-btn"

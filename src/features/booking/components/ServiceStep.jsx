@@ -25,9 +25,9 @@ export default function ServiceStep({
     if (svc.priceOptional) {
       return (
         <>
-          <div>A cotizar</div>
+          <div style={{ fontSize: 11, background: 'var(--bg-secondary, #f3f4f6)', color: 'var(--text, #4b5563)', padding: '4px 8px', borderRadius: 12, display: 'inline-block', fontWeight: 600, textAlign: 'right', lineHeight: 1.2 }}>Valor sujeto a<br/>valoración profesional</div>
           {svc.price > 0 && (
-            <div style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary, marginTop: 4 }}>
               Ref: ${Number(svc.price).toLocaleString('es-CO')}
             </div>
           )}

@@ -119,8 +119,8 @@ export function useServices(businessId, isTechnicalBusiness) {
       serviceGroupId: form.serviceGroupId || null,
       businessId: businessId,
       isTechnicalService: isTechnicalBusiness ? true : false,
-      priceOptional: isTechnicalBusiness ? true : false,
-      price: isTechnicalBusiness ? 0 : Number(form.price)
+      priceOptional: isTechnicalBusiness ? true : (form.price === '' || form.price === null || form.price === undefined),
+      price: isTechnicalBusiness ? null : (form.price === '' || form.price === null || form.price === undefined ? null : Number(form.price))
     };
 
     try {

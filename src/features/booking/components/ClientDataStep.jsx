@@ -4,7 +4,7 @@ function getServicePriceDisplay(service, isDepositRequired, depositAmount) {
   if (service?.priceOptional) {
     return (
       <>
-        Precio a cotizar en sitio
+        Valor sujeto a valoración profesional
         {isDepositRequired && (
           <div style={{
             marginTop: 8,

@@ -193,6 +193,54 @@ export default function Services() {
           <ResponsiveForm
             fields={[
               {
+                name: 'comboBuilder',
+                label: '💡 Asistente de Combos (Opcional)',
+                type: 'custom',
+                fullWidth: true,
+                render: () => (
+                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px 0' }}>
+                      Selecciona servicios existentes para sumarlos al formulario y armar un combo rápidamente.
+                    </p>
+                    <select
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const svc = services.find(s => s.id === e.target.value);
+                        if (svc) {
+                          setForm(prev => {
+                            const newName = prev.name ? `${prev.name} + ${svc.name}` : `Combo: ${svc.name}`;
+                            const newDuration = (Number(prev.durationMin) || 0) + (Number(svc.durationMin) || 0);
+                            const newPrice = (Number(prev.price) || 0) + (Number(svc.price) || 0);
+                            return {
+                              ...prev,
+                              name: newName,
+                              durationMin: newDuration,
+                              price: newPrice
+                            };
+                          });
+                        }
+                        e.target.value = ''; // Reset
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        fontSize: 13,
+                        background: 'white',
+                        color: '#0f172a',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">➕ Añadir servicio al combo...</option>
+                      {services.filter(s => s.active !== false).map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (${Number(s.price || 0).toLocaleString('es-CO')} - {s.durationMin}min)</option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              },
+              {
                 name: 'name',
                 label: 'Nombre del servicio',
                 type: 'text',
@@ -216,10 +264,10 @@ export default function Services() {
               ...(!isTechnicalBusiness ? [
                 {
                   name: 'price',
-                  label: 'Precio ($)',
+                  label: 'Precio ($) (Opcional)',
                   type: 'number',
-                  required: true,
-                  placeholder: '0.00',
+                  required: false,
+                  placeholder: 'Dejar vacío si es variable',
                   value: form.price,
                   onChange: e => setForm({ ...form, price: e.target.value })
                 }
@@ -491,13 +539,39 @@ export default function Services() {
                 { 
                   key: 'price', 
                   label: 'Precio', 
-                  render: (v, row) => row.priceOptional ? 'A cotizar' : `$${Number(v || 0).toLocaleString('es-CO')}` 
+                  render: (v, row) => row.priceOptional ? (
+                    <span style={{ 
+                      background: '#f3f4f6', 
+                      color: '#4b5563', 
+                      padding: '4px 8px', 
+                      borderRadius: 12, 
+                      fontSize: 11,
+                      fontWeight: 600,
+                      display: 'inline-block',
+                      lineHeight: 1.2
+                    }}>
+                      Valor sujeto a<br/>valoración profesional
+                    </span>
+                  ) : `$${Number(v || 0).toLocaleString('es-CO')}` 
                 }
               ] : [
                 { 
                   key: 'price', 
                   label: 'Precio', 
-                  render: () => <span style={{ color: '#92400e', fontWeight: 600 }}>A cotizar</span>
+                  render: () => (
+                    <span style={{ 
+                      background: '#f3f4f6', 
+                      color: '#4b5563', 
+                      padding: '4px 8px', 
+                      borderRadius: 12, 
+                      fontSize: 11,
+                      fontWeight: 600,
+                      display: 'inline-block',
+                      lineHeight: 1.2
+                    }}>
+                      Valor sujeto a<br/>valoración profesional
+                    </span>
+                  )
                 }
               ]),
               { key: 'durationMin', label: 'Duración', render: v => `${v} min` },
