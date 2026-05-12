@@ -19,7 +19,8 @@ export const DEFAULT_SERVICE_FORM = {
   hasEmployeeCommission: true,
   imageUrl: '',
   color: '#3b82f6',
-  serviceGroupId: ''
+  serviceGroupId: '',
+  suppliesCost: 0,
 };
 
 // Default empty service group form

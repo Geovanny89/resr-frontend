@@ -281,6 +281,7 @@ export default function Services() {
                 value: form.durationMin,
                 onChange: e => setForm({ ...form, durationMin: Number(e.target.value) })
               },
+
               {
                 name: 'color',
                 label: 'Color de identificación',
@@ -552,7 +553,12 @@ export default function Services() {
                     }}>
                       Valor sujeto a<br/>valoración profesional
                     </span>
-                  ) : `$${Number(v || 0).toLocaleString('es-CO')}` 
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span>${Number(v || 0).toLocaleString('es-CO')}</span>
+
+                    </div>
+                  )
                 }
               ] : [
                 { 

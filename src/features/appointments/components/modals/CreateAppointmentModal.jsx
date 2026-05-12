@@ -84,9 +84,10 @@ export function CreateAppointmentModal({
     setForm({ ...form, clientName: val });
     if (val.length > 1) {
       const filtered = clients.filter(c =>
-        c.name.toLowerCase().includes(val.toLowerCase()) ||
-        (c.phone && c.phone.includes(val))
-      ).slice(0, 5); // Mostrar máximo 5
+        (c.name && c.name.toLowerCase().includes(val.toLowerCase())) ||
+        (c.phone && c.phone.includes(val)) ||
+        (c.email && c.email.toLowerCase().includes(val.toLowerCase()))
+      ).slice(0, 10); // Mostrar máximo 10
       setFilteredClients(filtered);
       setShowSuggestions(filtered.length > 0);
     } else {

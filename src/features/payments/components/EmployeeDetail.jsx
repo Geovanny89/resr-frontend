@@ -31,6 +31,7 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Servicio</th>
+                <th>Insumos</th>
                 <th>Pago</th>
                 <th>Empleado gana</th>
                 <th>Negocio gana</th>
@@ -50,6 +51,13 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                     </div>
                   </td>
                   <td>
+                    {parseFloat(a.supplies) > 0 ? (
+                      <span style={{ color: 'var(--danger)', fontWeight: 600 }}>-{fmt(a.supplies)}</span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)' }}>—</span>
+                    )}
+                  </td>
+                  <td>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                       <span style={{ fontWeight: 700 }}>{fmt(a.price)}</span>
                       <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -64,12 +72,19 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
             </tbody>
             <tfoot>
               <tr style={{ background: colors.bgSecondary, fontWeight: 700 }}>
-                <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700, color: colors.text }}>TOTALES</td>
-                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.basePrice) || 0), 0))}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money" style={{ color: '#d97706' }}>{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.additional) || 0), 0))}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.price) || 0), 0))}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.employeeEarns) || 0), 0))}</span></td>
-                <td style={{ padding: '12px 16px' }}><span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.ownerEarns) || 0), 0))}</span></td>
+                <td colSpan={3} style={{ padding: '12px 16px', fontWeight: 700, color: colors.text }}>TOTALES</td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span style={{ color: 'var(--danger)' }}>{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.supplies) || 0), 0))}</span>
+                </td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span className="money">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.price) || 0), 0))}</span>
+                </td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.employeeEarns) || 0), 0))}</span>
+                </td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span className="money positive">{fmt(paginatedAppointments.reduce((s, a) => s + (parseFloat(a.ownerEarns) || 0), 0))}</span>
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -100,6 +115,10 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '11px', color: '#d97706' }}>Adicional:</div>
                   <div style={{ fontWeight: 600, color: '#d97706' }}>{fmt(a.additional)}</div>
+                </div>
+                <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: `1px dashed ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: colors.textSecondary }}>INSUMOS:</span>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--danger)' }}>-{fmt(a.supplies)}</span>
                 </div>
                 <div style={{ gridColumn: 'span 2', marginTop: 4, paddingTop: 4, borderTop: `1px dashed ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: colors.textSecondary }}>PRECIO TOTAL:</span>

@@ -42,6 +42,7 @@ export default function Dashboard() {
     totalRevenue: 0,
     ownerRevenue: 0,
     employeeRevenue: 0,
+    suppliesTotal: 0,
     cashRevenue: 0,
     transferRevenue: 0
   });
@@ -235,6 +236,7 @@ export default function Dashboard() {
             totalRevenue:    reportRes.data.totals.total,
             ownerRevenue:    reportRes.data.totals.ownerTotal,
             employeeRevenue: reportRes.data.totals.employeeTotal,
+            suppliesTotal:   reportRes.data.totals.suppliesTotal || 0,
             cashRevenue: statsRes.data.finance.cash,
             transferRevenue: statsRes.data.finance.transfer
           });
@@ -479,6 +481,13 @@ export default function Dashboard() {
             <div className="stat-body">
               <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.totalRevenue)}</div>
               <div className="stat-label">Ingresos totales (mes)</div>
+            </div>
+          </div>
+          <div className="stat-card" style={{ height: '100%' }}>
+            <div className="stat-icon red"><AlertTriangle size={22} /></div>
+            <div className="stat-body">
+              <div className="stat-value" style={{ fontSize: 18 }}>{fmt(finance.suppliesTotal)}</div>
+              <div className="stat-label">Costo de Insumos</div>
             </div>
           </div>
           <div className="stat-card" style={{ height: '100%' }}>

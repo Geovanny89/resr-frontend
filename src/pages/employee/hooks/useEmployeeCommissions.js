@@ -183,7 +183,7 @@ const handleStatusChange = async (appointment, newStatus) => {
           itemId: insumo.itemId,
           quantity: insumo.quantity,
           date: getColombiaDateStr(),
-          notes: `Usado en cita #${insumosAppointment.id} - ${insumosAppointment.clientName}`,
+          notes: `Usado en cita con ${insumosAppointment.clientName || insumosAppointment.client}`,
           businessId: data.business.id,
           appointmentId: insumosAppointment.id
         });

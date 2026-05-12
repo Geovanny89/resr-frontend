@@ -32,7 +32,7 @@ export default function GlobalReports() {
       if (dateRange.end) params.append('endDate', dateRange.end);
 
       console.log('Cargando reportes...');
-      
+
       const [statsRes, financialRes] = await Promise.all([
         api.get('/superadmin/reports/stats'),
         api.get(`/superadmin/reports/financial?${params}`)
@@ -59,13 +59,13 @@ export default function GlobalReports() {
 
   const exportData = () => {
     if (!stats) return;
-    
+
     const data = {
       fecha: new Date().toISOString(),
       estadisticas: stats,
       financiero: financial
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -73,7 +73,7 @@ export default function GlobalReports() {
     a.download = `reporte-global-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     showToast('Reporte exportado correctamente');
   };
 
@@ -82,8 +82,8 @@ export default function GlobalReports() {
       <SuperAdminLayout title="Reportes Globales" subtitle="Estadísticas del sistema">
         <div style={{ display: 'flex', justifyContent: 'center', padding: 100 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ 
-              width: 48, height: 48, border: '3px solid var(--gray-100)', 
+            <div style={{
+              width: 48, height: 48, border: '3px solid var(--gray-100)',
               borderTopColor: 'var(--primary)', borderRadius: '50%',
               animation: 'spin 1s linear infinite', margin: '0 auto 16px'
             }} />
@@ -233,7 +233,7 @@ export default function GlobalReports() {
                 <TrendingUp size={20} color="#f59e0b" />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ventas de Negocios (GMV)</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ingresos (GMV)</div>
                 <div style={{ fontSize: 24, fontWeight: 800 }}>
                   ${financial.summary?.totalGmv?.toLocaleString('es-CO') || 0}
                 </div>

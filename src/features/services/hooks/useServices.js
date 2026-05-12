@@ -80,7 +80,8 @@ export function useServices(businessId, isTechnicalBusiness) {
       hasEmployeeCommission: service.hasEmployeeCommission !== false,
       imageUrl: service.imageUrl || '',
       color: service.color || '#3b82f6',
-      serviceGroupId: service.serviceGroupId || ''
+      serviceGroupId: service.serviceGroupId || '',
+      suppliesCost: service.suppliesCost || 0
     });
   }, []);
 
@@ -120,7 +121,8 @@ export function useServices(businessId, isTechnicalBusiness) {
       businessId: businessId,
       isTechnicalService: isTechnicalBusiness ? true : false,
       priceOptional: isTechnicalBusiness ? true : (form.price === '' || form.price === null || form.price === undefined),
-      price: isTechnicalBusiness ? null : (form.price === '' || form.price === null || form.price === undefined ? null : Number(form.price))
+      price: isTechnicalBusiness ? null : (form.price === '' || form.price === null || form.price === undefined ? null : Number(form.price)),
+      suppliesCost: Number(form.suppliesCost || 0)
     };
 
     try {

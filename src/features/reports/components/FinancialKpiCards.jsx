@@ -39,7 +39,7 @@ export function FinancialKpiCards({
       </div>
 
       {/* Costo de Insumos */}
-      {enabledModules.inventory && (
+      {(enabledModules.inventory || displayInventory > 0) && (
         <div className="stat-card" style={{ borderLeft: '3px solid #8b5cf6', padding: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div

@@ -22,6 +22,10 @@ export default function Payments() {
   const {
     month,
     setMonth,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
     report,
     loading,
     error,
@@ -36,6 +40,7 @@ export default function Payments() {
 
   // Local UI state
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [filterType, setFilterType] = useState('month'); // 'month' | 'range'
   const [expandedEmp, setExpandedEmp] = useState(null);
   const [paginationPages, setPaginationPages] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
@@ -52,13 +57,14 @@ export default function Payments() {
   }
 
   const monthLabel = getMonthLabel(month);
+  const periodLabel = filterType === 'month' ? monthLabel : `${startDate} a ${endDate}`;
 
   const handleSendEmail = (empName) => {
     sendPaymentEmail(empName, generateEmployeePDF);
   };
 
   const handleDownloadPDF = () => {
-    downloadFullPDF(employees, report, month);
+    downloadFullPDF(employees, report, filterType === 'month' ? month : periodLabel);
   };
 
   return (
@@ -90,26 +96,100 @@ export default function Payments() {
             flex-wrap: wrap;
           }
         }
+        .filter-toggle {
+          display: flex;
+          background: var(--gray-100);
+          padding: 4px;
+          border-radius: 8px;
+          gap: 4px;
+        }
+        .filter-toggle-btn {
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .filter-toggle-btn.active {
+          background: white;
+          color: #667eea;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .date-input {
+          padding: 8px 12px;
+          border: 1px solid var(--gray-300);
+          border-radius: 6px;
+          font-size: 13px;
+          color: var(--gray-700);
+          outline: none;
+        }
+        .date-input:focus {
+          border-color: #667eea;
+        }
       `}</style>
       {/* CONTROLES */}
       <div className="card mb-6">
         <div className="payments-controls-row" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>Período:</label>
-            <button
-              onClick={() => setShowMonthPicker(!showMonthPicker)}
-              style={{
-                background: '#667eea', color: 'white', border: 'none', borderRadius: 6,
-                padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6
-              }}>
-              📅 {monthLabel}
+          <div className="filter-toggle">
+            <button 
+              className={`filter-toggle-btn ${filterType === 'month' ? 'active' : ''}`}
+              onClick={() => {
+                setFilterType('month');
+                setStartDate('');
+                setEndDate('');
+              }}
+            >
+              Mensual
+            </button>
+            <button 
+              className={`filter-toggle-btn ${filterType === 'range' ? 'active' : ''}`}
+              onClick={() => {
+                setFilterType('range');
+                setShowMonthPicker(false);
+              }}
+            >
+              Rango de fechas
             </button>
           </div>
 
-          <button className="btn-primary" onClick={loadReport} disabled={loading}>
+          {filterType === 'month' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>Mes:</label>
+              <button
+                onClick={() => setShowMonthPicker(!showMonthPicker)}
+                style={{
+                  background: '#667eea', color: 'white', border: 'none', borderRadius: 6,
+                  padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}>
+                📅 {monthLabel}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input 
+                type="date" 
+                className="date-input" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                placeholder="Desde"
+              />
+              <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>hasta</span>
+              <input 
+                type="date" 
+                className="date-input" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                placeholder="Hasta"
+              />
+            </div>
+          )}
+
+          <button className="btn-primary" onClick={loadReport} disabled={loading || (filterType === 'range' && (!startDate || !endDate))}>
             <RefreshCw size={15} className={loading ? 'spin' : ''} />
-            {loading ? 'Cargando...' : 'Actualizar'}
+            {loading ? 'Cargando...' : 'Filtrar'}
           </button>
           {report && (
             <button className="btn-outline" onClick={handleDownloadPDF}>
@@ -141,7 +221,7 @@ export default function Payments() {
               <div className="stat-icon teal"><DollarSign size={22} /></div>
               <div className="stat-body">
                 <div className="stat-value" style={{ fontSize: 22 }}>{fmt(report.totals?.total)}</div>
-                <div className="stat-label">Ingresos totales del mes</div>
+                <div className="stat-label">Ingresos totales {filterType === 'month' ? 'del mes' : 'del período'}</div>
                 <div className="stat-change up">
                   <CheckCircle size={11} /> {report.appointments?.length || 0} citas completadas
                 </div>
@@ -204,7 +284,7 @@ export default function Payments() {
               <div className="empty-state">
                 <div className="empty-state-icon">💼</div>
                 <h3>Sin datos para este período</h3>
-                <p>No hay citas completadas en {monthLabel}.</p>
+                <p>No hay citas completadas en {periodLabel}.</p>
               </div>
             </div>
           ) : (

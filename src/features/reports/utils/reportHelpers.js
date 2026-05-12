@@ -113,13 +113,15 @@ export function calculateStats(appointments, business) {
     return s + (isNaN(earned) ? 0 : earned);
   }, 0);
 
-  const ownerRev = totalRev - empRev;
+  const totalSupplies = done.reduce((s, a) => s + parseFloat(a.suppliesCost || 0), 0);
+  const ownerRev = totalRev - empRev - totalSupplies;
 
   return {
     done,
     totalRev,
     empRev,
     ownerRev,
+    totalSupplies,
     totalAppointments: appointments.length,
     pendingCount: appointments.filter((a) => a.status === 'pending').length,
     cancelledCount: appointments.filter((a) => a.status === 'cancelled').length,

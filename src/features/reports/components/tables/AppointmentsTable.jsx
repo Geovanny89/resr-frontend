@@ -57,6 +57,7 @@ export function AppointmentsTable({
               {!isTechnical && (
                 <>
                   <th>Precio</th>
+                  <th>Insumos</th>
                   <th>Adicional</th>
                   <th>Pago</th>
                   <th>Método</th>
@@ -83,6 +84,13 @@ export function AppointmentsTable({
                   <>
                     <td>
                       <span className="money">{fmt(a.basePrice || a.Service?.price)}</span>
+                    </td>
+                    <td>
+                      {parseFloat(a.suppliesCost) > 0 ? (
+                        <span style={{ color: 'var(--danger)', fontWeight: 600 }}>-{fmt(a.suppliesCost)}</span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
                     </td>
                     <td>
                       <span className="money" style={{ color: '#d97706' }}>
@@ -311,6 +319,10 @@ function AppointmentCard({ appointment: a, isTechnical, onDownloadServiceOrder }
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Precio Base</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{fmt(a.basePrice || a.Service?.price)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Insumos</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)' }}>-{fmt(a.suppliesCost)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Adicional</span>

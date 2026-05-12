@@ -27,10 +27,12 @@ export function CompleteAppointmentModal({
   colors
 }) {
   const [discount, setDiscount] = useState(0);
+  const [suppliesCost, setSuppliesCost] = useState(0);
   const [finalPriceOverride, setFinalPriceOverride] = useState(null);
   const [reschedule, setReschedule] = useState(false);
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [showPriceOverrideInput, setShowPriceOverrideInput] = useState(false);
+  const [showSuppliesInput, setShowSuppliesInput] = useState(false);
 
   // Calcular totales
   const basePrice = parseFloat(appointment?.basePrice || appointment?.Service?.price || 0);
@@ -44,9 +46,11 @@ export function CompleteAppointmentModal({
   useEffect(() => {
     if (isOpen && appointment) {
       setDiscount(parseFloat(appointment.discountApplied || 0));
+      setSuppliesCost(parseFloat(appointment.suppliesCost || appointment.Service?.suppliesCost || 0));
       setFinalPriceOverride(null);
       setShowDiscountInput(false);
       setShowPriceOverrideInput(false);
+      setShowSuppliesInput(false);
     }
   }, [isOpen, appointment]);
 
@@ -57,6 +61,7 @@ export function CompleteAppointmentModal({
       paymentMethod,
       discountApplied: discount,
       finalPrice: currentFinalPrice,
+      suppliesCost: suppliesCost,
       reschedule // Pasar la intención de reagendar
     });
   };
@@ -123,6 +128,47 @@ export function CompleteAppointmentModal({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4 }}>
                 <span style={{ color: colors.text }}>+ Cargo Adicional</span>
                 <span style={{ fontWeight: 600, color: colors.text }}>{fmt(additionalAmount)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Insumos (Opcional) */}
+          <div style={{ marginBottom: 12 }}>
+            <div 
+              onClick={() => {
+                setShowSuppliesInput(!showSuppliesInput);
+              }}
+              style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                cursor: 'pointer', color: '#6366f1', fontSize: 13, fontWeight: 600 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Calculator size={14} /> {showSuppliesInput ? 'Cerrar costo insumos' : '¿Descontar costo de insumos?'}
+              </div>
+              {suppliesCost > 0 && <span>{fmt(suppliesCost)}</span>}
+            </div>
+            
+            {showSuppliesInput && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="number"
+                  placeholder="Costo de insumos..."
+                  value={suppliesCost === 0 ? '' : suppliesCost}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSuppliesCost(val === '' ? 0 : parseFloat(val));
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  style={{ 
+                    width: '100%', padding: '8px 10px', borderRadius: 6, 
+                    border: `1px solid ${colors.border}`, background: colors.inputBg, 
+                    color: colors.text, fontSize: 14 
+                  }}
+                />
+                <div style={{ fontSize: 10, color: colors.textSecondary, marginTop: 4 }}>
+                  Este valor se restará del total antes de calcular la comisión.
+                </div>
               </div>
             )}
           </div>

@@ -8,6 +8,8 @@ import { getCurrentColombiaMonth } from '../utils';
 
 export function usePayments(businessId) {
   const [month, setMonth] = useState(getCurrentColombiaMonth);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +21,13 @@ export function usePayments(businessId) {
     setLoading(true);
     setError('');
     try {
-      const url = `/employees/commission-report?businessId=${businessId}&month=${month}`;
+      let url = `/employees/commission-report?businessId=${businessId}`;
+      if (startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      } else {
+        url += `&month=${month}`;
+      }
+      
       const res = await api.get(url);
       // Asegurarnos de que los cálculos del negocio sean los reales (Total - Comisión)
       const data = res.data;
@@ -49,7 +57,7 @@ export function usePayments(businessId) {
     } finally {
       setLoading(false);
     }
-  }, [businessId, month]);
+  }, [businessId, month, startDate, endDate]);
 
   useEffect(() => {
     loadReport();
@@ -111,6 +119,10 @@ export function usePayments(businessId) {
   return {
     month,
     setMonth,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
     report,
     loading,
     error,

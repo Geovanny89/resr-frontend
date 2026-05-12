@@ -298,7 +298,16 @@ export default function Inventory() {
               label: 'Cantidad',
               render: (v, row) => `${v} ${row.InventoryItem?.unit || ''}`
             },
-            { key: 'notes', label: 'Notas' },
+            { 
+              key: 'notes', 
+              label: 'Notas',
+              render: (v, row) => {
+                if (row.Appointment?.clientName) {
+                  return `Usado en cita con ${row.Appointment.clientName}`;
+                }
+                return v || '-';
+              }
+            },
             {
               key: 'actions',
               label: 'Acciones',

@@ -408,7 +408,7 @@ export function useAppointmentActions({ business, showStatus, refresh, setAppoin
           itemId: insumo.itemId,
           quantity: insumo.quantity,
           date: new Date().toISOString().split('T')[0],
-          notes: `Usado en cita #${appointment.id} - ${appointment.clientName}`,
+          notes: `Usado en cita con ${appointment.clientName}`,
           businessId: business.id,
           appointmentId: appointment.id
         });

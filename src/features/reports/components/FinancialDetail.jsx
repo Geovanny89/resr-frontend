@@ -55,7 +55,7 @@ export function FinancialDetail({ financialReport, enabledModules, financialData
               </tr>
             )}
 
-            {enabledModules.inventory && financialData.inventoryCost > 0 && (
+            {financialData.inventoryCost > 0 && (
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '8px 10px', paddingLeft: 20 }}>
                   <span style={{ color: '#8b5cf6' }}>-</span> Costo Insumos

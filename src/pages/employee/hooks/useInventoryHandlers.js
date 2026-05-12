@@ -53,7 +53,7 @@ export const useInventoryHandlers = (employee, showStatus, loadAppointments) => 
           itemId: insumo.itemId,
           quantity: insumo.quantity,
           date: new Date().toISOString().split('T')[0],
-          notes: `Usado en cita #${insumosAppointment.id} - ${insumosAppointment.clientName || insumosAppointment.client}`,
+          notes: `Usado en cita con ${insumosAppointment.clientName || insumosAppointment.client}`,
           businessId: employee.businessId,
           appointmentId: insumosAppointment.id
         });
