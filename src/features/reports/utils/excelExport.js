@@ -191,15 +191,15 @@ const kpiCardStyle = {
   font: { bold: true, color: { argb: '1E40AF' }, size: 12 },
   alignment: { horizontal: 'center', vertical: 'middle' },
   border: {
-    top: { style: 'medium', color: { argb: '3B82F6' } },
-    bottom: { style: 'medium', color: { argb: '3B82F6' } },
-    left: { style: 'medium', color: { argb: '3B82F6' } },
-    right: { style: 'medium', color: { argb: '3B82F6' } },
+    top: { style: 'medium', color: { argb: 'FF3B82F6' } },
+    bottom: { style: 'medium', color: { argb: 'FF3B82F6' } },
+    left: { style: 'medium', color: { argb: 'FF3B82F6' } },
+    right: { style: 'medium', color: { argb: 'FF3B82F6' } },
   },
 };
 
 const kpiValueStyle = {
-  font: { bold: true, size: 14, color: { argb: '1E40AF' } },
+  font: { bold: true, size: 14, color: { argb: 'FF1E40AF' } },
   alignment: { horizontal: 'center', vertical: 'middle' },
 };
 
@@ -525,8 +525,9 @@ export async function generateExcelWithCharts({
     wsServices.getCell(rowIndex, 4).value = `${(successRate * 100).toFixed(1)}%`;
     
     if (hasFinancialData) {
-      wsServices.getCell(rowIndex, 5).value = service.revenue;
-      wsServices.getCell(rowIndex, 6).value = service.revenue / service.done;
+      const revenue = parseFloat(service.revenue || 0);
+      wsServices.getCell(rowIndex, 5).value = revenue;
+      wsServices.getCell(rowIndex, 6).value = service.done > 0 ? (revenue / service.done) : 0;
     }
     
     // Estilos de fila
@@ -636,8 +637,8 @@ export async function generateExcelWithCharts({
     wsEmployees.getCell(empRowIndex, 8).value = employee.efficiency || 'Baja';
     
     if (hasFinancialData) {
-      wsEmployees.getCell(empRowIndex, 9).value = employee.revenue || 0;
-      wsEmployees.getCell(empRowIndex, 10).value = employee.commission || 0;
+      wsEmployees.getCell(empRowIndex, 9).value = parseFloat(employee.revenue || 0);
+      wsEmployees.getCell(empRowIndex, 10).value = parseFloat(employee.commission || 0);
     }
     
     // Estilos de fila

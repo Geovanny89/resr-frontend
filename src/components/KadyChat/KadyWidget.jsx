@@ -20,7 +20,7 @@ const KadyWidget = ({ slug }) => {
             <button className="kady-widget-close" onClick={() => setIsOpen(false)}>
               <X size={20} />
             </button>
-            <KadyChat slug={slug} />
+            <KadyChat slug={slug} onClose={() => setIsOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>

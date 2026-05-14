@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, MessageCircle, Calendar, Search, X, User } from 'lucide-react';
 import './KadyChat.css';
 import { formatDate, formatTime, getTodayISO } from '../../shared/utils/formatters';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-
-const KadyChat = ({ slug, standalone = false }) => {
+const KadyChat = ({ slug, standalone = false, onClose }) => {
   const [business, setBusiness] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -17,6 +15,22 @@ const KadyChat = ({ slug, standalone = false }) => {
   const [tempData, setTempData] = useState({});
   const messagesEndRef = useRef(null);
   const notificationAudio = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  // Limpiar timer si el usuario interactúa o se desmonta
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  const startCloseTimer = (ms = 60000) => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      if (onClose) onClose();
+      else if (standalone) window.location.href = `/${slug}`;
+    }, ms);
+  };
 
   // Sonido de notificación (Pop/Ding suave)
   useEffect(() => {
@@ -63,7 +77,7 @@ const KadyChat = ({ slug, standalone = false }) => {
 
   const loadBusinessInfo = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/kady/business/${slug}`);
+      const res = await api.get(`/kady/business/${slug}`);
       setBusiness(res.data);
       setIsTyping(true);
       setTimeout(() => {
@@ -112,6 +126,7 @@ const KadyChat = ({ slug, standalone = false }) => {
   };
 
   const handleOptionClick = (option) => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     addMessage(option.label, 'user');
     setIsTyping(true);
 
@@ -232,7 +247,7 @@ const KadyChat = ({ slug, standalone = false }) => {
 
       setIsTyping(true);
       try {
-        const res = await axios.get(`${API_BASE_URL}/kady/employees/${slug}`);
+        const res = await api.get(`/kady/employees/${slug}`);
         const sortedEmployees = [...res.data].sort((a, b) => a.name.localeCompare(b.name));
         
         const employeeOptions = sortedEmployees.map(e => ({
@@ -260,7 +275,7 @@ const KadyChat = ({ slug, standalone = false }) => {
 
       setIsTyping(true);
       try {
-        const res = await axios.get(`${API_BASE_URL}/kady/slots`, {
+        const res = await api.get('/kady/slots', {
           params: {
             slug,
             employeeId: employee.id,
@@ -310,7 +325,7 @@ const KadyChat = ({ slug, standalone = false }) => {
       setIsTyping(true);
 
       try {
-        await axios.post(`${API_BASE_URL}/kady/appointments/${slug}`, {
+        await api.post(`/kady/appointments/${slug}`, {
           serviceId: tempData.service.id,
           employeeId: tempData.employee.id,
           date: tempData.date,
@@ -337,6 +352,16 @@ const KadyChat = ({ slug, standalone = false }) => {
 
         setIsTyping(false);
         addMessage(summary, 'kady');
+
+        // Preguntar si necesita algo más tras un momento
+        setTimeout(() => {
+          kadyReply("¿Te puedo ayudar en algo más?", [
+            { label: '📅 Agendar otra cita', value: 'welcome_back' },
+            { label: '❌ No, gracias', value: 'close_chat' }
+          ]);
+          startCloseTimer(60000); // 1 minuto para cierre automático
+        }, 3000);
+
       } catch (err) {
         setIsTyping(false);
         addMessage('He tenido un pequeño problema técnico al registrar la cita en el sistema, pero no te preocupes. Puedes enviarnos los detalles por WhatsApp igualmente para coordinar.', 'kady');
@@ -351,7 +376,24 @@ const KadyChat = ({ slug, standalone = false }) => {
 
         const waLink = `https://wa.me/${business.phone.replace(/\D/g, '')}?text=${waMessage}`;
         setTempData(prev => ({ ...prev, waLink }));
+
+        // Preguntar si necesita algo más tras un momento (incluso en error)
+        setTimeout(() => {
+          kadyReply("¿Te puedo ayudar en algo más?", [
+            { label: '📅 Agendar otra cita', value: 'welcome_back' },
+            { label: '❌ No, gracias', value: 'close_chat' }
+          ]);
+          startCloseTimer(60000);
+        }, 3000);
       }
+    }
+
+    else if (value === 'close_chat') {
+      kadyReply("¡Perfecto! Fue un gusto ayudarte. ¡Hasta pronto! 👋");
+      setTimeout(() => {
+        if (onClose) onClose();
+        else if (standalone) window.location.href = `/${slug}`;
+      }, 2000);
     }
 
     else if (value === 'start_search') {
@@ -362,7 +404,7 @@ const KadyChat = ({ slug, standalone = false }) => {
     else if (step === 'searching_appointments' && userInput) {
       setIsTyping(true);
       try {
-        const res = await axios.get(`${API_BASE_URL}/kady/appointments`, {
+        const res = await api.get('/kady/appointments', {
           params: { slug, fullName: userInput }
         });
 
@@ -370,24 +412,33 @@ const KadyChat = ({ slug, standalone = false }) => {
         if (res.data.length === 0) {
           kadyReply(`No encontré citas próximas para "${userInput}". ¿Quieres agendar una nueva?`, [
             { label: '📅 Agendar ahora', value: 'start_booking' },
-            { label: 'Intentar con otro nombre', value: 'start_search' }
+            { label: 'Intentar con otro nombre', value: 'start_search' },
+            { label: '❌ No, gracias', value: 'close_chat' }
           ]);
+          startCloseTimer(60000);
         } else {
           let responseText = `He encontrado ${res.data.length} cita(s):\n\n`;
           res.data.forEach((app, i) => {
             responseText += `${i + 1}. **${app.Service.name}**\n📅 ${formatDate(app.startTime)} a las ${formatTime(app.startTime)}\n\n`;
           });
-          kadyReply(responseText, [
-            { label: 'Volver al inicio', value: 'welcome_back' }
+          kadyReply(responseText + "¿Te puedo ayudar en algo más?", [
+            { label: '📅 Agendar otra cita', value: 'welcome_back' },
+            { label: '❌ No, gracias', value: 'close_chat' }
           ]);
+          startCloseTimer(60000);
         }
       } catch (err) {
         setIsTyping(false);
-        kadyReply('Hubo un error al buscar tus citas. Por favor intenta más tarde.');
+        kadyReply('Hubo un error al buscar tus citas. Por favor intenta más tarde.', [
+          { label: '🔙 Volver al inicio', value: 'welcome_back' },
+          { label: '❌ Cerrar chat', value: 'close_chat' }
+        ]);
+        startCloseTimer(30000);
       }
     }
 
     else if (value === 'welcome_back') {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       setStep('welcome');
       const activePromotions = business.Promotions || [];
       const specialServices = (business.Services || []).filter(s => {
@@ -413,6 +464,7 @@ const KadyChat = ({ slug, standalone = false }) => {
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     const text = inputValue;
     addMessage(text, 'user');
     setInputValue('');
