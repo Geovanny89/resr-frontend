@@ -5,64 +5,84 @@ import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// ===== CARGA DINÁMICA (LAZY LOADING) =====
-const Login            = lazy(() => import('./pages/Login'));
-const ResetPassword    = lazy(() => import('./pages/ResetPassword'));
-const RegisterChoice   = lazy(() => import('./pages/RegisterChoice'));
-const RegisterClient   = lazy(() => import('./pages/RegisterClient'));
-const RegisterVendor   = lazy(() => import('./pages/RegisterVendor'));
-const BusinessLanding  = lazy(() => import('./pages/public/BusinessLanding'));
-const BookAppointment  = lazy(() => import('./pages/public/BookAppointment'));
-const RateEmployee     = lazy(() => import('./pages/public/RateEmployee'));
-const KadyStandalone   = lazy(() => import('./pages/public/KadyStandalone'));
-const MyAppointments   = lazy(() => import('./pages/client/MyAppointments'));
+// ===== CARGA DINÁMICA (LAZY LOADING CON AUTO-REINTENTO) =====
+// Helper para reintentar la carga de chunks si fallan (útil tras despliegues en VPS)
+const lazyWithRetry = (componentImport) => {
+  return lazy(async () => {
+    const hasRetried = window.sessionStorage.getItem('chunk-retry-triggered');
+    try {
+      const component = await componentImport();
+      window.sessionStorage.removeItem('chunk-retry-triggered');
+      return component;
+    } catch (error) {
+      if (!hasRetried) {
+        window.sessionStorage.setItem('chunk-retry-triggered', 'true');
+        console.warn('Detectado error de carga de chunk. Recargando la aplicación...');
+        window.location.reload();
+        return new Promise(() => {}); // Evitar que siga la ejecución
+      }
+      throw error;
+    }
+  });
+};
+
+const Login            = lazyWithRetry(() => import('./pages/Login'));
+const ResetPassword    = lazyWithRetry(() => import('./pages/ResetPassword'));
+const RegisterChoice   = lazyWithRetry(() => import('./pages/RegisterChoice'));
+const RegisterClient   = lazyWithRetry(() => import('./pages/RegisterClient'));
+const RegisterVendor   = lazyWithRetry(() => import('./pages/RegisterVendor'));
+const BusinessLanding  = lazyWithRetry(() => import('./pages/public/BusinessLanding'));
+const BookAppointment  = lazyWithRetry(() => import('./pages/public/BookAppointment'));
+const RateEmployee     = lazyWithRetry(() => import('./pages/public/RateEmployee'));
+const KadyStandalone   = lazyWithRetry(() => import('./pages/public/KadyStandalone'));
+const MyAppointments   = lazyWithRetry(() => import('./pages/client/MyAppointments'));
 
 // Admin Pages
-const Dashboard    = lazy(() => import('./pages/admin/Dashboard'));
-const Referrals    = lazy(() => import('./pages/admin/Referrals'));
-const MyBusiness   = lazy(() => import('./pages/admin/MyBusiness'));
-const Services     = lazy(() => import('./pages/admin/Services'));
-const Employees    = lazy(() => import('./pages/admin/Employees'));
-const Schedule     = lazy(() => import('./pages/admin/Schedule'));
-const SpecialSchedule = lazy(() => import('./pages/admin/SpecialSchedule'));
-const EmployeeVacations = lazy(() => import('./pages/admin/EmployeeVacations'));
-const Appointments = lazy(() => import('./pages/admin/Appointments'));
-const Promotions   = lazy(() => import('./pages/admin/Promotions'));
-const Ratings      = lazy(() => import('./pages/admin/Ratings'));
-const Reports      = lazy(() => import('./pages/admin/Reports'));
-const Payments     = lazy(() => import('./pages/admin/Payments'));
-const SubmitPayment = lazy(() => import('./pages/admin/SubmitPayment'));
-const Clients      = lazy(() => import('./pages/admin/Clients'));
-const Expenses     = lazy(() => import('./pages/admin/Expenses'));
-const Inventory    = lazy(() => import('./pages/admin/Inventory'));
-const Deposits     = lazy(() => import('./pages/admin/Deposits'));
-const CashRegister = lazy(() => import('./pages/admin/CashRegister'));
-const Agenda       = lazy(() => import('./pages/admin/Agenda'));
-const DownloadAPK  = lazy(() => import('./pages/admin/DownloadAPK'));
-const ChangePassword = lazy(() => import('./pages/admin/ChangePassword'));
+const Dashboard    = lazyWithRetry(() => import('./pages/admin/Dashboard'));
+const Referrals    = lazyWithRetry(() => import('./pages/admin/Referrals'));
+const MyBusiness   = lazyWithRetry(() => import('./pages/admin/MyBusiness'));
+const Services     = lazyWithRetry(() => import('./pages/admin/Services'));
+const Employees    = lazyWithRetry(() => import('./pages/admin/Employees'));
+const Schedule     = lazyWithRetry(() => import('./pages/admin/Schedule'));
+const SpecialSchedule = lazyWithRetry(() => import('./pages/admin/SpecialSchedule'));
+const EmployeeVacations = lazyWithRetry(() => import('./pages/admin/EmployeeVacations'));
+const Appointments = lazyWithRetry(() => import('./pages/admin/Appointments'));
+const Promotions   = lazyWithRetry(() => import('./pages/admin/Promotions'));
+const Ratings      = lazyWithRetry(() => import('./pages/admin/Ratings'));
+const Reports      = lazyWithRetry(() => import('./pages/admin/Reports'));
+const Payments     = lazyWithRetry(() => import('./pages/admin/Payments'));
+const SubmitPayment = lazyWithRetry(() => import('./pages/admin/SubmitPayment'));
+const Clients      = lazyWithRetry(() => import('./pages/admin/Clients'));
+const Expenses     = lazyWithRetry(() => import('./pages/admin/Expenses'));
+const Inventory    = lazyWithRetry(() => import('./pages/admin/Inventory'));
+const Deposits     = lazyWithRetry(() => import('./pages/admin/Deposits'));
+const CashRegister = lazyWithRetry(() => import('./pages/admin/CashRegister'));
+const Agenda       = lazyWithRetry(() => import('./pages/admin/Agenda'));
+const DownloadAPK  = lazyWithRetry(() => import('./pages/admin/DownloadAPK'));
+const ChangePassword = lazyWithRetry(() => import('./pages/admin/ChangePassword'));
 
 // Employee Pages
-const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
-const EmployeeCommissions = lazy(() => import('./pages/employee/EmployeeCommissions'));
-const EmployeeProfile = lazy(() => import('./pages/employee/EmployeeProfile'));
-const EmployeeRatings = lazy(() => import('./pages/employee/EmployeeRatings'));
-const EmployeeClients = lazy(() => import('./pages/employee/EmployeeClients'));
+const EmployeeDashboard = lazyWithRetry(() => import('./pages/employee/EmployeeDashboard'));
+const EmployeeCommissions = lazyWithRetry(() => import('./pages/employee/EmployeeCommissions'));
+const EmployeeProfile = lazyWithRetry(() => import('./pages/employee/EmployeeProfile'));
+const EmployeeRatings = lazyWithRetry(() => import('./pages/employee/EmployeeRatings'));
+const EmployeeClients = lazyWithRetry(() => import('./pages/employee/EmployeeClients'));
 
 // Super Admin Pages
-const SuperAdminHome  = lazy(() => import('./pages/superadmin/SuperAdminHome'));
-const Businesses      = lazy(() => import('./pages/superadmin/Businesses'));
-const Branches        = lazy(() => import('./pages/superadmin/Branches'));
-const BusinessTypes   = lazy(() => import('./pages/superadmin/BusinessTypes'));
-const Users           = lazy(() => import('./pages/superadmin/Users'));
-const ActivityLogs    = lazy(() => import('./pages/superadmin/ActivityLogs'));
-const GlobalReports   = lazy(() => import('./pages/superadmin/GlobalReports'));
-const PlatformReviews = lazy(() => import('./pages/superadmin/PlatformReviews'));
-const HelpArticles    = lazy(() => import('./pages/superadmin/HelpArticles'));
+const SuperAdminHome  = lazyWithRetry(() => import('./pages/superadmin/SuperAdminHome'));
+const Businesses      = lazyWithRetry(() => import('./pages/superadmin/Businesses'));
+const Branches        = lazyWithRetry(() => import('./pages/superadmin/Branches'));
+const BusinessTypes   = lazyWithRetry(() => import('./pages/superadmin/BusinessTypes'));
+const Users           = lazyWithRetry(() => import('./pages/superadmin/Users'));
+const ActivityLogs    = lazyWithRetry(() => import('./pages/superadmin/ActivityLogs'));
+const GlobalReports   = lazyWithRetry(() => import('./pages/superadmin/GlobalReports'));
+const PlatformReviews = lazyWithRetry(() => import('./pages/superadmin/PlatformReviews'));
+const HelpArticles    = lazyWithRetry(() => import('./pages/superadmin/HelpArticles'));
 
 // Other
-const Landing = lazy(() => import('./pages/Landing'));
-const DownloadAPKPublic = lazy(() => import('./pages/DownloadAPKPublic'));
-const APKHome = lazy(() => import('./pages/APKHome'));
+const Landing = lazyWithRetry(() => import('./pages/Landing'));
+const DownloadAPKPublic = lazyWithRetry(() => import('./pages/DownloadAPKPublic'));
+const APKHome = lazyWithRetry(() => import('./pages/APKHome'));
 
 // Layouts y otros
 import EmployeeLayout from './components/EmployeeLayout';
