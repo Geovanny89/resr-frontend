@@ -57,6 +57,7 @@ const Users           = lazy(() => import('./pages/superadmin/Users'));
 const ActivityLogs    = lazy(() => import('./pages/superadmin/ActivityLogs'));
 const GlobalReports   = lazy(() => import('./pages/superadmin/GlobalReports'));
 const PlatformReviews = lazy(() => import('./pages/superadmin/PlatformReviews'));
+const HelpArticles    = lazy(() => import('./pages/superadmin/HelpArticles'));
 
 // Other
 const Landing = lazy(() => import('./pages/Landing'));
@@ -253,6 +254,7 @@ export default function App() {
             <Route path="activity-logs"  element={<ActivityLogs />} />
             <Route path="reports"        element={<GlobalReports />} />
             <Route path="reviews"        element={<PlatformReviews />} />
+            <Route path="help"           element={<HelpArticles />} />
           </Route>
           <Route path="/my-appointments" element={<ProtectedRoute roles={['client']} />}>
             <Route index element={<MyAppointments />} />

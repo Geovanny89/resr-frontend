@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import {
   LayoutDashboard, Building2, Tag, LogOut, Bell, ShieldCheck, Menu, X, Store,
-  Users, Activity, TrendingUp
+  Users, Activity, TrendingUp, HelpCircle
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -29,6 +29,7 @@ const NAV_ITEMS = [
       { to: '/superadmin/reports',        icon: TrendingUp,      label: 'Reportes Globales' },
       { to: '/superadmin/activity-logs',  icon: Activity,        label: 'Logs de Actividad' },
       { to: '/superadmin/reviews',        icon: Bell,            label: 'Testimonios Landing' },
+      { to: '/superadmin/help',           icon: HelpCircle,      label: 'Centro de Ayuda' },
     ]
   },
 ];

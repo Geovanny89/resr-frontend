@@ -6,6 +6,8 @@ import { Capacitor } from '@capacitor/core';
 import ThemeToggle from './ThemeToggle';
 import api from '../api/client';
 import BranchSelector from './BranchSelector';
+import HelpChat from './HelpChat';
+
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
   BarChart3, DollarSign, CreditCard, LogOut, Bell, AlertTriangle, Lock, Star,
@@ -410,6 +412,7 @@ function AdminLayoutInner({ children, title, subtitle }) {
           )}
           {children}
         </div>
+        {!Capacitor.isNativePlatform() && <HelpChat />}
       </main>
     </div>
   );

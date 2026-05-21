@@ -1,39 +1,90 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#8B00CC" />
-    <link rel="icon" type="image/svg+xml" href="/kdice.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/kdice-launcher.png" />
-    <!-- Pre-conectar con Google Fonts para ganar velocidad -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- SEO Meta Tags -->
-    <title>K-Dice | Software de Reservas y Agenda Online para Negocios</title>
-    <meta name="description" content="Sistema de reservas, agenda online y gestión de citas para barberías, spas y prestadores de servicios. Mejora la experiencia de tus clientes con K-Dice." />
-    <meta name="keywords" content="software de reservas, sistema de reservas online, agenda online, sistema de citas, gestión de citas, software para agendar citas, reservas por internet, plataforma de reservas, software de agendamiento, agenda digital para negocios, barbería, spa, K-Dice" />
-    <meta name="author" content="K-Dice" />
 
-    <!-- Open Graph / Facebook / WhatsApp -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://reservas.k-dice.com/" />
-    <meta property="og:title" content="K-Dice | Sistema de Reservas y Agenda Online" />
-    <meta property="og:description" content="Agenda online y gestión de citas para tu negocio. Facilita las reservas a tus clientes de manera rápida y segura." />
-    <meta property="og:image" content="https://reservas.k-dice.com/kdice.png" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#8B00CC" />
+  <link rel="icon" type="image/svg+xml" href="/kdice.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/kdice-launcher.png" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://reservas.k-dice.com/" />
-    <meta property="twitter:title" content="K-Dice | Sistema de Reservas y Agenda Online" />
-    <meta property="twitter:description" content="Agenda online y gestión de citas para tu negocio. Facilita las reservas a tus clientes de manera rápida y segura." />
-    <meta property="twitter:image" content="https://reservas.k-dice.com/kdice.png" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <!-- Evitar contenido duplicado y forzar URL principal -->
+  <link rel="canonical" href="https://reservas.k-dice.com/" />
+
+  <!-- Instrucciones explícitas para robots de Google -->
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+
+  <!-- Pre-conectar con Google Fonts para ganar velocidad -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- SEO Meta Tags -->
+  <title>K-Dice | Software de Reservas y Agenda Online para Negocios</title>
+  <meta name="description"
+    content="Sistema de reservas, agenda online y gestión de citas para barberías, spas y prestadores de servicios en Colombia. ¡Prueba a Kady, nuestra asistente virtual!" />
+  <meta name="keywords"
+    content="software de reservas colombia, sistema de reservas online cucuta, agenda online, sistema de citas, gestión de citas, software para agendar citas, reservas por internet, plataforma de reservas, software de agendamiento, agenda digital para negocios, barbería, spa, K-Dice" />
+  <meta name="author" content="K-Dice" />
+
+  <!-- SEO Local (Prioridad de posicionamiento en Cúcuta y Colombia) -->
+  <meta name="geo.region" content="CO-NSA" /> <!-- Norte de Santander, Col -->
+  <meta name="geo.placename" content="Cúcuta" />
+  <meta name="geo.position" content="7.89391;-72.50782" />
+  <meta name="ICBM" content="7.89391, -72.50782" />
+
+  <!-- Open Graph / Facebook / WhatsApp (Optimizado) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://reservas.k-dice.com/" />
+  <meta property="og:title" content="K-Dice | Sistema de Reservas y Agenda Online" />
+  <meta property="og:description"
+    content="Agenda online y gestión de citas para tu negocio. Facilita las reservas a tus clientes con nuestra asistente interactiva." />
+  <meta property="og:image" content="https://reservas.k-dice.com/kdice.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="es_CO" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://reservas.k-dice.com/" />
+  <meta property="twitter:title" content="K-Dice | Sistema de Reservas y Agenda Online" />
+  <meta property="twitter:description"
+    content="Agenda online y gestión de citas para tu negocio. Facilita las reservas a tus clientes de manera rápida y segura." />
+  <meta property="twitter:image" content="https://reservas.k-dice.com/kdice.png" />
+
+  <!-- Datos Estructurados Schema JSON-LD (SaaS y aplicación de software) -->
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "K-Dice",
+        "operatingSystem": "All",
+        "applicationCategory": "BusinessApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "70000.00",
+          "priceCurrency": "COP",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "70000.00",
+            "priceCurrency": "COP",
+            "referenceQuantity": {
+              "@type": "QuantitativeValue",
+              "value": "1",
+              "unitCode": "MON"
+            }
+          }
+        },
+        "description": "Software de reservas, agenda online y gestión de citas para barberías, spas y prestadores de servicios en Colombia con soporte de asistente conversacional."
+      }
+    </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>
