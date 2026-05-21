@@ -4,6 +4,7 @@ import api from '../api/client';
 import './HelpChat.css';
 
 const HelpChat = () => {
+  const isMounted = useRef(true);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([
@@ -21,9 +22,18 @@ const HelpChat = () => {
     scrollToBottom();
   }, [chat]);
 
+  // Cleanup to avoid state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const handleSend = async (text) => {
     const query = text || message;
     if (!query.trim()) return;
+
+    if (!isMounted.current) return;
 
     const userMsg = { role: 'user', text: query };
     setChat(prev => [...prev, userMsg]);
@@ -32,6 +42,7 @@ const HelpChat = () => {
 
     try {
       const res = await api.get('/help/chat', { params: { message: query } });
+      if (!isMounted.current) return;
       const botMsg = { 
         role: 'bot', 
         text: res.data.answer,
@@ -44,9 +55,10 @@ const HelpChat = () => {
       setSuggestions(res.data.suggestions || []);
       if (res.data.isFinished) setSuggestions([]); // No hay más sugerencias si terminó
     } catch (error) {
+      if (!isMounted.current) return;
       setChat(prev => [...prev, { role: 'bot', text: 'Lo siento, hubo un error al procesar tu consulta. Intenta de nuevo más tarde.' }]);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 

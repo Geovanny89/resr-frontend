@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, createContext, useContext, Suspense } from 'react';
+import { useState, useEffect, useMemo, createContext, useContext, Suspense, lazy } from 'react';
+import ErrorBoundary from './ErrorBoundary';
 import { NavLink, useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
@@ -6,7 +7,8 @@ import { Capacitor } from '@capacitor/core';
 import ThemeToggle from './ThemeToggle';
 import api from '../api/client';
 import BranchSelector from './BranchSelector';
-import HelpChat from './HelpChat';
+
+const HelpChat = lazy(() => import('./HelpChat'));
 
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
@@ -22,7 +24,14 @@ export default function AdminLayout({ children, title, subtitle }) {
   const isAlreadyWrapped = useContext(AdminLayoutContext);
 
   if (isAlreadyWrapped) {
-    return <Suspense fallback={null}>{children || <Outlet />}</Suspense>;
+    return (
+      <ErrorBoundary fallback={<div className="help-chat-placeholder">Help not available</div>}>
+        <Suspense fallback={null}>
+          {/* HelpChat is rendered only once at the bottom of the layout to avoid duplicate mounts */}
+          {children || <Outlet />}
+        </Suspense>
+      </ErrorBoundary>
+    );
   }
 
   return (
@@ -412,7 +421,13 @@ function AdminLayoutInner({ children, title, subtitle }) {
           )}
           {children}
         </div>
-        {!Capacitor.isNativePlatform() && <HelpChat />}
+        {!Capacitor.isNativePlatform() && (
+          <ErrorBoundary fallback={<div className="help-chat-placeholder">Help not available</div>}>
+            <Suspense fallback={null}>
+              <HelpChat />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </main>
     </div>
   );
