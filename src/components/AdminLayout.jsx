@@ -7,8 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import ThemeToggle from './ThemeToggle';
 import api from '../api/client';
 import BranchSelector from './BranchSelector';
-
-const HelpChat = lazy(() => import('./HelpChat'));
+import HelpChat from './HelpChat';
 
 import {
   LayoutDashboard, Store, Scissors, Users, Calendar, ClipboardList,
@@ -26,10 +25,8 @@ export default function AdminLayout({ children, title, subtitle }) {
   if (isAlreadyWrapped) {
     return (
       <ErrorBoundary fallback={<div className="help-chat-placeholder">Help not available</div>}>
-        <Suspense fallback={null}>
-          {/* HelpChat is rendered only once at the bottom of the layout to avoid duplicate mounts */}
-          {children || <Outlet />}
-        </Suspense>
+        {/* Renderizamos directamente para evitar doble Suspense con fallback null que causa páginas en blanco */}
+        {children || <Outlet />}
       </ErrorBoundary>
     );
   }
@@ -423,9 +420,7 @@ function AdminLayoutInner({ children, title, subtitle }) {
         </div>
         {!Capacitor.isNativePlatform() && (
           <ErrorBoundary fallback={<div className="help-chat-placeholder">Help not available</div>}>
-            <Suspense fallback={null}>
-              <HelpChat />
-            </Suspense>
+            <HelpChat />
           </ErrorBoundary>
         )}
       </main>
