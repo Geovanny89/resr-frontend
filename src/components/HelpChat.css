@@ -1,6 +1,6 @@
 .help-chat-trigger {
   position: fixed;
-  bottom: 24px;
+  bottom: 80px;
   right: 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -359,10 +359,30 @@
 }
 
 @media (max-width: 480px) {
-  .help-chat-container {
-    width: calc(100vw - 32px);
-    height: calc(100vh - 120px);
-    bottom: 16px;
-    right: 16px;
+    .help-chat-container {
+    width: 80vw;
+    height: 55vh;
+    top: 12px;
+    right: 8px;
+  }
+  .help-chat-trigger {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+  .help-chat-header {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .message-bubble {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+  .input-area input {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .send-btn {
+    width: 30px;
+    height: 30px;
   }
 }
