@@ -1,5 +1,8 @@
 // Helper functions for reports
 
+// Parsea un valor como float y retorna 0 si es NaN (protege contra valores 'NaN' en la BD)
+const safeFloat = (val) => { const n = parseFloat(val); return isNaN(n) ? 0 : n; };
+
 export const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -92,28 +95,27 @@ export function getDateRange(period, customStart, customEnd) {
 export function calculateStats(appointments, business) {
   const done = appointments.filter((a) => a.status === 'done');
   
-  // Usar finalPrice si existe (es el valor real en Caja), sino sumar base + adicional
+  // Usar safeFloat para proteger contra valores 'NaN' almacenados en la BD
   const totalRev = done.reduce((s, a) => {
-    const price = a.finalPrice !== undefined && a.finalPrice !== null 
-      ? parseFloat(a.finalPrice) 
-      : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
+    const price = (a.finalPrice !== undefined && a.finalPrice !== null && !isNaN(parseFloat(a.finalPrice)))
+      ? safeFloat(a.finalPrice)
+      : (safeFloat(a.basePrice) + safeFloat(a.additionalAmount));
     return s + price;
   }, 0);
 
   const empRev = done.reduce((s, a) => {
-    // Para el pago al empleado, calculamos sobre el total generado en esa cita
-    const priceForCommission = a.finalPrice !== undefined && a.finalPrice !== null 
-      ? parseFloat(a.finalPrice) 
-      : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
+    const priceForCommission = (a.finalPrice !== undefined && a.finalPrice !== null && !isNaN(parseFloat(a.finalPrice)))
+      ? safeFloat(a.finalPrice)
+      : (safeFloat(a.basePrice) + safeFloat(a.additionalAmount));
       
-    const commPct = parseFloat(a.Employee?.commissionPct || 0);
+    const commPct = safeFloat(a.Employee?.commissionPct);
     const earned = a.employeeEarns
-      ? parseFloat(a.employeeEarns)
+      ? safeFloat(a.employeeEarns)
       : (priceForCommission * commPct) / 100;
-    return s + (isNaN(earned) ? 0 : earned);
+    return s + earned;
   }, 0);
 
-  const totalSupplies = done.reduce((s, a) => s + parseFloat(a.suppliesCost || 0), 0);
+  const totalSupplies = done.reduce((s, a) => s + safeFloat(a.suppliesCost), 0);
   const ownerRev = totalRev - empRev - totalSupplies;
 
   return {
@@ -172,9 +174,9 @@ export function groupByEmployee(appointments, isTechnical = false) {
         
         // Calcular ingresos solo de citas completadas
         if (!isTechnical) {
-          const price = a.finalPrice !== undefined && a.finalPrice !== null 
-            ? parseFloat(a.finalPrice) 
-            : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
+          const price = (a.finalPrice !== undefined && a.finalPrice !== null && !isNaN(parseFloat(a.finalPrice)))
+            ? safeFloat(a.finalPrice)
+            : (safeFloat(a.basePrice) + safeFloat(a.additionalAmount));
           acc[name].ingresos += price;
         }
       }
@@ -210,9 +212,9 @@ export function groupByService(done, isTechnical = false) {
       if (!acc[name]) acc[name] = { name, count: 0, revenue: 0 };
       acc[name].count++;
       if (!isTechnical) {
-        const price = a.finalPrice !== undefined && a.finalPrice !== null 
-          ? parseFloat(a.finalPrice) 
-          : (parseFloat(a.basePrice || 0) + parseFloat(a.additionalAmount || 0));
+        const price = (a.finalPrice !== undefined && a.finalPrice !== null && !isNaN(parseFloat(a.finalPrice)))
+          ? safeFloat(a.finalPrice)
+          : (safeFloat(a.basePrice) + safeFloat(a.additionalAmount));
         acc[name].revenue += price;
       }
       return acc;
