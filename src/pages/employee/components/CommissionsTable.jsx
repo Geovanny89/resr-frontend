@@ -13,6 +13,9 @@ export const CommissionsTable = ({ data, colors, handleStatusChange, handleStart
             <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Servicio / Cliente
             </th>
+            <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Servicios Extra
+            </th>
             {data?.hasFieldTechnicians && (
               <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Estado
@@ -61,6 +64,13 @@ export const CommissionsTable = ({ data, colors, handleStatusChange, handleStart
                   </div>
                 )}
               </td>
+            <td style={{ padding: '16px' }}>
+              {apt.extraServices && apt.extraServices.length > 0 ? (
+                <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                  {apt.extraServices.map((es, i) => es.name).join(', ')}
+                </div>
+              ) : '-'}
+            </td>
               {/* Estado y Acciones para técnicos de campo */}
               {data?.hasFieldTechnicians && (
                 <td style={{ padding: '16px', textAlign: 'center' }}>

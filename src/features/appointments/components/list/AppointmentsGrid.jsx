@@ -179,6 +179,11 @@ export function AppointmentsGrid({
                   </div>
                   <div style={{ fontSize: 11, color: colors.textSecondary }}>
                     {apt.Service?.durationMin} min • {apt.Service?.name}
+                    {apt.extraServices && apt.extraServices.length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        <strong>Adicionales:</strong> {apt.extraServices.map(s => s.name).join(', ')}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -203,7 +208,7 @@ export function AppointmentsGrid({
                   <>
                     <span>•</span>
                     <span style={{ color: '#10b981', fontWeight: 600 }}>
-                      {fmt(apt.finalPrice || apt.Service?.price)}
+                      {fmt(apt.finalPrice !== null && apt.finalPrice !== undefined ? apt.finalPrice : (parseFloat(apt.basePrice || apt.Service?.price || 0) + parseFloat(apt.additionalAmount || 0)))}
                     </span>
                   </>
                 )}

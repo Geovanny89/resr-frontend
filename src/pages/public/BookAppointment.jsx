@@ -64,6 +64,8 @@ export default function BookAppointment() {
     secondary,
     gradient,
     depositConfig,
+    totalDuration,
+    totalPrice,
   } = useBooking(slug, preselectedEmployeeId, preselectedServiceId);
 
   const handleSubmit = async () => {
@@ -95,6 +97,7 @@ export default function BookAppointment() {
         notes: selected.notes,
         depositAmount: isDepositRequired ? depositAmount : null,
         depositAccepted: isDepositRequired ? selected.depositAccepted : false,
+        extraServices: selected.extraServices,
       });
       setConfirmed(true);
     } catch (e) {
@@ -263,6 +266,8 @@ export default function BookAppointment() {
             colors={colors}
             primary={primary}
             preselectedEmployeeId={preselectedEmployeeId}
+            totalDuration={totalDuration}
+            totalPrice={totalPrice}
           />
         )}
 

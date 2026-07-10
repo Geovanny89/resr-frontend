@@ -12,10 +12,14 @@ export const CompleteModal = ({ show, colors, completeAppointmentData, setComple
   const fmt = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
 
   // Calcular totales
-  const basePrice = parseFloat(completeAppointmentData?.basePrice || completeAppointmentData?.Service?.price || 0);
+  const hasStoredBasePrice = completeAppointmentData?.basePrice !== undefined && completeAppointmentData?.basePrice !== null;
+  const totalBase = parseFloat(completeAppointmentData?.basePrice || completeAppointmentData?.Service?.price || 0);
   const extraServices = completeAppointmentData?.extraServices || [];
   const extrasTotal = extraServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
-  const subtotal = basePrice + extrasTotal;
+  
+  // Como basePrice guardado ya incluye los extras, restamos extrasTotal para obtener el precio del servicio principal.
+  const mainServicePrice = hasStoredBasePrice ? Math.max(0, totalBase - extrasTotal) : totalBase;
+  const subtotal = mainServicePrice + extrasTotal;
   const currentFinalPrice = finalPriceOverride !== null ? finalPriceOverride : (subtotal - discount);
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export const CompleteModal = ({ show, colors, completeAppointmentData, setComple
             <div style={{ fontSize: 11, color: colors.textSecondary, fontWeight: 600, marginBottom: 4 }}>SERVICIOS</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
               <span style={{ color: colors.text }}>{completeAppointmentData.Service?.name}</span>
-              <span style={{ fontWeight: 600, color: colors.text }}>{fmt(basePrice)}</span>
+              <span style={{ fontWeight: 600, color: colors.text }}>{fmt(mainServicePrice)}</span>
             </div>
             {extraServices.map((s, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4, alignItems: 'center' }}>

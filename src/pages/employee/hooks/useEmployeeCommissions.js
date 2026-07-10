@@ -285,10 +285,10 @@ const handleStatusChange = async (appointment, newStatus) => {
     const isFieldTech = data?.hasFieldTechnicians;
     
     const headers = isFieldTech
-      ? ['Fecha', 'Hora', 'Servicio', 'Cliente', 'Teléfono', 'Estado', 'Estado Técnico']
-      : isTechnical 
-        ? ['Fecha', 'Hora', 'Servicio', 'Cliente', 'Teléfono']
-        : ['Fecha', 'Hora', 'Servicio', 'Cliente', 'Teléfono', 'Valor Servicio', 'Adicional', 'Total', 'Comisión', 'Método Pago'];
+        ? ['Fecha', 'Hora', 'Servicio', 'Cliente', 'Teléfono', 'Estado', 'Estado Tecnico']
+        : isTechnical 
+          ? ['Fecha', 'Hora', 'Servicio', 'Cliente', 'Teléfono']
+          : ['Fecha', 'Hora', 'Servicio', 'Servicios Extra', 'Cliente', 'Teléfono', 'Valor Servicio', 'Adicional', 'Total', 'Comisión', 'Método Pago'];
     
     const rows = data?.appointments?.map(apt => {
       if (isFieldTech) {
@@ -328,6 +328,8 @@ const handleStatusChange = async (appointment, newStatus) => {
         fmtDate(apt.date),
         fmtTime(apt.date),
         apt.service,
+        // Servicios Extra
+        apt.extraServices && apt.extraServices.length > 0 ? apt.extraServices.map(es => es.name).join(', ') : '-',
         apt.client,
         apt.clientPhone || '',
         fmt(apt.basePrice),

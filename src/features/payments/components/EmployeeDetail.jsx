@@ -10,16 +10,16 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
   const { colors } = useTheme();
   const currentPage = paginationPages[emp.name] || 1;
   const totalPages = Math.ceil(emp.appointments.length / ITEMS_PER_PAGE);
-  
+
   const paginatedAppointments = emp.appointments.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-  
+
   const setPage = (page) => {
     setPaginationPages(prev => ({ ...prev, [emp.name]: page }));
   };
-  
+
   return (
     <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
       {!isMobile ? (
@@ -33,7 +33,7 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                 <th>Servicio</th>
                 <th>Insumos</th>
                 <th>Pago</th>
-                <th>Empleado gana</th>
+                <th>Profesional gana</th>
                 <th>Negocio gana</th>
               </tr>
             </thead>
@@ -45,6 +45,9 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span>{a.service}</span>
+                      {a.extraServices && a.extraServices.length > 0 && (
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{a.extraServices.map(es => es.name).join(', ')}</span>
+                      )}
                       <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                         {fmt(a.basePrice)} + {fmt(a.additional)} (Adic.)
                       </span>
@@ -93,10 +96,10 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
         /* Vista para pantallas pequeñas (Cards) */
         <div style={{ display: 'grid', gap: 12 }}>
           {paginatedAppointments.map((a, i) => (
-            <div key={i} style={{ 
-              background: colors.bgSecondary, 
-              borderRadius: 12, 
-              padding: 12, 
+            <div key={i} style={{
+              background: colors.bgSecondary,
+              borderRadius: 12,
+              padding: 12,
               border: `1px solid ${colors.border}`,
               fontSize: '13px'
             }}>
@@ -107,6 +110,11 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
               <div style={{ marginBottom: 10, fontSize: '14px', fontWeight: 600, color: colors.text }}>
                 {a.service}
               </div>
+              {a.extraServices && a.extraServices.length > 0 && (
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {a.extraServices.map(es => es.name).join(', ')}
+                </span>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
                   <div style={{ fontSize: '11px', color: colors.textSecondary }}>Precio Base:</div>
@@ -137,11 +145,11 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
           ))}
 
           {/* Totales en móvil */}
-          <div style={{ 
-            background: 'var(--primary)', 
-            color: 'white', 
-            borderRadius: 12, 
-            padding: 14, 
+          <div style={{
+            background: 'var(--primary)',
+            color: 'white',
+            borderRadius: 12,
+            padding: 14,
             marginTop: 4,
             boxShadow: '0 4px 6px rgba(79, 70, 229, 0.2)'
           }}>
@@ -160,11 +168,11 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
 
       {/* Paginación (Mejorada para móvil) */}
       {totalPages > 1 && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          gap: 10, 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 10,
           marginTop: 16,
           padding: '10px 0',
           borderTop: '1px solid var(--border)'

@@ -3,8 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { DollarSign, TrendingUp, Users, CheckCircle, Download, RefreshCw } from 'lucide-react';
-import { 
-  usePayments, 
+import {
+  usePayments,
   usePaymentPDF,
   MonthYearPicker,
   EmployeeDetail,
@@ -17,7 +17,7 @@ import {
 export default function Payments() {
   const { business } = useAuth();
   const { colors } = useTheme();
-  
+
   // Custom hooks
   const {
     month,
@@ -133,7 +133,7 @@ export default function Payments() {
       <div className="card mb-6">
         <div className="payments-controls-row" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div className="filter-toggle">
-            <button 
+            <button
               className={`filter-toggle-btn ${filterType === 'month' ? 'active' : ''}`}
               onClick={() => {
                 setFilterType('month');
@@ -143,7 +143,7 @@ export default function Payments() {
             >
               Mensual
             </button>
-            <button 
+            <button
               className={`filter-toggle-btn ${filterType === 'range' ? 'active' : ''}`}
               onClick={() => {
                 setFilterType('range');
@@ -169,19 +169,19 @@ export default function Payments() {
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <input 
-                type="date" 
-                className="date-input" 
-                value={startDate} 
-                onChange={(e) => setStartDate(e.target.value)} 
+              <input
+                type="date"
+                className="date-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 placeholder="Desde"
               />
               <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>hasta</span>
-              <input 
-                type="date" 
-                className="date-input" 
-                value={endDate} 
-                onChange={(e) => setEndDate(e.target.value)} 
+              <input
+                type="date"
+                className="date-input"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 placeholder="Hasta"
               />
             </div>
@@ -302,8 +302,8 @@ export default function Payments() {
 
                   {/* Detalle expandible con paginación */}
                   {expandedEmp === emp.name && (
-                    <EmployeeDetail 
-                      emp={emp} 
+                    <EmployeeDetail
+                      emp={emp}
                       paginationPages={paginationPages}
                       setPaginationPages={setPaginationPages}
                       isMobile={isMobile}

@@ -25,6 +25,7 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
     address: '',
     notes: '',
     depositAccepted: false,
+    extraServices: [],
   });
 
   const [hasPreviousData, setHasPreviousData] = useState(false);
@@ -87,7 +88,8 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
           const svc = data.Services.find(s => String(s.id) === String(preselectedServiceId));
           if (svc) {
             newSelected.service = svc;
-            jumpToStep = 1;
+            // Quedarse en paso 0 (ServiceStep) para que el cliente pueda agregar extras
+            jumpToStep = 0;
           }
         }
 
@@ -95,7 +97,8 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
           const emp = data.Employees.find(e => String(e.id) === String(preselectedEmployeeId));
           if (emp) {
             newSelected.employee = emp;
-            if (newSelected.service) jumpToStep = 2;
+            // Solo saltar al paso de empleado si hay servicio Y empleado preseleccionados
+            if (newSelected.service) jumpToStep = 0; // aún en ServiceStep para elegir extras
           }
         }
 
@@ -108,19 +111,45 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
       .finally(() => setLoading(false));
   }, [slug, preselectedEmployeeId, preselectedServiceId]);
 
-  // Redirigir si hay empleado preseleccionado
+  // Redirigir si hay empleado preseleccionado (solo desde paso 1 en adelante)
   useEffect(() => {
-    if (step === 1 && preselectedEmployeeId) {
-      setStep(selected.service ? 2 : 0);
+    if (step === 1 && preselectedEmployeeId && selected.service) {
+      setStep(2);
     }
   }, [step, preselectedEmployeeId, selected.service]);
+
+  // Calcular totales
+  const mainDuration = parseInt(selected.service?.durationMin || 0);
+  const extrasDuration = selected.extraServices?.reduce((sum, s) => sum + (parseInt(s.durationMin) || 0), 0) || 0;
+  const totalDuration = mainDuration + extrasDuration;
+
+  const getServicePriceValue = (svc) => {
+    if (!svc) return 0;
+    const promo = svc.Promotions && svc.Promotions.length > 0 ? svc.Promotions[0] : null;
+    const basePrice = Number(svc.price) || 0;
+    if (promo) {
+      const discount = promo.discountType === 'percentage'
+        ? basePrice * (Number(promo.discountValue) / 100)
+        : Number(promo.discountValue);
+      return Math.max(0, basePrice - discount);
+    }
+    return basePrice;
+  };
+
+  const mainPrice = getServicePriceValue(selected.service);
+  const extrasPrice = selected.extraServices?.reduce((sum, s) => sum + (Number(s.price) || 0), 0) || 0;
+  const totalPrice = mainPrice + extrasPrice;
 
   // Cargar slots disponibles
   useEffect(() => {
     if (step === 3 && selected.date && selected.service) {
       setSlotsLoading(true);
       setSlots([]);
-      const params = new URLSearchParams({ date: selected.date, serviceId: selected.service.id });
+      const params = new URLSearchParams({ 
+        date: selected.date, 
+        serviceId: selected.service.id,
+        duration: totalDuration
+      });
       api.get(`/businesses/${slug}/availability?${params}`, { params: { noCache: true } })
         .then(r => {
           const filtered = selected.employee
@@ -131,7 +160,7 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
         .catch(() => setSlots([]))
         .finally(() => setSlotsLoading(false));
     }
-  }, [step, selected.date, selected.service, selected.employee, slug]);
+  }, [step, selected.date, selected.service, selected.extraServices, selected.employee, slug, totalDuration]);
 
   const calculateDepositAmount = useCallback(() => {
     const depositConfig = business?.depositConfig;
@@ -152,8 +181,14 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
       servicePrice = Math.max(0, servicePrice - discount);
     }
 
-    return Math.round(servicePrice * (depositConfig?.percentage || 30) / 100);
-  }, [business, selected.service]);
+    // Add extra services prices
+    let totalPrice = servicePrice;
+    selected.extraServices?.forEach(extraSvc => {
+      totalPrice += extraSvc.price || 0;
+    });
+
+    return Math.round(totalPrice * (depositConfig?.percentage || 30) / 100);
+  }, [business, selected.service, selected.extraServices]);
 
   const depositAmount = calculateDepositAmount();
   const isDepositRequired = business?.enabledModules?.deposits && business?.depositConfig?.required;
@@ -193,5 +228,7 @@ export function useBooking(slug, preselectedEmployeeId, preselectedServiceId) {
     secondary,
     gradient,
     depositConfig: business?.depositConfig,
+    totalDuration,
+    totalPrice,
   };
 }

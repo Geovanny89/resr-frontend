@@ -28,6 +28,9 @@ export default function ConfirmationScreen({ selected, colors, gradient, onBack 
           color: colors.text,
         }}>
           <div><strong>Servicio:</strong> {selected.service?.name}</div>
+          {selected.extraServices && selected.extraServices.length > 0 && (
+            <div><strong>Servicios adicionales:</strong> {selected.extraServices.map(s => s.name).join(', ')}</div>
+          )}
           <div><strong>Empleado:</strong> {selected.slot?.employeeName}</div>
           <div><strong>Fecha:</strong> {formatDateES(selected.date)}</div>
           <div><strong>Hora:</strong> {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>

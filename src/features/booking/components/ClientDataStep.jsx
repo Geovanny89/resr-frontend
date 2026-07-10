@@ -107,14 +107,27 @@ export default function ClientDataStep({
       }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 8 }}>Resumen de tu cita</div>
         <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.8 }}>
-          <div>📋 <strong>{selected.service?.name}</strong></div>
-          <div>👤 {selected.slot?.employeeName}</div>
-          <div>📅 {formatDateES(selected.date)}</div>
-          <div>🕐 {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
-          <div style={{ fontWeight: 700, color: selected.service?.priceOptional ? '#92400e' : '#059669', marginTop: 4 }}>
-            {getServicePriceDisplay(selected.service, isDepositRequired, depositAmount)}
+            <div>📋 <strong>{selected.service?.name}</strong></div>
+            {selected.extraServices && selected.extraServices.length > 0 && selected.extraServices.map((es, i) => (
+              <div key={i} style={{ paddingLeft: 22, color: colors.textSecondary, fontSize: 12 }}>
+                + {es.name}
+              </div>
+            ))}
+            <div>👤 {selected.slot?.employeeName}</div>
+            <div>📅 {formatDateES(selected.date)}</div>
+            <div>🕐 {formatSlotTime(selected.slot?.startTime)} (hora Colombia)</div>
+            <div style={{ fontWeight: 700, color: selected.service?.priceOptional ? '#92400e' : '#059669', marginTop: 4 }}>
+              {selected.service?.priceOptional
+                ? getServicePriceDisplay(selected.service, isDepositRequired, depositAmount)
+                : (() => {
+                    const extrasPrice = (selected.extraServices || []).reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+                    const basePrice = Number(selected.service?.price || 0);
+                    const total = basePrice + extrasPrice;
+                    return `💰 $${total.toLocaleString('es-CO')}`;
+                  })()
+              }
+            </div>
           </div>
-        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
