@@ -78,7 +78,16 @@ export function AppointmentsTable({
                   })}
                 </td>
                 <td>{a.clientName}</td>
-                <td>{a.Service?.name}</td>
+                <td>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>{a.Service?.name || 'Servicio eliminado'}</span>
+                    {a.extraServices && a.extraServices.length > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
+                        + {a.extraServices.map(es => es.name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td>{a.Employee?.User?.name}</td>
                 {!isTechnical && (
                   <>
@@ -288,7 +297,14 @@ function AppointmentCard({ appointment: a, isTechnical, onDownloadServiceOrder }
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Servicio</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
-            {a.Service?.name || '—'}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span>{a.Service?.name || '—'}</span>
+              {a.extraServices && a.extraServices.length > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontWeight: 400, marginTop: 1 }}>
+                  + {a.extraServices.map(es => es.name).join(', ')}
+                </span>
+              )}
+            </div>
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>

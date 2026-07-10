@@ -184,6 +184,11 @@ export function AppointmentsGrid({
                         <strong>Adicionales:</strong> {apt.extraServices.map(s => s.name).join(', ')}
                       </div>
                     )}
+                    {parseFloat(apt.additionalAmount || 0) > 0 && (
+                      <div style={{ marginTop: 4, color: '#d97706', fontWeight: 600 }}>
+                        + Adicional: {fmt(apt.additionalAmount)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
