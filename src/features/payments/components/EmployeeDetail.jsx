@@ -28,10 +28,12 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
     return a.service;
   };
 
-  // El monto de PAGO de esta fila: share del empleado (no total de la cita), excepto al principal que puede mostrar el total
+  // Monto de PAGO de esta fila: siempre lo que facturó ESTE profesional
   const getDisplayPrice = (a) => {
-    if (a.isPrincipal) return a.price; // al principal le mostramos el total de la cita
-    return a.employeeShare || 0;       // a los adicionales solo lo que les corresponde
+    if (a.employeeShare != null && a.employeeShare !== undefined) {
+      return a.employeeShare;
+    }
+    return a.price || 0;
   };
 
   const displaySupply = (a) => {
@@ -72,7 +74,8 @@ export function EmployeeDetail({ emp, paginationPages, setPaginationPages, isMob
                       )}
                       {a.isPrincipal && (
                         <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                          {fmt(a.basePrice)} + {fmt(a.additional)} (Adic.)
+                          {fmt(a.employeeShare ?? a.basePrice)}
+                          {parseFloat(a.additional) > 0 ? ` + ${fmt(a.additional)} (Adic.)` : ''}
                         </span>
                       )}
                       {!a.isPrincipal && (

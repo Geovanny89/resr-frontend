@@ -41,12 +41,15 @@ export function usePayments(businessId) {
 
       // Normalizar appointmentsByEmployee para asegurar consistencia
       const normalizedItems = byEmpItems.map(item => {
-        const price = parseFloat(item.price) || 0;
+        const share = parseFloat(item.employeeShare ?? item.price) || 0;
         const empEarns = parseFloat(item.employeeEarns) || 0;
         let ownerEarns = parseFloat(item.ownerEarns);
-        if (isNaN(ownerEarns)) ownerEarns = Math.max(0, price - empEarns);
+        // Si falta ownerEarns: negocio = facturado del tramo − comisión del profesional
+        if (isNaN(ownerEarns)) ownerEarns = Math.max(0, share - empEarns);
         return {
           ...item,
+          price: share,
+          employeeShare: share,
           ownerEarns: ownerEarns.toFixed(2),
         };
       });

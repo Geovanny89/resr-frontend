@@ -144,11 +144,13 @@ export function splitRevenueByEmployee(a) {
   const principalId = a.employeeId;
   const principalName = a.Employee?.User?.name || 'Sin asignar';
   const principalCommissionPct = safeFloat(a.Employee?.commissionPct);
+  const finalPriceVal = safeFloat(a.finalPrice);
+  const hasFinal = finalPriceVal > 0;
   const basePrice = safeFloat(a.basePrice) || safeFloat(a.Service?.price);
   const additionalAmount = safeFloat(a.additionalAmount);
 
   // ==================
-  // 1. Servicios adicionales → su empleado asignado (calcular primero para saber la suma
+  // 1. Servicios adicionales → su empleado asignado
   // ==================
   const extraParts = [];
   let sumExtraPrices = 0;
@@ -157,7 +159,6 @@ export function splitRevenueByEmployee(a) {
       const empId = es.employeeId;
       const price = safeFloat(es.price);
       sumExtraPrices += price;
-      // Empleado del servicio extra: buscar nombre en AdditionalEmployees o fallbacks
       let empName = 'Sin asignar';
       let empComm = 0;
       if (empId) {
@@ -166,7 +167,8 @@ export function splitRevenueByEmployee(a) {
         );
         if (inAdditional?.Employee?.User?.name) empName = inAdditional.Employee.User.name;
         else if (String(empId) === String(principalId)) empName = principalName;
-        if (inAdditional?.Employee?.commissionPct !== undefined) {
+        // commissionPct: 0 es válido; usar nullish para no confundir "sin dato" con 0
+        if (inAdditional?.Employee != null && inAdditional.Employee.commissionPct != null) {
           empComm = safeFloat(inAdditional.Employee.commissionPct);
         } else if (String(empId) === String(principalId)) {
           empComm = principalCommissionPct;
@@ -182,11 +184,11 @@ export function splitRevenueByEmployee(a) {
   }
 
   // ==================
-  // 2. Servicio principal → empleado principal (basePrice + adicional - suma de extras)
-  //    El basePrice incluye el valor total, por lo que al empleado principal le corresponde
-  //    solo el valor de su servicio, quitando lo que pertenece a servicios adicionales.
+  // 2. Servicio principal
   // ==================
-  const principalGross = Math.max(0, basePrice + additionalAmount - sumExtraPrices);
+  const principalGross = hasFinal
+    ? Math.max(0, finalPriceVal - sumExtraPrices)
+    : Math.max(0, basePrice + additionalAmount - sumExtraPrices);
 
   if (principalId) {
     parts.push({
@@ -197,20 +199,18 @@ export function splitRevenueByEmployee(a) {
     });
   }
 
-  // Agregar los extras
   parts.push(...extraParts);
 
   // ==================
-  // 3. Aplicar descuento proporcional
+  // 3. Descuento proporcional solo si NO hay finalPrice
   // ==================
-  const discountApplied = safeFloat(a.discountApplied);
+  const discountApplied = hasFinal ? 0 : safeFloat(a.discountApplied);
   const totalGross = parts.reduce((s, p) => s + p.gross, 0);
 
   const partsWithDiscount = parts.map((p, idx) => {
     let discountShare = 0;
     if (discountApplied > 0 && totalGross > 0) {
       discountShare = (p.gross / totalGross) * discountApplied;
-      // El último item absorve el redondeo restante para evitar 1 centavo de desfase
       if (idx === parts.length - 1) {
         const alreadyApplied =
           parts.reduce((s, p2, i2) => {
