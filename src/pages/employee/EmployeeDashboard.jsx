@@ -196,7 +196,9 @@ export default function EmployeeDashboard() {
 
     // Respaldo: el empleado está en sala business: y recibe appointment:created
     onAppointmentCreated: (appointment) => {
-      if (!employee?.id || String(appointment.employeeId) !== String(employee.id)) return;
+      const isMyEmp = String(appointment.employeeId) === String(employee?.id) ||
+        (appointment.AdditionalEmployees && appointment.AdditionalEmployees.some(ae => String(ae.employeeId) === String(employee?.id)));
+      if (!employee?.id || !isMyEmp) return;
       console.log('🔔 [Employee] appointment:created (respaldo) para mi empleado');
       const aptDate = new Date(appointment.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
       if (aptDate !== selectedDateRef.current) return;

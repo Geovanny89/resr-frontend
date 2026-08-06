@@ -81,33 +81,46 @@ export function CompleteAppointmentModal({
       display: 'flex',
       alignItems: 'center', 
       justifyContent: 'center', 
-      zIndex: 1000
+      zIndex: 1000,
+      padding: '16px',
+      boxSizing: 'border-box'
     }}>
       <div style={{
         background: colors.cardBg, 
         borderRadius: '16px', 
-        padding: '28px',
         maxWidth: '420px', 
-        width: '90%', 
+        width: '100%', 
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
         border: `1px solid ${colors.border}`,
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        overflow: 'hidden'
       }}>
-        <h2 style={{ 
-          margin: '0 0 8px 0', 
-          fontSize: '20px', 
-          fontWeight: 800, 
-          color: colors.text 
-        }}>
-          ✅ Completar Cita
-        </h2>
-        <p style={{ 
-          margin: '0 0 20px 0', 
-          fontSize: '14px', 
-          color: colors.textSecondary 
-        }}>
-          Confirma el cobro para <strong>{appointment.clientName}</strong>.
-        </p>
+        <div style={{ padding: '24px 28px 0', flexShrink: 0 }}>
+          <h2 style={{ 
+            margin: '0 0 8px 0', 
+            fontSize: '20px', 
+            fontWeight: 800, 
+            color: colors.text 
+          }}>
+            ✅ Completar Cita
+          </h2>
+          <p style={{ 
+            margin: '0 0 16px 0', 
+            fontSize: '14px', 
+            color: colors.textSecondary 
+          }}>
+            Confirma el cobro para <strong>{appointment.clientName}</strong>.
+          </p>
+        </div>
 
+        <div style={{
+          padding: '0 28px',
+          overflowY: 'auto',
+          flex: 1,
+          minHeight: 0
+        }}>
         {/* Desglose de Servicios */}
         <div style={{ 
           background: colors.bgSecondary, 
@@ -418,12 +431,17 @@ export function CompleteAppointmentModal({
             </div>
           </div>
         </div>
+        </div>
 
-        {/* Botones */}
+        {/* Botones - siempre visibles */}
         <div style={{ 
           display: 'flex', 
           gap: '12px', 
-          justifyContent: 'stretch' 
+          justifyContent: 'stretch',
+          flexShrink: 0,
+          padding: '16px 28px 24px',
+          borderTop: `1px solid ${colors.border}`,
+          background: colors.cardBg
         }}>
           <button
             onClick={onCancel}

@@ -15,9 +15,9 @@ export default function AppointmentDetailModal({
   if (!appointment) return null;
 
   const showTechStatus = hasVisibleTechnicianStatus(appointment);
-  
+
   return (
-    <div 
+    <div
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -30,7 +30,7 @@ export default function AppointmentDetailModal({
       }}
       onClick={onClose}
     >
-      <div 
+      <div
         style={{
           background: colors.cardBg,
           borderRadius: 16,
@@ -43,8 +43,8 @@ export default function AppointmentDetailModal({
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div style={{ 
-          padding: '20px 24px', 
+        <div style={{
+          padding: '20px 24px',
           borderBottom: `1px solid ${colors.border}`,
           display: 'flex',
           justifyContent: 'space-between',
@@ -53,7 +53,7 @@ export default function AppointmentDetailModal({
           <h3 style={{ margin: 0, fontSize: '18px', color: colors.text }}>
             Detalle de Cita
           </h3>
-          <button 
+          <button
             onClick={onClose}
             style={{
               background: 'none',
@@ -70,9 +70,9 @@ export default function AppointmentDetailModal({
         {/* Modal Body */}
         <div style={{ padding: '24px' }}>
           {/* Status Badge */}
-          <div style={{ 
-            display: 'flex', 
-            gap: 8, 
+          <div style={{
+            display: 'flex',
+            gap: 8,
             marginBottom: 20,
             flexWrap: 'wrap',
           }}>
@@ -113,19 +113,44 @@ export default function AppointmentDetailModal({
 
           {/* Service Info */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>SERVICIO</div>
+            <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>SERVICIO PRINCIPAL</div>
             <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text }}>
               {appointment.Service?.name}
+              <span style={{ fontSize: '14px', fontWeight: 500, color: colors.textSecondary, marginLeft: 8 }}>
+                (👤 {appointment.Employee?.User?.name})
+              </span>
             </div>
-          </div>
 
-          {/* Employee Info */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>PROFESIONAL ASIGNADO</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text }}>
-              <User size={16} style={{ display: 'inline', marginRight: 6 }} />
-              {appointment.Employee?.User?.name}
-            </div>
+            {appointment.extraServices && appointment.extraServices.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: 4 }}>SERVICIOS ADICIONALES</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {appointment.extraServices.map((es, idx) => {
+                    const empName = appointment.AdditionalEmployees?.find(ae => ae.employeeId === es.employeeId)?.Employee?.User?.name;
+                    return (
+                      <div key={idx} style={{
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: colors.text,
+                        padding: '6px 12px',
+                        background: colors.bgSecondary,
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <span><span style={{ color: '#10b981' }}>+</span> {es.name}</span>
+                        {empName && (
+                          <span style={{ fontSize: '13px', color: colors.textSecondary }}>
+                            👤 {empName}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Time Info */}
@@ -179,16 +204,16 @@ function TrackingTimeline({ appointment, colors }) {
   ];
 
   return (
-    <div style={{ 
-      marginTop: 24, 
-      padding: 16, 
-      background: colors.bgSecondary, 
+    <div style={{
+      marginTop: 24,
+      padding: 16,
+      background: colors.bgSecondary,
       borderRadius: 12,
     }}>
       <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text, marginBottom: 12 }}>
         📍 Seguimiento del Técnico
       </div>
-      
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {timelineItems.map((item) => {
           const isActive = item.isDone || appointment[item.key];
@@ -222,8 +247,8 @@ function TrackingTimeline({ appointment, colors }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {appointment.workReport.partsUsed.map((part, idx) => (
-              <div key={idx} style={{ 
-                fontSize: '12px', 
+              <div key={idx} style={{
+                fontSize: '12px',
                 color: colors.textSecondary,
                 display: 'flex',
                 justifyContent: 'space-between',

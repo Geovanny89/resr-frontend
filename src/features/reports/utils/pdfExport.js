@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { savePDF } from '../../../utils/fileDownload';
 import { fmt } from '../../../shared/utils/formatters';
-import { STATUS_LABELS, EXPENSE_CATEGORIES } from './reportHelpers';
+import { STATUS_LABELS, EXPENSE_CATEGORIES, getEmployeesDisplay, splitRevenueByEmployee } from './reportHelpers';
 
 // Extraer la URL base del backend desde el cliente API
 import api from '../../../api/client';
@@ -173,14 +173,27 @@ export async function generatePDF({
     (s, a) => s + parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0))),
     0
   );
+
+  // Pago a profesionales: calculado con split correcto
   const empRev = done.reduce((s, a) => {
-    const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
-    const commPct = parseFloat(a.Employee?.commissionPct || 0);
-    const earned = a.employeeEarns
-      ? parseFloat(a.employeeEarns)
-      : (totalPrice * commPct) / 100;
-    return s + (isNaN(earned) ? 0 : earned);
+    const splits = splitRevenueByEmployee(a);
+    let thisAptCommission = 0;
+    splits.forEach(split => {
+      let earned;
+      if (
+        a.employeeEarns !== undefined &&
+        a.employeeEarns !== null &&
+        String(split.employeeId) === String(a.employeeId)
+      ) {
+        earned = parseFloat(a.employeeEarns) || 0;
+      } else {
+        earned = (split.revenue * (parseFloat(split.commissionPct) || 0)) / 100;
+      }
+      thisAptCommission += earned;
+    });
+    return s + (isNaN(thisAptCommission) ? 0 : thisAptCommission);
   }, 0);
+
   const ownerRev = totalRev - empRev;
 
   const summaryBody = [
@@ -248,20 +261,29 @@ export async function generatePDF({
     margin: { left: margin, right: margin },
   });
 
-  // Resumen de pagos a empleados
+  // Resumen de pagos a empleados - CON SPLIT CORRECTO
   const employeePayments = done.reduce((acc, a) => {
-    const name = a.Employee?.User?.name || 'Sin asignar';
-    const totalPrice = parseFloat(a.finalPrice !== null && a.finalPrice !== undefined ? a.finalPrice : (parseFloat(a.basePrice || a.Service?.price || 0) + parseFloat(a.additionalAmount || 0)));
-    const commPct = parseFloat(a.Employee?.commissionPct || 0);
-    const earned = a.employeeEarns
-      ? parseFloat(a.employeeEarns)
-      : (totalPrice * commPct) / 100;
+    const splits = splitRevenueByEmployee(a);
 
-    if (!acc[name]) {
-      acc[name] = { name, citas: 0, total: 0 };
-    }
-    acc[name].citas++;
-    acc[name].total += isNaN(earned) ? 0 : earned;
+    splits.forEach(split => {
+      const name = split.name || 'Sin asignar';
+      let commission;
+      if (
+        a.employeeEarns !== undefined &&
+        a.employeeEarns !== null &&
+        String(split.employeeId) === String(a.employeeId)
+      ) {
+        commission = parseFloat(a.employeeEarns) || 0;
+      } else {
+        commission = (split.revenue * (parseFloat(split.commissionPct) || 0)) / 100;
+      }
+
+      if (!acc[name]) {
+        acc[name] = { name, citas: 0, total: 0 };
+      }
+      acc[name].citas++;
+      acc[name].total += isNaN(commission) ? 0 : commission;
+    });
     return acc;
   }, {});
 
@@ -356,7 +378,7 @@ export async function generatePDF({
       }),
       a.clientName || '',
       a.Service?.name || '',
-      a.Employee?.User?.name || '',
+      getEmployeesDisplay(a, ', ') || '',
     ];
     if (!business?.isTechnicalServices && !business?.hasFieldTechnicians) {
       const base = parseFloat(a.basePrice || a.Service?.price || 0);

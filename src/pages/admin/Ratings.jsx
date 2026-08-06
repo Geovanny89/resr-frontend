@@ -318,8 +318,8 @@ const Ratings = () => {
                       return (
                         <>
                           {paginatedModalReviews.map((rev) => (
-                            <div key={rev.id} style={{ padding: 16, background: colors.bgSecondary, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <div key={rev.id} style={{ padding: 16, background: colors.bgSecondary, borderRadius: 12, border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <span style={{ fontWeight: 700, fontSize: 14 }}>{rev.clientName || 'Cliente'}</span>
                                 <div style={{ display: 'flex', gap: 2 }}>
                                   {[...Array(5)].map((_, i) => (
@@ -327,6 +327,21 @@ const Ratings = () => {
                                   ))}
                                 </div>
                               </div>
+
+                              {rev.comment && (
+                                <div style={{ 
+                                  fontSize: 13, 
+                                  color: colors.text, 
+                                  fontStyle: 'italic',
+                                  padding: '8px 12px',
+                                  background: colors.cardBg,
+                                  borderRadius: 8,
+                                  borderLeft: `3px solid ${colors.primary}60`
+                                }}>
+                                  "{rev.comment}"
+                                </div>
+                              )}
+
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: colors.textSecondary }}>
                                 <Calendar size={12} />
                                 {new Date(rev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}

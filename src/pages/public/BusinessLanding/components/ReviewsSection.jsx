@@ -9,6 +9,11 @@ export default function ReviewsSection({ business, primary, secondary, slug, set
   const [reviewComment, setReviewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [expandedReviews, setExpandedReviews] = useState({});
+
+  const toggleExpand = (idx) => {
+    setExpandedReviews(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
   const submitReview = async (e) => {
     e.preventDefault();
@@ -83,73 +88,112 @@ export default function ReviewsSection({ business, primary, secondary, slug, set
           maxWidth: 1200,
           margin: '0 auto 48px'
         }}>
-          {business.Reviews
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 5)
-            .map((review, idx) => (
-            <div 
-              key={idx}
-              style={{
-                background: isDark ? 'rgba(30, 41, 59, 0.6)' : 'white',
-                borderRadius: 16,
-                padding: 20,
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-                boxShadow: isDark ? '0 10px 20px rgba(0,0,0,0.2)' : '0 10px 20px rgba(0,0,0,0.05)',
-                transition: 'all 0.3s ease',
-                position: 'relative'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 12 }}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star 
-                    key={star}
-                    size={14} 
-                    fill={star <= review.rating ? '#fbbf24' : 'transparent'}
-                    color={star <= review.rating ? '#fbbf24' : isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}
-                  />
-                ))}
-              </div>
-              
-              <p style={{ 
-                fontSize: 14, 
-                lineHeight: 1.5, 
-                color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
-                marginBottom: 16,
-                fontStyle: 'italic',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
-              }}>
-                "{review.comment || 'Excelente servicio!'}"
-              </p>
-              
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
-                paddingTop: 12
-              }}>
-                <span style={{ 
-                  fontWeight: 600, 
-                  color: primary,
-                  fontSize: 13
-                }}>
-                  — {review.clientName}
-                </span>
-                <span style={{ 
-                  fontSize: 11, 
-                  color: isDark ? 'rgba(255,255,255,0.5)' : '#94a3b8'
-                }}>
-                  {new Date(review.createdAt).toLocaleDateString('es-CO', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </span>
-              </div>
-            </div>
-          ))}
+          {business.Reviews.slice()
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 6)
+            .map((review, idx) => {
+              const isExpanded = !!expandedReviews[idx];
+              const commentText = review.comment || 'Excelente servicio!';
+              const isLong = commentText.length > 120;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: isDark ? 'rgba(30, 41, 59, 0.6)' : 'white',
+                    borderRadius: 16,
+                    padding: 20,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                    boxShadow: isDark ? '0 10px 20px rgba(0,0,0,0.2)' : '0 10px 20px rgba(0,0,0,0.05)',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 12 }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={14}
+                          fill={star <= review.rating ? '#fbbf24' : 'transparent'}
+                          color={star <= review.rating ? '#fbbf24' : isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}
+                        />
+                      ))}
+                    </div>
+
+                    <p
+                      style={{
+                        fontSize: 14,
+                        lineHeight: 1.5,
+                        color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
+                        marginBottom: isLong ? 8 : 16,
+                        fontStyle: 'italic',
+                        display: isExpanded ? 'block' : '-webkit-box',
+                        WebkitLineClamp: isExpanded ? 'none' : 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: isExpanded ? 'visible' : 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      "{commentText}"
+                    </p>
+
+                    {isLong && (
+                      <button
+                        onClick={() => toggleExpand(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: primary,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          padding: '0 0 12px 0',
+                          textAlign: 'left',
+                          display: 'block'
+                        }}
+                      >
+                        {isExpanded ? 'Ver menos' : 'Ver más'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+                      paddingTop: 12,
+                      marginTop: 'auto'
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: primary,
+                        fontSize: 13
+                      }}
+                    >
+                      — {review.clientName}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: isDark ? 'rgba(255,255,255,0.5)' : '#94a3b8'
+                      }}
+                    >
+                      {new Date(review.createdAt).toLocaleDateString('es-CO', {
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
 
@@ -171,12 +215,12 @@ export default function ReviewsSection({ business, primary, secondary, slug, set
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-3px)';
-              e.target.style.boxShadow = `0 15px 40px ${primary}60`;
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = `0 15px 40px ${primary}60`;
             }}
             onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = `0 10px 30px ${primary}40`;
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = `0 10px 30px ${primary}40`;
             }}
           >
             <Star size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
@@ -245,8 +289,12 @@ export default function ReviewsSection({ business, primary, secondary, slug, set
                       padding: 4,
                       transition: 'transform 0.2s ease'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
                   >
                     <Star 
                       size={40} 

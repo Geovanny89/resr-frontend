@@ -42,7 +42,7 @@ export function EmployeeCard({
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{emp.name}</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {emp.appointments.length} cita(s) · {fmt(emp.total)} facturado
+            {(emp.countAppointments || emp.appointments.length)} cita(s) · {fmt(emp.total)} facturado
           </div>
         </div>
 

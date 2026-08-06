@@ -80,20 +80,27 @@ export const CompleteModal = ({ show, colors, completeAppointmentData, setComple
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 3000
+      alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+      padding: '16px', boxSizing: 'border-box'
     }}>
       <div style={{
-        background: colors.cardBg, borderRadius: '16px', padding: '28px',
-        maxWidth: '420px', width: '90%', border: `1px solid ${colors.border}`,
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+        background: colors.cardBg, borderRadius: '16px',
+        maxWidth: '420px', width: '100%', maxHeight: '90vh',
+        display: 'flex', flexDirection: 'column',
+        border: `1px solid ${colors.border}`,
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        overflow: 'hidden'
       }}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: colors.text }}>
-          ✅ Completar Cita
-        </h2>
-        <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: colors.textSecondary }}>
-          Confirma el cobro para <strong>{completeAppointmentData.clientName}</strong>.
-        </p>
+        <div style={{ padding: '24px 28px 0', flexShrink: 0 }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: colors.text }}>
+            ✅ Completar Cita
+          </h2>
+          <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: colors.textSecondary }}>
+            Confirma el cobro para <strong>{completeAppointmentData.clientName}</strong>.
+          </p>
+        </div>
 
+        <div style={{ padding: '0 28px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {/* Desglose */}
         <div style={{ background: colors.bgSecondary, borderRadius: 12, padding: 16, marginBottom: 20, border: `1px solid ${colors.border}` }}>
           <div style={{ marginBottom: 12, borderBottom: `1px solid ${colors.border}`, paddingBottom: 8 }}>
@@ -242,8 +249,14 @@ export const CompleteModal = ({ show, colors, completeAppointmentData, setComple
             <div style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>📲 Transferencia</div>
           </label>
         </div>
+        </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{
+          display: 'flex', gap: '12px', flexShrink: 0,
+          padding: '16px 28px 24px',
+          borderTop: `1px solid ${colors.border}`,
+          background: colors.cardBg
+        }}>
           <button onClick={onClose} style={{ flex: 1, background: 'transparent', color: colors.textSecondary, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
             Cancelar
           </button>

@@ -29,29 +29,52 @@ export function usePayments(businessId) {
       }
       
       const res = await api.get(url);
-      // Asegurarnos de que los cálculos del negocio sean los reales (Total - Comisión)
       const data = res.data;
-      if (data.appointments) {
-        data.appointments = data.appointments.map(appt => {
-          const price = parseFloat(appt.price);
-          const empEarns = parseFloat(appt.employeeEarns);
-          // Forzar el cálculo real en el frontend por si el backend aún no se ha actualizado
-          const ownerEarns = price - empEarns;
-          return { ...appt, ownerEarns: ownerEarns.toFixed(2) };
-        });
-        
-        // Recalcular totales
-        const total = data.appointments.reduce((acc, a) => acc + parseFloat(a.price), 0);
-        const employeeTotal = data.appointments.reduce((acc, a) => acc + parseFloat(a.employeeEarns), 0);
-        const ownerTotal = total - employeeTotal;
-        
-        data.totals = {
-          total,
-          employeeTotal,
-          ownerTotal
+
+      // ====================
+      // USAR appointmentsByEmployee si existe (backend actualizado con split correcto)
+      // sino, fallback a appointments por compatibilidad
+      // ====================
+      const byEmpItems = Array.isArray(data.appointmentsByEmployee) && data.appointmentsByEmployee.length > 0
+        ? data.appointmentsByEmployee
+        : data.appointments || [];
+
+      // Normalizar appointmentsByEmployee para asegurar consistencia
+      const normalizedItems = byEmpItems.map(item => {
+        const price = parseFloat(item.price) || 0;
+        const empEarns = parseFloat(item.employeeEarns) || 0;
+        let ownerEarns = parseFloat(item.ownerEarns);
+        if (isNaN(ownerEarns)) ownerEarns = Math.max(0, price - empEarns);
+        return {
+          ...item,
+          ownerEarns: ownerEarns.toFixed(2),
         };
-      }
-      setReport(data);
+      });
+
+      // Calcular totales GLOBALES (tomar del backend si están, sino recalcular de items con isPrincipal=true)
+      const total = (data.totals && data.totals.total !== undefined)
+        ? parseFloat(data.totals.total)
+        : normalizedItems.filter(a => a.isPrincipal !== false).reduce((acc, a) => acc + (parseFloat(a.price) || 0), 0);
+
+      const employeeTotal = (data.totals && data.totals.employeeTotal !== undefined)
+        ? parseFloat(data.totals.employeeTotal)
+        : normalizedItems.reduce((acc, a) => acc + (parseFloat(a.employeeEarns) || 0), 0);
+
+      const ownerTotal = (data.totals && data.totals.ownerTotal !== undefined)
+        ? parseFloat(data.totals.ownerTotal)
+        : normalizedItems.filter(a => a.isPrincipal !== false).reduce((acc, a) => acc + (parseFloat(a.ownerEarns) || 0), 0);
+
+      // Guardar data actualizada
+      setReport({
+        ...data,
+        appointments: data.appointments, // original por cita (si se necesita en tablas)
+        appointmentsByEmployee: normalizedItems,
+        totals: {
+          total: parseFloat(total.toFixed(2)),
+          employeeTotal: parseFloat(employeeTotal.toFixed(2)),
+          ownerTotal: parseFloat(ownerTotal.toFixed(2)),
+        },
+      });
     } catch (e) {
       setError(e.response?.data?.error || 'Error al cargar el reporte');
     } finally {
@@ -63,17 +86,46 @@ export function usePayments(businessId) {
     loadReport();
   }, [loadReport]);
 
-  // Agrupar por empleado
+  // ====================
+  // Agrupar POR EMPLEADO usando appointmentsByEmployee (cada profesional con sus servicios)
+  // ====================
   const byEmployee = useMemo(() => {
-    return report?.appointments?.reduce((acc, appt) => {
-      const name = appt.employee;
-      if (!acc[name]) acc[name] = { name, appointments: [], total: 0, employeeEarns: 0, ownerEarns: 0 };
-      acc[name].appointments.push(appt);
-      acc[name].total += appt.price;
-      acc[name].employeeEarns += parseFloat(appt.employeeEarns);
-      acc[name].ownerEarns += parseFloat(appt.ownerEarns);
-      return acc;
-    }, {}) || {};
+    const items = report?.appointmentsByEmployee || [];
+    const acc = {};
+
+    items.forEach(item => {
+      const name = item.employee || 'Sin asignar';
+      if (!acc[name]) {
+        acc[name] = {
+          name,
+          appointments: [], // split-items donde participó este empleado
+          appointmentDetails: [], // citas originales donde este empleado participó
+          total: 0,
+          employeeEarns: 0,
+          ownerEarns: 0,
+          countAppointments: new Set(),
+        };
+      }
+      acc[name].appointments.push(item);
+      if (item.appointmentId) acc[name].countAppointments.add(item.appointmentId);
+      // Sumamos SU share (employeeShare) para "total facturado por este empleado"
+      // Si no existe employeeShare, usamos price (compatibilidad vieja)
+      const empTotal = item.employeeShare !== undefined && item.employeeShare !== null
+        ? parseFloat(item.employeeShare) || 0
+        : parseFloat(item.price) || 0;
+      acc[name].total += empTotal;
+      acc[name].employeeEarns += parseFloat(item.employeeEarns) || 0;
+      // Ahora ownerEarns está distribuido proporcionalmente en cada split
+      // (no está todo en el principal), así que sumamos el de cada item
+      acc[name].ownerEarns += parseFloat(item.ownerEarns) || 0;
+    });
+
+    // Convertir Set a count
+    Object.keys(acc).forEach(name => {
+      acc[name].countAppointments = acc[name].countAppointments.size;
+    });
+
+    return acc;
   }, [report]);
 
   const employees = useMemo(() => Object.values(byEmployee), [byEmployee]);

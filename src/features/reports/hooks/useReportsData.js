@@ -10,15 +10,24 @@ export function useReportsData({ business, mainBusiness, period, customStart, cu
   const [detailPage, setDetailPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
+  // Helper: verifica si un empleado es principal o adicional en una cita
+  const isEmployeeInAppointment = (a, empId) => {
+    if (a.employeeId === empId) return true;
+    if (a.AdditionalEmployees && Array.isArray(a.AdditionalEmployees)) {
+      return a.AdditionalEmployees.some(ae => ae.employeeId === empId);
+    }
+    return false;
+  };
+
   // Filtrar citas según el empleado seleccionado
   const filteredAppointments = useMemo(() => {
     if (!employeeFilter || employeeFilter === 'all') return appointments;
-    return appointments.filter(a => a.employeeId === employeeFilter);
+    return appointments.filter(a => isEmployeeInAppointment(a, employeeFilter));
   }, [appointments, employeeFilter]);
 
   const filteredPreviousAppointments = useMemo(() => {
     if (!employeeFilter || employeeFilter === 'all') return previousPeriodAppointments;
-    return previousPeriodAppointments.filter(a => a.employeeId === employeeFilter);
+    return previousPeriodAppointments.filter(a => isEmployeeInAppointment(a, employeeFilter));
   }, [previousPeriodAppointments, employeeFilter]);
 
   const range = useMemo(() => getDateRange(period, customStart, customEnd), [period, customStart, customEnd]);

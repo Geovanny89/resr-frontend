@@ -7,6 +7,9 @@ import { X } from 'lucide-react';
 import api from '../../../../api/client';
 import { PhoneInput } from '../PhoneInput';
 
+const fmt = (n) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
+
 export function EditAppointmentModal({
   isOpen,
   onClose,
@@ -38,10 +41,10 @@ export function EditAppointmentModal({
   // Cargar datos de la cita
   useEffect(() => {
     if (appointment) {
-      const appointmentDate = appointment.startTime 
+      const appointmentDate = appointment.startTime
         ? new Date(appointment.startTime).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
-      
+
       setForm({
         clientName: appointment.clientName || '',
         clientPhone: appointment.clientPhone || '',
@@ -51,7 +54,7 @@ export function EditAppointmentModal({
         startTime: appointment.startTime ? new Date(appointment.startTime).toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).replace(' ', 'T').slice(0, 16) : '',
         selectedDate: appointmentDate,
         notes: appointment.notes || '',
-        extraServices: appointment.extraServices || []
+        extraServices: (appointment.extraServices || []).map(s => ({ ...s, employeeId: s.employeeId || '' }))
       });
       setServiceSearch('');
     }
@@ -67,6 +70,11 @@ export function EditAppointmentModal({
 
       try {
         const allowPast = true; // El administrador siempre puede mover citas al pasado
+        const selectedSvc = services.find(s => s.id === form.serviceId);
+        const mainDur = parseInt(selectedSvc?.durationMin || 0);
+        const extrasDur = form.extraServices.reduce((sum, s) => sum + (parseInt(s.durationMin) || 0), 0);
+        const totalDur = mainDur + extrasDur;
+
         const res = await api.get(`/appointments/availability`, {
           params: {
             date: form.selectedDate,
@@ -75,6 +83,7 @@ export function EditAppointmentModal({
             businessId: business.id,
             allowPast: allowPast,
             excludeId: appointment.id,
+            duration: totalDur || undefined,
             noCache: true
           }
         });
@@ -85,7 +94,7 @@ export function EditAppointmentModal({
     };
 
     loadSlots();
-  }, [form.employeeId, form.serviceId, form.selectedDate, form.extraServices, business]);
+  }, [form.employeeId, form.serviceId, form.selectedDate, form.extraServices, business, appointment?.id, services]);
 
   const handleAddExtraService = (service) => {
     if (form.extraServices.find(s => s.serviceId === service.id)) return;
@@ -93,7 +102,8 @@ export function EditAppointmentModal({
       serviceId: service.id,
       name: service.name,
       price: service.price,
-      durationMin: service.durationMin
+      durationMin: service.durationMin,
+      employeeId: ''
     }];
     setForm({ ...form, extraServices: newExtras });
     setExtraServiceSearch('');
@@ -104,13 +114,36 @@ export function EditAppointmentModal({
     setForm({ ...form, extraServices: form.extraServices.filter(s => s.serviceId !== svcId) });
   };
 
+  const handleExtraServiceEmployee = (svcId, empId) => {
+    const newExtras = form.extraServices.map(s =>
+      s.serviceId === svcId ? { ...s, employeeId: empId } : s
+    );
+    setForm({ ...form, extraServices: newExtras });
+  };
+
+  // Calcular totales
   const selectedService = services.find(s => s.id === form.serviceId);
-  const filteredServices = services.filter(s => 
+  const mainDuration = parseInt(selectedService?.durationMin || 0);
+  const extrasDuration = form.extraServices.reduce((sum, s) => sum + (parseInt(s.durationMin) || 0), 0);
+  const totalDuration = mainDuration + extrasDuration;
+
+  const mainPrice = parseFloat(selectedService?.price || 0);
+  const extrasPrice = form.extraServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+  const totalPrice = mainPrice + extrasPrice;
+
+  // Derivar additionalEmployeeIds de los extraServices
+  const derivedAdditionalIds = [...new Set(
+    form.extraServices
+      .map(s => s.employeeId)
+      .filter(id => id && id !== form.employeeId)
+  )];
+
+  const filteredServices = services.filter(s =>
     s.name.toLowerCase().includes(serviceSearch.toLowerCase())
   );
 
-  const filteredExtraServices = services.filter(s => 
-    s.id !== form.serviceId && 
+  const filteredExtraServices = services.filter(s =>
+    s.id !== form.serviceId &&
     !form.extraServices.find(es => es.serviceId === s.id) &&
     s.name.toLowerCase().includes(extraServiceSearch.toLowerCase())
   );
@@ -121,7 +154,11 @@ export function EditAppointmentModal({
   };
 
   const handleSubmit = () => {
-    onSubmit(appointment, form);
+    const payload = {
+      ...form,
+      additionalEmployeeIds: derivedAdditionalIds
+    };
+    onSubmit(appointment, payload);
   };
 
   if (!isOpen || !appointment) return null;
@@ -137,18 +174,23 @@ export function EditAppointmentModal({
         maxWidth: 500, width: '90%', maxHeight: '80vh', overflowY: 'auto',
         border: `1px solid ${colors.border}`
       }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: colors.text }}>
-          ✏️ Editar Cita
-        </h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: colors.text }}>
+            ✏️ Editar Cita
+          </h2>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: colors.textSecondary }}>
+            <X size={24} />
+          </button>
+        </div>
 
         {/* Servicio Principal con Buscador */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>Servicio Principal</label>
           <div style={{ position: 'relative' }}>
-            <div 
+            <div
               onClick={() => setShowServiceList(!showServiceList)}
-              style={{ 
-                width: '100%', padding: '10px 12px', border: `1px solid ${colors.border}`, 
+              style={{
+                width: '100%', padding: '10px 12px', border: `1px solid ${colors.border}`,
                 borderRadius: 8, fontSize: 14, background: colors.inputBg, color: colors.text,
                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}
@@ -161,7 +203,7 @@ export function EditAppointmentModal({
 
             {showServiceList && (
               <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0, 
+                position: 'absolute', top: '100%', left: 0, right: 0,
                 background: colors.cardBg, border: `1px solid ${colors.border}`,
                 borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                 zIndex: 110, marginTop: 4, overflow: 'hidden'
@@ -173,9 +215,9 @@ export function EditAppointmentModal({
                     placeholder="Buscar servicio..."
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
-                    style={{ 
-                      width: '100%', padding: '6px 10px', border: `1px solid ${colors.border}`, 
-                      borderRadius: 4, fontSize: 13, background: colors.cardBg, color: colors.text 
+                    style={{
+                      width: '100%', padding: '6px 10px', border: `1px solid ${colors.border}`,
+                      borderRadius: 4, fontSize: 13, background: colors.cardBg, color: colors.text
                     }}
                   />
                 </div>
@@ -193,30 +235,49 @@ export function EditAppointmentModal({
                           setServiceSearch('');
                           setShowServiceList(false);
                         }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}`,
                           background: form.serviceId === s.id ? colors.bgSecondary : 'transparent'
                         }}
-                        onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
-                        onMouseLeave={(e) => e.target.style.background = form.serviceId === s.id ? colors.bgSecondary : 'transparent'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = colors.bgSecondary}
+                        onMouseLeave={(e) => e.currentTarget.style.background = form.serviceId === s.id ? colors.bgSecondary : 'transparent'}
                       >
                         <div style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>{s.name}</div>
-                        <div style={{ fontSize: 12, color: colors.textSecondary }}>{s.durationMin} min</div>
+                        <div style={{ fontSize: 12, color: colors.textSecondary }}>{fmt(s.price)} • {s.durationMin} min</div>
                       </div>
                     ))
                   )}
                 </div>
               </div>
             )}
-            
-            {/* Click outside to close */}
+
             {showServiceList && (
-              <div 
+              <div
                 onClick={() => setShowServiceList(false)}
-                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 109 }} 
+                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 109 }}
               />
             )}
           </div>
+        </div>
+
+        {/* Empleado Principal */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>
+            Profesional *
+            {form.serviceId && form.employeeId && (
+              <span style={{ fontSize: 11, fontWeight: 400, color: colors.textSecondary, marginLeft: 8 }}>
+                → {services.find(s => s.id === form.serviceId)?.name}
+              </span>
+            )}
+          </label>
+          <select
+            value={form.employeeId}
+            onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
+          >
+            <option value="">Selecciona empleado</option>
+            {employees.map(e => <option key={e.id} value={e.id}>{e.User?.name || e.name}</option>)}
+          </select>
         </div>
 
         {/* Servicios Adicionales */}
@@ -224,17 +285,55 @@ export function EditAppointmentModal({
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
             ➕ Servicios adicionales
           </label>
-          
+
+          {/* Lista de extras con selector de profesional */}
           {form.extraServices.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
               {form.extraServices.map(s => (
-                <div key={s.serviceId} style={{ 
-                  background: '#dbeafe', color: '#1e40af', padding: '4px 10px', 
-                  borderRadius: 16, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
-                  border: '1px solid #bfdbfe'
+                <div key={s.serviceId} style={{
+                  background: colors.bgSecondary,
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  border: `1px solid ${s.employeeId ? '#6ee7b7' : colors.border}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
                 }}>
-                  <span>{s.name}</span>
-                  <X size={14} style={{ cursor: 'pointer' }} onClick={() => handleRemoveExtraService(s.serviceId)} />
+                  {/* Fila: nombre + precio + eliminar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: colors.text }}>+ {s.name}</span>
+                      <span style={{ fontSize: 11, color: colors.textSecondary, marginLeft: 8 }}>
+                        {fmt(s.price)} · {s.durationMin} min
+                      </span>
+                    </div>
+                    <X
+                      size={16}
+                      style={{ cursor: 'pointer', color: colors.textSecondary, flexShrink: 0 }}
+                      onClick={() => handleRemoveExtraService(s.serviceId)}
+                    />
+                  </div>
+
+                  {/* Selector de profesional para este servicio */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: colors.textSecondary, whiteSpace: 'nowrap' }}>👤 Profesional:</span>
+                    <select
+                      value={s.employeeId || ''}
+                      onChange={(e) => handleExtraServiceEmployee(s.serviceId, e.target.value)}
+                      style={{
+                        flex: 1, padding: '6px 8px', borderRadius: 6,
+                        border: `1px solid ${s.employeeId ? '#10b981' : colors.border}`,
+                        background: s.employeeId ? '#f0fdf4' : colors.inputBg,
+                        color: s.employeeId ? '#065f46' : colors.text,
+                        fontSize: 13, fontWeight: s.employeeId ? 600 : 400
+                      }}
+                    >
+                      <option value="">Sin asignar</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.User?.name || emp.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ))}
             </div>
@@ -251,20 +350,20 @@ export function EditAppointmentModal({
             />
             {showExtraServiceList && extraServiceSearch && (
               <div style={{
-                position: 'absolute', bottom: '100%', left: 0, right: 0, 
+                position: 'absolute', bottom: '100%', left: 0, right: 0,
                 background: colors.cardBg, border: `1px solid ${colors.border}`,
                 borderRadius: 8, boxShadow: '0 -4px 6px -1px rgba(0,0,0,0.1)',
-                zIndex: 101, maxHeight: 120, overflowY: 'auto'
+                zIndex: 101, maxHeight: 150, overflowY: 'auto'
               }}>
                 {filteredExtraServices.map(s => (
                   <div
                     key={s.id}
                     onClick={() => handleAddExtraService(s)}
                     style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}` }}
-                    onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
-                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgSecondary}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <span style={{ fontSize: 13, color: colors.text }}>{s.name}</span>
+                    <span style={{ fontSize: 13, color: colors.text }}>{s.name} - {fmt(s.price)}</span>
                   </div>
                 ))}
               </div>
@@ -272,18 +371,48 @@ export function EditAppointmentModal({
           </div>
         </div>
 
-        {/* Empleado */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Empleado</label>
-          <select
-            value={form.employeeId}
-            onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
-            style={{ width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.inputBg, color: colors.text }}
-          >
-            <option value="">Selecciona empleado</option>
-            {employees.map(e => <option key={e.id} value={e.id}>{e.User?.name}</option>)}
-          </select>
-        </div>
+        {/* Resumen de Totales con desglose por servicio */}
+        {(form.serviceId || form.extraServices.length > 0) && (
+          <div style={{
+            marginBottom: 20, padding: 12, background: '#f0fdf4', borderRadius: 8,
+            border: '1px solid #dcfce7'
+          }}>
+            <div style={{ fontSize: 11, color: '#166534', fontWeight: 700, marginBottom: 6 }}>RESUMEN DE SERVICIOS</div>
+            {form.serviceId && (
+              <div style={{ fontSize: 12, color: '#15803d', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span>
+                  {services.find(s => s.id === form.serviceId)?.name}
+                  {form.employeeId && (
+                    <span style={{ opacity: 0.75, fontStyle: 'italic' }}> → {employees.find(e => e.id === form.employeeId)?.User?.name}</span>
+                  )}
+                </span>
+                <span>{fmt(mainPrice)}</span>
+              </div>
+            )}
+            {form.extraServices.map(s => (
+              <div key={s.serviceId} style={{ fontSize: 12, color: '#15803d', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span>
+                  + {s.name}
+                  {s.employeeId
+                    ? <span style={{ opacity: 0.75, fontStyle: 'italic' }}> → {employees.find(e => e.id === s.employeeId)?.User?.name}</span>
+                    : <span style={{ opacity: 0.5 }}> (sin asignar)</span>
+                  }
+                </span>
+                <span>{fmt(s.price)}</span>
+              </div>
+            ))}
+            <div style={{ borderTop: '1px solid #bbf7d0', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>DURACIÓN TOTAL</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{totalDuration} min</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>PRECIO TOTAL</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{fmt(totalPrice)}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Fecha */}
         <div style={{ marginBottom: 16 }}>

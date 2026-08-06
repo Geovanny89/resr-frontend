@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, FileText, Download } from 'lucide-react';
 import { fmt } from '../../../../shared/utils/formatters';
-import { STATUS_LABELS } from '../../utils/reportHelpers';
+import { STATUS_LABELS, getAllEmployeeNames, getEmployeesDisplay, splitRevenueByEmployee } from '../../utils/reportHelpers';
 import api from '../../../../api/client';
 
 export function AppointmentsTable({
@@ -53,7 +53,7 @@ export function AppointmentsTable({
               <th>Fecha</th>
               <th>Cliente</th>
               <th>Servicio</th>
-              <th>Empleado</th>
+              <th>Profesional</th>
               {!isTechnical && (
                 <>
                   <th>Precio</th>
@@ -88,7 +88,50 @@ export function AppointmentsTable({
                     )}
                   </div>
                 </td>
-                <td>{a.Employee?.User?.name}</td>
+                <td>
+                  {(() => {
+                    const splits = splitRevenueByEmployee(a);
+                    if (splits.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+                    if (splits.length === 1) return splits[0].name;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {splits.map((s, i) => (
+                          <div
+                            key={s.employeeId || i}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: i === 0 ? 13 : 12,
+                                color: i === 0 ? 'var(--text)' : 'var(--text-muted, #71717a)',
+                                fontWeight: i === 0 ? 500 : 400,
+                              }}
+                            >
+                              {i === 0 ? '👤 ' : '➕ '}{s.name}
+                            </span>
+                            {!isTechnical && (
+                              <span
+                                className="money"
+                                style={{
+                                  fontSize: i === 0 ? 12 : 11,
+                                  fontWeight: 600,
+                                  color: s.revenue > 0 ? '#059669' : 'var(--text-muted)',
+                                }}
+                              >
+                                {fmt(s.revenue)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </td>
                 {!isTechnical && (
                   <>
                     <td>
@@ -309,9 +352,32 @@ function AppointmentCard({ appointment: a, isTechnical, onDownloadServiceOrder }
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Empleado</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
-            {a.Employee?.User?.name || '—'}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            {(() => {
+              const splits = splitRevenueByEmployee(a);
+              if (splits.length === 0) return <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>—</span>;
+              if (splits.length === 1) return <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{splits[0].name}</span>;
+              return splits.map((s, i) => (
+                <div key={s.employeeId || i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: i === 0 ? 12 : 11, fontWeight: i === 0 ? 700 : 600, color: 'var(--text)' }}>
+                    {s.name}
+                  </span>
+                  {!isTechnical && (
+                    <span
+                      className="money"
+                      style={{
+                        fontSize: i === 0 ? 11 : 10,
+                        fontWeight: 600,
+                        color: s.revenue > 0 ? '#059669' : 'var(--text-muted)',
+                      }}
+                    >
+                      {fmt(s.revenue)}
+                    </span>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
         </div>
         {a.status === 'done' && a.paymentMethod && (
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>

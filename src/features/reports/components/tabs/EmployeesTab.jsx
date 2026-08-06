@@ -479,7 +479,7 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
                       {emp.ingresos > 0 && (
                         <div style={{ 
                           display: 'grid', 
-                          gridTemplateColumns: '1fr 1fr', 
+                          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
                           gap: 12 
                         }}>
                           <div style={{ 
@@ -493,6 +493,19 @@ export function EmployeesTab({ byEmployee, isMobile, isTechnical, analysisType =
                               ${emp.ingresos.toLocaleString('es-CO')}
                             </div>
                           </div>
+                          {!isTechnical && (emp.comisiones > 0 || emp.comisiones === 0) && (
+                            <div style={{ 
+                              padding: 12, 
+                              background: '#EFF6FF', 
+                              borderRadius: 8, 
+                              border: '1px solid #93C5FD'
+                            }}>
+                              <div style={{ fontSize: 12, color: '#1E40AF', marginBottom: 2 }}>💼 Comisiones Ganadas</div>
+                              <div style={{ fontSize: 16, fontWeight: 700, color: '#1E40AF' }}>
+                                ${(emp.comisiones || 0).toLocaleString('es-CO')}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

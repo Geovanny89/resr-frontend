@@ -249,6 +249,16 @@ export function useAgenda({ businessId, userId, hasFieldTechnicians }) {
     return map;
   }, [appointments]);
 
+  // Helper para verificar si un empleado está asignado a la cita (como principal o adicional)
+  const isEmployeeMatch = useCallback((apt, empId) => {
+    if (!empId) return true;
+    if (String(apt.employeeId) === String(empId)) return true;
+    if (apt.AdditionalEmployees && Array.isArray(apt.AdditionalEmployees)) {
+      return apt.AdditionalEmployees.some(ae => String(ae.employeeId) === String(empId));
+    }
+    return false;
+  }, []);
+
   // Filtrar citas
   const getAppointmentsForDay = useCallback((date) => {
     const dateKey = formatDateISO(date);
@@ -256,24 +266,23 @@ export function useAgenda({ businessId, userId, hasFieldTechnicians }) {
     
     // Unir todas las horas del día y filtrar por empleado
     const allDay = Object.values(dayData).flat();
-    return allDay.filter(apt => {
-      return selectedEmployeeId ? String(apt.employeeId) === selectedEmployeeId : true;
-    }).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  }, [groupedAppointments, selectedEmployeeId]);
+    return allDay.filter(apt => isEmployeeMatch(apt, selectedEmployeeId))
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }, [groupedAppointments, selectedEmployeeId, isEmployeeMatch]);
 
   const getAppointmentsForHour = useCallback((date, hour) => {
     const dateKey = formatDateISO(date);
     const hourAppointments = groupedAppointments[dateKey]?.[hour] || [];
     
     if (!selectedEmployeeId) return hourAppointments;
-    return hourAppointments.filter(apt => String(apt.employeeId) === selectedEmployeeId);
-  }, [groupedAppointments, selectedEmployeeId]);
+    return hourAppointments.filter(apt => isEmployeeMatch(apt, selectedEmployeeId));
+  }, [groupedAppointments, selectedEmployeeId, isEmployeeMatch]);
 
   // Filtradas para estadísticas
   const filteredAppointments = useMemo(() => {
     if (!selectedEmployeeId) return appointments;
-    return appointments.filter(apt => String(apt.employeeId) === selectedEmployeeId);
-  }, [appointments, selectedEmployeeId]);
+    return appointments.filter(apt => isEmployeeMatch(apt, selectedEmployeeId));
+  }, [appointments, selectedEmployeeId, isEmployeeMatch]);
 
   // Modal
   const openDetail = useCallback((apt) => {

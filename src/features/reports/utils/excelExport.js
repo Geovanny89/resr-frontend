@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
 import { formatCurrency } from '../../../shared/utils/formatters';
-import { EXPENSE_CATEGORIES, STATUS_LABELS, MONTHS_ES } from './reportHelpers';
+import { EXPENSE_CATEGORIES, STATUS_LABELS, MONTHS_ES, getEmployeesDisplay } from './reportHelpers';
 
 // Función para generar gráfica como imagen usando canvas
 async function generateChartImage(chartType, data, options = {}) {
@@ -1944,7 +1944,7 @@ export async function generateExcel({
     wsDetail.getCell(detailRow, 3).value = a.clientName || '';
     wsDetail.getCell(detailRow, 4).value = a.clientPhone || '';
     wsDetail.getCell(detailRow, 5).value = a.Service?.name || '';
-    wsDetail.getCell(detailRow, 6).value = a.Employee?.User?.name || '';
+    wsDetail.getCell(detailRow, 6).value = getEmployeesDisplay(a, ', ') || '';
     wsDetail.getCell(detailRow, 7).value = STATUS_LABELS[a.status] || a.status;
 
     // Color segun estado
@@ -2170,7 +2170,7 @@ export async function generateTrackingExcel({ appointments, period }) {
     wsTracking.getCell(row, 2).value = apt.clientName;
     wsTracking.getCell(row, 3).value = apt.clientPhone;
     wsTracking.getCell(row, 4).value = apt.Service?.name || '-';
-    wsTracking.getCell(row, 5).value = apt.Employee?.User?.name || '-';
+    wsTracking.getCell(row, 5).value = getEmployeesDisplay(apt, ', ') || '-';
     wsTracking.getCell(row, 6).value = STATUS_LABELS[apt.status] || apt.status;
 
     const statusColor = {

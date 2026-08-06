@@ -3,7 +3,7 @@
  * Extraído de Appointments.jsx
  */
 import { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X } from 'lucide-react';
 import api from '../../../../api/client';
 import { PhoneInput } from '../PhoneInput';
 
@@ -45,7 +45,7 @@ export function CreateAppointmentModal({
         address: initialData.address || '',
         serviceId: initialData.serviceId || '',
         employeeId: initialData.employeeId || '',
-        extraServices: initialData.extraServices || []
+        extraServices: (initialData.extraServices || []).map(s => ({ ...s, employeeId: s.employeeId || '' }))
       }));
 
       if (initialData.suggestedDate) {
@@ -53,6 +53,7 @@ export function CreateAppointmentModal({
       }
     }
   }, [isOpen, initialData]);
+
   const [serviceSearch, setServiceSearch] = useState('');
   const [showServiceList, setShowServiceList] = useState(false);
   const [extraServiceSearch, setExtraServiceSearch] = useState('');
@@ -87,7 +88,7 @@ export function CreateAppointmentModal({
         (c.name && c.name.toLowerCase().includes(val.toLowerCase())) ||
         (c.phone && c.phone.includes(val)) ||
         (c.email && c.email.toLowerCase().includes(val.toLowerCase()))
-      ).slice(0, 10); // Mostrar máximo 10
+      ).slice(0, 10);
       setFilteredClients(filtered);
       setShowSuggestions(filtered.length > 0);
     } else {
@@ -101,11 +102,10 @@ export function CreateAppointmentModal({
       clientName: client.name,
       clientPhone: client.phone || '',
       clientEmail: client.email || '',
-      address: client.address || form.address // Si existiera dirección guardada
+      address: client.address || form.address
     });
     setShowSuggestions(false);
   };
-
 
   // Cargar slots disponibles
   useEffect(() => {
@@ -117,14 +117,19 @@ export function CreateAppointmentModal({
 
       setLoadingSlots(true);
       try {
-        const allowPast = true; // El administrador siempre puede crear citas en el pasado
+        const selectedSvc = services.find(s => s.id === form.serviceId);
+        const mainDur = parseInt(selectedSvc?.durationMin || 0);
+        const extrasDur = form.extraServices.reduce((sum, s) => sum + (parseInt(s.durationMin) || 0), 0);
+        const totalDur = mainDur + extrasDur;
+
         const res = await api.get(`/appointments/availability`, {
           params: {
             date: selectedDate,
             employeeId: form.employeeId,
             serviceId: form.serviceId,
             businessId: business.id,
-            allowPast: allowPast,
+            allowPast: true,
+            duration: totalDur || undefined,
             noCache: true
           }
         });
@@ -146,17 +151,23 @@ export function CreateAppointmentModal({
     };
 
     loadSlots();
-  }, [selectedDate, form.employeeId, form.serviceId, form.extraServices, business]);
+  }, [selectedDate, form.employeeId, form.serviceId, form.extraServices, business, services]);
 
   // Calcular totales
   const selectedService = services.find(s => s.id === form.serviceId);
   const mainDuration = parseInt(selectedService?.durationMin || 0);
   const extrasDuration = form.extraServices.reduce((sum, s) => sum + (parseInt(s.durationMin) || 0), 0);
   const totalDuration = mainDuration + extrasDuration;
-
   const mainPrice = parseFloat(selectedService?.price || 0);
   const extrasPrice = form.extraServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
   const totalPrice = mainPrice + extrasPrice;
+
+  // Derivar additionalEmployeeIds de los extraServices que tienen profesional asignado
+  const derivedAdditionalIds = [...new Set(
+    form.extraServices
+      .map(s => s.employeeId)
+      .filter(id => id && id !== form.employeeId)
+  )];
 
   const resetForm = () => {
     setForm({
@@ -183,15 +194,12 @@ export function CreateAppointmentModal({
   };
 
   const handleSubmit = () => {
-    onSubmit(form, '', selectedDate);
+    const payload = {
+      ...form,
+      additionalEmployeeIds: derivedAdditionalIds
+    };
+    onSubmit(payload, '', selectedDate);
     resetForm();
-  };
-
-  const handleAddEmployee = (empId) => {
-    const newIds = form.additionalEmployeeIds.includes(empId)
-      ? form.additionalEmployeeIds.filter(id => id !== empId)
-      : [...form.additionalEmployeeIds, empId];
-    setForm({ ...form, additionalEmployeeIds: newIds });
   };
 
   const handleAddExtraService = (service) => {
@@ -200,7 +208,8 @@ export function CreateAppointmentModal({
       serviceId: service.id,
       name: service.name,
       price: service.price,
-      durationMin: service.durationMin
+      durationMin: service.durationMin,
+      employeeId: ''
     }];
     setForm({ ...form, extraServices: newExtras });
     setExtraServiceSearch('');
@@ -209,6 +218,13 @@ export function CreateAppointmentModal({
 
   const handleRemoveExtraService = (svcId) => {
     setForm({ ...form, extraServices: form.extraServices.filter(s => s.serviceId !== svcId) });
+  };
+
+  const handleExtraServiceEmployee = (svcId, empId) => {
+    const newExtras = form.extraServices.map(s =>
+      s.serviceId === svcId ? { ...s, employeeId: empId } : s
+    );
+    setForm({ ...form, extraServices: newExtras });
   };
 
   const filteredServices = services.filter(s =>
@@ -242,7 +258,7 @@ export function CreateAppointmentModal({
           </button>
         </div>
 
-        {/* BUSCADOR DE CLIENTE FRECUENTE (ARRIBA PARA MAYOR VISIBILIDAD) */}
+        {/* BUSCADOR DE CLIENTE FRECUENTE */}
         <div style={{ marginBottom: 24, position: 'relative', padding: '12px', background: colors.bgSecondary, borderRadius: 8, border: `1px dashed ${colors.border}` }}>
           <label style={{ display: 'block', marginBottom: 6, fontWeight: 700, fontSize: 13, color: '#10b981' }}>🔍 ¿Cliente frecuente? Busca aquí:</label>
           <input
@@ -255,7 +271,6 @@ export function CreateAppointmentModal({
             autoComplete="off"
             style={{ width: '100%', padding: '12px', border: `2px solid #10b981`, borderRadius: 8, fontSize: 15, background: colors.inputBg, color: colors.text }}
           />
-
           {showSuggestions && (
             <div style={{
               position: 'absolute', top: '100%', left: 12, right: 12,
@@ -268,11 +283,12 @@ export function CreateAppointmentModal({
                   key={i}
                   onClick={() => selectClient(c)}
                   style={{
-                    padding: '12px', cursor: 'pointer', borderBottom: i < filteredClients.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    padding: '12px', cursor: 'pointer',
+                    borderBottom: i < filteredClients.length - 1 ? `1px solid ${colors.border}` : 'none',
                     display: 'flex', flexDirection: 'column', gap: 2
                   }}
-                  onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
-                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = colors.bgSecondary}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   <span style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>{c.name}</span>
                   {c.phone && <span style={{ fontSize: 12, color: colors.textSecondary }}>📱 {c.phone}</span>}
@@ -339,8 +355,8 @@ export function CreateAppointmentModal({
                           padding: '10px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}`,
                           background: form.serviceId === s.id ? colors.bgSecondary : 'transparent'
                         }}
-                        onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
-                        onMouseLeave={(e) => e.target.style.background = form.serviceId === s.id ? colors.bgSecondary : 'transparent'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = colors.bgSecondary}
+                        onMouseLeave={(e) => e.currentTarget.style.background = form.serviceId === s.id ? colors.bgSecondary : 'transparent'}
                       >
                         <div style={{ fontWeight: 600, fontSize: 14, color: colors.text }}>{s.name}</div>
                         <div style={{ fontSize: 12, color: colors.textSecondary }}>{fmt(s.price)} • {s.durationMin} min</div>
@@ -351,7 +367,6 @@ export function CreateAppointmentModal({
               </div>
             )}
 
-            {/* Click outside to close */}
             {showServiceList && (
               <div
                 onClick={() => setShowServiceList(false)}
@@ -361,23 +376,82 @@ export function CreateAppointmentModal({
           </div>
         </div>
 
-        {/* Servicios Adicionales */}
+        {/* Empleado Principal */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>
+            Profesional *
+            {form.serviceId && form.employeeId && (
+              <span style={{ fontSize: 11, fontWeight: 400, color: colors.textSecondary, marginLeft: 8 }}>
+                → {services.find(s => s.id === form.serviceId)?.name}
+              </span>
+            )}
+          </label>
+          <select
+            value={form.employeeId}
+            onChange={(e) => setForm({ ...form, employeeId: e.target.value, additionalEmployeeIds: [] })}
+            style={{ width: '100%', padding: 10, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 14, background: colors.inputBg, color: colors.text }}
+          >
+            <option value="">Selecciona un profesional</option>
+            {employees.map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.User?.name || emp.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Servicios Adicionales con asignación de profesional */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
             ➕ ¿Agregar más servicios?
           </label>
 
-          {/* Lista de extras seleccionados */}
+          {/* Lista de extras con selector de profesional */}
           {form.extraServices.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
               {form.extraServices.map(s => (
                 <div key={s.serviceId} style={{
-                  background: '#dbeafe', color: '#1e40af', padding: '4px 10px',
-                  borderRadius: 16, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
-                  border: '1px solid #bfdbfe'
+                  background: colors.bgSecondary,
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  border: `1px solid ${s.employeeId ? '#6ee7b7' : colors.border}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
                 }}>
-                  <span>{s.name} ({fmt(s.price)})</span>
-                  <X size={14} style={{ cursor: 'pointer' }} onClick={() => handleRemoveExtraService(s.serviceId)} />
+                  {/* Fila: nombre + precio + eliminar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: colors.text }}>+ {s.name}</span>
+                      <span style={{ fontSize: 11, color: colors.textSecondary, marginLeft: 8 }}>
+                        {fmt(s.price)} · {s.durationMin} min
+                      </span>
+                    </div>
+                    <X
+                      size={16}
+                      style={{ cursor: 'pointer', color: colors.textSecondary, flexShrink: 0 }}
+                      onClick={() => handleRemoveExtraService(s.serviceId)}
+                    />
+                  </div>
+
+                  {/* Selector de profesional para este servicio */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: colors.textSecondary, whiteSpace: 'nowrap' }}>👤 Profesional:</span>
+                    <select
+                      value={s.employeeId || ''}
+                      onChange={(e) => handleExtraServiceEmployee(s.serviceId, e.target.value)}
+                      style={{
+                        flex: 1, padding: '6px 8px', borderRadius: 6,
+                        border: `1px solid ${s.employeeId ? '#10b981' : colors.border}`,
+                        background: s.employeeId ? '#f0fdf4' : colors.inputBg,
+                        color: s.employeeId ? '#065f46' : colors.text,
+                        fontSize: 13, fontWeight: s.employeeId ? 600 : 400
+                      }}
+                    >
+                      <option value="">Sin asignar</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.User?.name || emp.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ))}
             </div>
@@ -405,8 +479,8 @@ export function CreateAppointmentModal({
                     key={s.id}
                     onClick={() => handleAddExtraService(s)}
                     style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${colors.border}` }}
-                    onMouseEnter={(e) => e.target.style.background = colors.bgSecondary}
-                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgSecondary}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <span style={{ fontSize: 13, color: colors.text }}>{s.name} - {fmt(s.price)}</span>
                   </div>
@@ -416,73 +490,46 @@ export function CreateAppointmentModal({
           </div>
         </div>
 
-        {/* Resumen de Totales */}
+        {/* Resumen de Totales con desglose por servicio */}
         {(form.serviceId || form.extraServices.length > 0) && (
           <div style={{
             marginBottom: 20, padding: 12, background: '#f0fdf4', borderRadius: 8,
-            border: '1px solid #dcfce7', display: 'flex', justifyContent: 'space-between'
+            border: '1px solid #dcfce7'
           }}>
-            <div>
-              <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>DURACIÓN TOTAL</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{totalDuration} min</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>PRECIO TOTAL</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{fmt(totalPrice)}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Empleado */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, color: colors.text }}>Profesional *</label>
-          <select
-            value={form.employeeId}
-            onChange={(e) => setForm({ ...form, employeeId: e.target.value, additionalEmployeeIds: [] })}
-            style={{ width: '100%', padding: 10, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 14, background: colors.inputBg, color: colors.text }}
-          >
-            <option value="">Selecciona un profesional</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.User?.name || emp.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Empleados adicionales */}
-        {form.employeeId && employees.filter(e => e.id !== form.employeeId).length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: colors.text }}>
-              🤝 Profesionales adicionales (Cita Grupal)
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {employees.filter(emp => emp.id !== form.employeeId).map(emp => {
-                const isSelected = form.additionalEmployeeIds.includes(emp.id);
-                return (
-                  <button
-                    key={emp.id}
-                    type="button"
-                    onClick={() => handleAddEmployee(emp.id)}
-                    style={{
-                      padding: '8px 12px',
-                      border: `2px solid ${isSelected ? '#10b981' : colors.border}`,
-                      borderRadius: 20,
-                      background: isSelected ? '#d1fae5' : colors.inputBg,
-                      color: isSelected ? '#065f46' : colors.text,
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500
-                    }}
-                  >
-                    {isSelected ? '✓' : '+'} {emp.User?.name || emp.name}
-                  </button>
-                );
-              })}
-            </div>
-            {form.additionalEmployeeIds.length > 0 && (
-              <div style={{ marginTop: 8, fontSize: 12, color: '#059669' }}>
-                ✓ {form.additionalEmployeeIds.length} profesional(es) adicional(es)
+            <div style={{ fontSize: 11, color: '#166534', fontWeight: 700, marginBottom: 6 }}>RESUMEN DE SERVICIOS</div>
+            {form.serviceId && (
+              <div style={{ fontSize: 12, color: '#15803d', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span>
+                  {services.find(s => s.id === form.serviceId)?.name}
+                  {form.employeeId && (
+                    <span style={{ opacity: 0.75, fontStyle: 'italic' }}> → {employees.find(e => e.id === form.employeeId)?.User?.name}</span>
+                  )}
+                </span>
+                <span>{fmt(mainPrice)}</span>
               </div>
             )}
+            {form.extraServices.map(s => (
+              <div key={s.serviceId} style={{ fontSize: 12, color: '#15803d', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span>
+                  + {s.name}
+                  {s.employeeId
+                    ? <span style={{ opacity: 0.75, fontStyle: 'italic' }}> → {employees.find(e => e.id === s.employeeId)?.User?.name}</span>
+                    : <span style={{ opacity: 0.5 }}> (sin asignar)</span>
+                  }
+                </span>
+                <span>{fmt(s.price)}</span>
+              </div>
+            ))}
+            <div style={{ borderTop: '1px solid #bbf7d0', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>DURACIÓN TOTAL</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{totalDuration} min</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>PRECIO TOTAL</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{fmt(totalPrice)}</div>
+              </div>
+            </div>
           </div>
         )}
 

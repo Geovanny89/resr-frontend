@@ -5,9 +5,9 @@
 import { getDisplayStatus, getTechnicianStatusIcon, hasVisibleTechnicianStatus } from '../../utils/appointmentStatus';
 import { formatTime, getStartMinutes, getDurationMinutes } from '../../utils/calendar';
 
-export default function AppointmentCard({ 
-  appointment, 
-  colors, 
+export default function AppointmentCard({
+  appointment,
+  colors,
   index = 0,
   total = 1,
   onClick,
@@ -18,9 +18,9 @@ export default function AppointmentCard({
   const endTime = new Date(appointment.endTime);
   const duration = getDurationMinutes(appointment.startTime, appointment.endTime);
   const startMinutes = getStartMinutes(appointment.startTime);
-  
+
   const showTechStatus = hasVisibleTechnicianStatus(appointment);
-  
+
   return (
     <div
       className="agenda-appointment"
@@ -62,11 +62,11 @@ export default function AppointmentCard({
         e.currentTarget.style.zIndex = index + 1;
       }}
     >
-      <div style={{ 
-        fontSize: '9px', 
-        fontWeight: 700, 
-        opacity: 0.7, 
-        display: 'flex', 
+      <div style={{
+        fontSize: '9px',
+        fontWeight: 700,
+        opacity: 0.7,
+        display: 'flex',
         justifyContent: 'space-between',
         marginBottom: '2px'
       }}>
@@ -75,41 +75,51 @@ export default function AppointmentCard({
           <span>{getTechnicianStatusIcon(appointment.technicianStatus)}</span>
         )}
       </div>
-      
-      <div style={{ 
-        fontWeight: 700, 
+
+      <div style={{
+        fontWeight: 700,
         fontSize: '12px',
-        whiteSpace: 'nowrap', 
-        overflow: 'hidden', 
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
         textOverflow: 'ellipsis',
         lineHeight: 1.2
       }}>
         {appointment.clientName}
       </div>
-      
-      <div style={{ 
-        fontSize: '10px', 
-        opacity: 0.8, 
-        whiteSpace: 'nowrap', 
-        overflow: 'hidden', 
+
+      <div style={{
+        fontSize: '10px',
+        opacity: 0.8,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
         textOverflow: 'ellipsis',
         fontWeight: 500
       }}>
         {appointment.Service?.name}
       </div>
 
-      {appointment.Employee?.User?.name && duration > 45 && (
-        <div style={{ 
-          fontSize: '9px', 
-          marginTop: 'auto', 
+      {(appointment.Employee?.User?.name || appointment.extraServices?.length > 0) && duration > 30 && (
+        <div style={{
+          fontSize: '9px',
+          marginTop: 'auto',
           paddingTop: '4px',
           display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
+          flexDirection: 'column',
+          gap: '2px',
           borderTop: `1px solid ${displayStatus.color}20`
         }}>
-          <span style={{ opacity: 0.6 }}>👤</span>
-          <span style={{ fontWeight: 600 }}>{appointment.Employee.User.name}</span>
+          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ opacity: 0.6 }}>👤 </span>
+            {appointment.Employee?.User?.name}
+          </span>
+          {appointment.extraServices && appointment.extraServices.length > 0 && appointment.extraServices.map((es, idx) => {
+            const empName = appointment.AdditionalEmployees?.find(ae => ae.employeeId === es.employeeId)?.Employee?.User?.name;
+            return (
+              <span key={idx} style={{ opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: '12px' }}>
+                + {es.name} {empName ? <span style={{ opacity: 0.7, fontStyle: 'italic' }}>({empName})</span> : ''}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
