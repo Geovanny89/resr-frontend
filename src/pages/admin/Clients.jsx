@@ -20,7 +20,8 @@ import {
   Toast,
   SearchFilter,
   BirthdayTemplateModal,
-  MergeClientModal
+  MergeClientModal,
+  AnonymizeClientModal
 } from '../../features/clients/components';
 
 // Constants
@@ -31,7 +32,7 @@ export default function Clients() {
   const { colors } = useTheme();
 
   // Hooks
-  const { clients, loading, search, setSearch, loadClients, updateClient, mergeClient } = useClients(business?.id);
+  const { clients, loading, search, setSearch, loadClients, updateClient, mergeClient, anonymizeClient } = useClients(business?.id);
   const { availableTags, loadTags, saveTag, deleteTag, assignTag, removeTag } = useClientTags(business?.id);
   const stats = useClientStats(clients);
 
@@ -48,6 +49,8 @@ export default function Clients() {
   const [clientForEdit, setClientForEdit] = useState(null);
   const [showMergeClient, setShowMergeClient] = useState(false);
   const [clientForMerge, setClientForMerge] = useState(null);
+  const [showAnonymizeClient, setShowAnonymizeClient] = useState(false);
+  const [clientForAnonymize, setClientForAnonymize] = useState(null);
   const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState(false);
   const [tagToDelete, setTagToDelete] = useState(null);
   const [showBirthdayTemplates, setShowBirthdayTemplates] = useState(false);
@@ -97,6 +100,11 @@ export default function Clients() {
   const handleMerge = (client) => {
     setClientForMerge(client);
     setShowMergeClient(true);
+  };
+
+  const handleAnonymize = (client) => {
+    setClientForAnonymize(client);
+    setShowAnonymizeClient(true);
   };
 
   const handleSaveTag = async (tagForm, editingTag) => {
@@ -176,7 +184,23 @@ export default function Clients() {
     return result;
   };
 
-  const columns = getClientColumns(colors, handleViewHistory, handleManageTags, handleEdit, handleMerge);
+  const handleConfirmAnonymize = async () => {
+    if (!clientForAnonymize) return;
+    const result = await anonymizeClient({
+      name: clientForAnonymize.name,
+      phone: clientForAnonymize.phone,
+      email: clientForAnonymize.email
+    });
+    if (result.success) {
+      showStatus(result.message || 'Cliente quitado de la lista');
+      setShowAnonymizeClient(false);
+      setClientForAnonymize(null);
+    } else {
+      showStatus(result.error, 'error');
+    }
+  };
+
+  const columns = getClientColumns(colors, handleViewHistory, handleManageTags, handleEdit, handleMerge, handleAnonymize);
 
   return (
     <AdminLayout title="Mis Clientes" subtitle="Gestiona tu base de clientes y su historial">
@@ -316,6 +340,18 @@ export default function Clients() {
             setClientForMerge(null);
           }}
           onMerge={handleConfirmMerge}
+        />
+      )}
+
+      {clientForAnonymize && showAnonymizeClient && (
+        <AnonymizeClientModal
+          client={clientForAnonymize}
+          colors={colors}
+          onClose={() => {
+            setShowAnonymizeClient(false);
+            setClientForAnonymize(null);
+          }}
+          onConfirm={handleConfirmAnonymize}
         />
       )}
 

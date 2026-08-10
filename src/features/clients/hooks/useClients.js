@@ -57,6 +57,19 @@ export function useClients(businessId) {
     }
   };
 
+  const anonymizeClient = async (source) => {
+    try {
+      const res = await api.post(`/appointments/clients/anonymize?businessId=${businessId}`, {
+        source
+      });
+      await loadClients(true);
+      return { success: true, message: res.data?.message };
+    } catch (e) {
+      console.error('Error anonymizing client:', e);
+      return { success: false, error: e.response?.data?.error || 'Error al quitar cliente de la lista' };
+    }
+  };
+
   return {
     clients,
     loading,
@@ -64,6 +77,7 @@ export function useClients(businessId) {
     setSearch,
     loadClients,
     updateClient,
-    mergeClient
+    mergeClient,
+    anonymizeClient
   };
 }

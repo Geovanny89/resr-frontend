@@ -1,7 +1,7 @@
-import { Phone, Mail, CheckCircle, XCircle, DollarSign, History, Tag, Edit2, GitMerge } from 'lucide-react';
+import { Phone, Mail, CheckCircle, XCircle, DollarSign, History, Tag, Edit2, GitMerge, Trash2 } from 'lucide-react';
 import { fmt, fmtDate } from '../../utils/formatters';
 
-export function getClientColumns(colors, onViewHistory, onManageTags, onEdit, onMerge) {
+export function getClientColumns(colors, onViewHistory, onManageTags, onEdit, onMerge, onAnonymize) {
   return [
     {
       key: 'name',
@@ -134,6 +134,15 @@ export function getClientColumns(colors, onViewHistory, onManageTags, onEdit, on
           >
             <GitMerge size={14} />
             Fusionar
+          </button>
+          <button
+            className="btn-outline btn-sm"
+            onClick={() => onAnonymize?.(row)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b91c1c', borderColor: '#fecaca' }}
+            title="Quitar de la lista sin borrar las citas"
+          >
+            <Trash2 size={14} />
+            Eliminar
           </button>
         </div>
       )
