@@ -192,7 +192,7 @@ export default function Clients() {
       email: clientForAnonymize.email
     });
     if (result.success) {
-      showStatus(result.message || 'Cliente quitado de la lista');
+      showStatus(result.message || 'Cliente eliminado de la lista');
       setShowAnonymizeClient(false);
       setClientForAnonymize(null);
     } else {
