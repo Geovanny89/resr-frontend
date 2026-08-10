@@ -43,12 +43,27 @@ export function useClients(businessId) {
     }
   };
 
+  const mergeClient = async (source, target) => {
+    try {
+      const res = await api.post(`/appointments/clients/merge?businessId=${businessId}`, {
+        source,
+        target
+      });
+      await loadClients(true);
+      return { success: true, message: res.data?.message };
+    } catch (e) {
+      console.error('Error merging client:', e);
+      return { success: false, error: e.response?.data?.error || 'Error al fusionar cliente' };
+    }
+  };
+
   return {
     clients,
     loading,
     search,
     setSearch,
     loadClients,
-    updateClient
+    updateClient,
+    mergeClient
   };
 }

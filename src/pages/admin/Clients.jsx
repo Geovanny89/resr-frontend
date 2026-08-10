@@ -19,7 +19,8 @@ import {
   DeleteConfirmModal,
   Toast,
   SearchFilter,
-  BirthdayTemplateModal
+  BirthdayTemplateModal,
+  MergeClientModal
 } from '../../features/clients/components';
 
 // Constants
@@ -30,7 +31,7 @@ export default function Clients() {
   const { colors } = useTheme();
 
   // Hooks
-  const { clients, loading, search, setSearch, loadClients, updateClient } = useClients(business?.id);
+  const { clients, loading, search, setSearch, loadClients, updateClient, mergeClient } = useClients(business?.id);
   const { availableTags, loadTags, saveTag, deleteTag, assignTag, removeTag } = useClientTags(business?.id);
   const stats = useClientStats(clients);
 
@@ -45,6 +46,8 @@ export default function Clients() {
   const [clientForTag, setClientForTag] = useState(null);
   const [showEditClient, setShowEditClient] = useState(false);
   const [clientForEdit, setClientForEdit] = useState(null);
+  const [showMergeClient, setShowMergeClient] = useState(false);
+  const [clientForMerge, setClientForMerge] = useState(null);
   const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState(false);
   const [tagToDelete, setTagToDelete] = useState(null);
   const [showBirthdayTemplates, setShowBirthdayTemplates] = useState(false);
@@ -89,6 +92,11 @@ export default function Clients() {
   const handleEdit = (client) => {
     setClientForEdit(client);
     setShowEditClient(true);
+  };
+
+  const handleMerge = (client) => {
+    setClientForMerge(client);
+    setShowMergeClient(true);
   };
 
   const handleSaveTag = async (tagForm, editingTag) => {
@@ -156,7 +164,19 @@ export default function Clients() {
     return result;
   };
 
-  const columns = getClientColumns(colors, handleViewHistory, handleManageTags, handleEdit);
+  const handleConfirmMerge = async (source, target) => {
+    const result = await mergeClient(source, target);
+    if (result.success) {
+      showStatus(result.message || 'Cliente duplicado fusionado correctamente');
+      setShowMergeClient(false);
+      setClientForMerge(null);
+    } else {
+      showStatus(result.error, 'error');
+    }
+    return result;
+  };
+
+  const columns = getClientColumns(colors, handleViewHistory, handleManageTags, handleEdit, handleMerge);
 
   return (
     <AdminLayout title="Mis Clientes" subtitle="Gestiona tu base de clientes y su historial">
@@ -283,6 +303,19 @@ export default function Clients() {
             setClientForEdit(null);
           }}
           onSave={handleSaveClient}
+        />
+      )}
+
+      {clientForMerge && showMergeClient && (
+        <MergeClientModal
+          client={clientForMerge}
+          clients={clients}
+          colors={colors}
+          onClose={() => {
+            setShowMergeClient(false);
+            setClientForMerge(null);
+          }}
+          onMerge={handleConfirmMerge}
         />
       )}
 

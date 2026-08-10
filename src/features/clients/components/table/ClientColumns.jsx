@@ -1,7 +1,7 @@
-import { Phone, Mail, CheckCircle, XCircle, DollarSign, History, Tag, Edit2 } from 'lucide-react';
+import { Phone, Mail, CheckCircle, XCircle, DollarSign, History, Tag, Edit2, GitMerge } from 'lucide-react';
 import { fmt, fmtDate } from '../../utils/formatters';
 
-export function getClientColumns(colors, onViewHistory, onManageTags, onEdit) {
+export function getClientColumns(colors, onViewHistory, onManageTags, onEdit, onMerge) {
   return [
     {
       key: 'name',
@@ -125,6 +125,15 @@ export function getClientColumns(colors, onViewHistory, onManageTags, onEdit) {
           >
             <Edit2 size={14} />
             Editar
+          </button>
+          <button
+            className="btn-outline btn-sm"
+            onClick={() => onMerge?.(row)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', borderColor: '#fecaca' }}
+            title="Fusionar con otro cliente y quitar el duplicado"
+          >
+            <GitMerge size={14} />
+            Fusionar
           </button>
         </div>
       )
