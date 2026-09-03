@@ -6,6 +6,7 @@ export const AppointmentCard = ({
   colors,
   business,
   completing,
+  currentEmployee,
   onStatusUpdate,
   onStartWorkDirectly,
   onOpenInsumosModal,
@@ -14,6 +15,18 @@ export const AppointmentCard = ({
   onOpenNotesModal,
   onExtendClick
 }) => {
+  // Determinar si el empleado actual es el principal o adicional de esta cita
+  const isAdditionalEmployee = currentEmployee &&
+    String(apt.employeeId) !== String(currentEmployee.id) &&
+    apt.AdditionalEmployees?.some(ae => String(ae.employeeId) === String(currentEmployee.id));
+
+  // Servicio a mostrar: si es adicional, solo su servicio; si es principal, todos
+  const myExtraService = isAdditionalEmployee
+    ? apt.extraServices?.find(es => {
+        const ae = apt.AdditionalEmployees?.find(a => String(a.employeeId) === String(currentEmployee.id));
+        return ae && String(es.employeeId) === String(ae.employeeId);
+      })
+    : null;
   // Debug: log estado de la cita
   console.log('[AppointmentCard] Renderizando cita:', {
     id: apt.id,
@@ -48,8 +61,35 @@ export const AppointmentCard = ({
             {apt.clientName}
           </div>
           <div style={{ fontSize: 13, color: colors.primary, fontWeight: 600, marginTop: 2 }}>
-            {apt.Service?.name}
+            {isAdditionalEmployee
+              ? (myExtraService?.name || apt.Service?.name)
+              : apt.Service?.name
+            }
           </div>
+          {/* Servicios adicionales: solo si es el empleado principal */}
+          {!isAdditionalEmployee && apt.extraServices && apt.extraServices.length > 0 && (
+            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {apt.extraServices.map((es, idx) => {
+                const empName = apt.AdditionalEmployees?.find(ae => ae.employeeId === es.employeeId)?.Employee?.User?.name;
+                return (
+                  <div key={idx} style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    <span style={{ color: '#10b981', fontWeight: 700 }}>+</span>
+                    <span>{es.name}</span>
+                    {empName && (
+                      <span style={{ opacity: 0.7, fontStyle: 'italic' }}>({empName})</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>
             📞 {apt.clientPhone}
           </div>

@@ -578,6 +578,7 @@ export default function EmployeeDashboard() {
                   colors={colors}
                   business={business}
                   completing={completing}
+                  currentEmployee={employee}
                   onStatusUpdate={handleStatusUpdate}
                   onStartWorkDirectly={handleStartWorkDirectly}
                   onOpenInsumosModal={handleOpenInsumosModalLocal}
